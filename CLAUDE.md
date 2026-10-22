@@ -89,12 +89,15 @@ mode and views subscribe to the store.
   itself and redraws the staff once per frame, in the key the mode gives it: free play the header
   key; note and chord-name practice none; Roman numeral and progression prompts the prompt's key; exercises the
   exercise's key), `onPlayerInput` (each note-on with its time, then each change of the held keys with the time of
-  the event behind it) and `heldNotes`.
+  the event behind it), `onIdle` (idle after a wait with no input and nothing sounding; active on any input) and
+  `heldNotes`.
+  **Page setup per mode** (`page.ts`): `PAGE_SETUP` says, as data, which right-hand panel a mode shows, whether the
+  header Key picker is shown, and which page-wide behaviours it turns on, so a behaviour is written once and any mode
+  can opt in. `fadeChordWhenIdle` (free play): after 10 s idle, main tells the chord view `setIdle(true)` and the view
+  fades to "Play something" over 2 s (it owns how that looks); any input brings the chord straight back.
   **Exercises never use the header key**, and the header Key picker is hidden outside free play: a key is either
   part of the prompt ("V7 in G major") or chosen inside the exercise (the scale selector).
-  `freePlay.ts` adds the chord name with the 40 ms debounce; after 10 s without input (and nothing sounding) it
-  tells the chord view the player is idle; the view owns how that looks (a 2 s fade to "Play something"), and any
-  input brings the chord straight back. `notePractice.ts` feeds each new note-on from the
+  `freePlay.ts` adds the chord name with the 40 ms debounce. `notePractice.ts` feeds each new note-on from the
   history to the exercise reducer and moves to the next prompt 700 ms after a correct answer. `chordPractice.ts`
   feeds the held keys to its reducer (900 ms before the next prompt) and asks again if the filter rules out the
   current chord. `progressionPractice.ts` feeds the held keys to the progression reducer and starts a new
@@ -118,7 +121,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 218 tests (54 voicings) should pass
+npm test           # Vitest: 222 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,

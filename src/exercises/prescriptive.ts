@@ -1,6 +1,7 @@
 // The prescriptive exercises and the options they share. Each exercise builds a SequenceExercise from the options;
 // the mode (src/modes/sequencePractice.ts) and the options UI are the same for all of them.
 import { buildKey, isKeyValue } from "../theory";
+import { STRICTNESS, SUBDIVISIONS, type Strictness, type Subdivision } from "../timing/grid";
 import { diatonicChordsExercise } from "./diatonicChords";
 import { MINOR_FORMS, SCALE_OCTAVES, scaleExercise, type MinorForm, type ScaleOctaves } from "./scales";
 import type { SequenceExercise } from "./sequence";
@@ -17,12 +18,23 @@ export interface ExerciseOptions {
   sevenths: boolean;
   /** Diatonic chords: every chord in root position */
   rootPosition: boolean;
+  /** Play to the metronome: each step is timed against it */
+  metronome: boolean;
+  /** Metronome tempo */
+  bpm: number;
+  /** Steps per beat: quarters, eighths or sixteenths */
+  subdivision: Subdivision;
+  /** How close to the beat counts as on time */
+  strictness: Strictness;
 }
 
 export type ExerciseOption = keyof ExerciseOptions;
 
+export const BPM_RANGE = { min: 30, max: 240 } as const;
+
 export const DEFAULT_EXERCISE_OPTIONS: ExerciseOptions = {
   key: "C:major", minorForm: "natural", octaves: 1, sevenths: false, rootPosition: true,
+  metronome: false, bpm: 80, subdivision: 1, strictness: "strict",
 };
 
 /** Fills in anything missing or invalid (e.g. options saved by an older version) with the defaults. */
@@ -35,6 +47,11 @@ export function sanitizeExerciseOptions(raw: unknown): ExerciseOptions {
     octaves: (SCALE_OCTAVES as readonly unknown[]).includes(o.octaves) ? o.octaves as ScaleOctaves : d.octaves,
     sevenths: typeof o.sevenths === "boolean" ? o.sevenths : d.sevenths,
     rootPosition: typeof o.rootPosition === "boolean" ? o.rootPosition : d.rootPosition,
+    metronome: typeof o.metronome === "boolean" ? o.metronome : d.metronome,
+    bpm: typeof o.bpm === "number" && Number.isFinite(o.bpm)
+      ? Math.min(BPM_RANGE.max, Math.max(BPM_RANGE.min, Math.round(o.bpm))) : d.bpm,
+    subdivision: (SUBDIVISIONS as readonly unknown[]).includes(o.subdivision) ? o.subdivision as Subdivision : d.subdivision,
+    strictness: (STRICTNESS as readonly unknown[]).includes(o.strictness) ? o.strictness as Strictness : d.strictness,
   };
 }
 
@@ -45,7 +62,7 @@ export interface PrescriptiveExercise {
   chords: boolean;
   /** Builds the exercise for the current options */
   build(options: ExerciseOptions): SequenceExercise;
-  /** The options this exercise uses, to show in its settings */
+  /** The options this exercise uses, to show in its settings ("metronome" stands for all the metronome options) */
   options: readonly ExerciseOption[];
 }
 
@@ -55,13 +72,13 @@ export const PRESCRIPTIVE = {
     short: "scale",
     chords: false,
     build: o => scaleExercise(buildKey(o.key)!, o.minorForm, o.octaves),
-    options: ["key", "octaves", "minorForm"],
+    options: ["key", "octaves", "minorForm", "metronome"],
   },
   diatonic: {
     short: "chords",
     chords: true,
     build: o => diatonicChordsExercise(buildKey(o.key)!, { sevenths: o.sevenths, rootPosition: o.rootPosition }),
-    options: ["key", "sevenths", "rootPosition"],
+    options: ["key", "sevenths", "rootPosition", "metronome"],
   },
 } satisfies Record<string, PrescriptiveExercise>;
 

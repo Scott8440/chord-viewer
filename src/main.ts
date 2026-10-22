@@ -4,6 +4,7 @@ import { CHORD_PRACTICE_GROUPS, type PromptStyle } from "./exercises/chordPracti
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "./exercises/prescriptive";
 import { ROUTINES, routineById, type CircleDirection } from "./exercises/routines";
 import type { MinorForm, ScaleOctaves } from "./exercises/scales";
+import type { Strictness, Subdivision } from "./timing/grid";
 import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
 import { createMidiSource } from "./input/midi";
@@ -11,6 +12,7 @@ import { startChordPractice } from "./modes/chordPractice";
 import { startFreePlay } from "./modes/freePlay";
 import { startNotePractice } from "./modes/notePractice";
 import { IDLE_MS, PAGE_SETUP } from "./modes/page";
+import { startMetronome } from "./modes/metronome";
 import { onIdle, type Mode } from "./modes/performance";
 import { startProgressionPractice } from "./modes/progressionPractice";
 import { startRoutinePractice } from "./modes/routinePractice";
@@ -19,6 +21,8 @@ import { createAppState, reduceApp, type AppAction, type ModeId, type Settings }
 import { pedalDown } from "./state/performance";
 import { createStore } from "./state/store";
 import { analyze } from "./theory";
+import { createClickPlayer } from "./audio/click";
+import { createBeatView } from "./views/beat";
 import { createChordNameView } from "./views/chordName";
 import { createCircleView } from "./views/circleOfFifths";
 import { createFilterView } from "./views/filter";
@@ -34,7 +38,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 const STORAGE = {
   key: "chordDisplay.key", mode: "chordDisplay.mode", chordTypes: "chordDisplay.chordTypes",
   promptStyle: "chordDisplay.promptStyle", inversions: "chordDisplay.inversions", exercise: "chordDisplay.exercise",
-  routine: "chordDisplay.routine",
+  routine: "chordDisplay.routine", latency: "chordDisplay.latency",
   /** Scale options saved by an earlier version ({key, minorForm, octaves}), read if there are no exercise options */
   legacyScale: "chordDisplay.scale",
 };
@@ -51,6 +55,7 @@ const store = createStore(reduceApp, createAppState({
   inversions: load(STORAGE.inversions) === "1",
   exercise: loadJson(STORAGE.exercise) ?? loadJson(STORAGE.legacyScale),
   routine: loadJson(STORAGE.routine),
+  latencyMs: loadJson(STORAGE.latency),
 }));
 store.subscribe((s, prev) => {
   if (s.settings === prev.settings) return;
@@ -62,6 +67,7 @@ store.subscribe((s, prev) => {
   save(STORAGE.inversions, t.inversions ? "1" : "0");
   save(STORAGE.exercise, JSON.stringify(t.exercise));
   save(STORAGE.routine, JSON.stringify(t.routine));
+  save(STORAGE.latency, JSON.stringify(t.latencyMs));
 });
 const input = (event: InputEvent) => store.dispatch({ type: "input", event });
 
@@ -86,6 +92,17 @@ function bindCheckbox(el: HTMLInputElement, get: (s: Settings) => boolean, set: 
   store.subscribe(s => { el.checked = get(s.settings); });
 }
 
+/** A number input: dispatches on change (Enter, the arrows, or leaving the field), showing the setting as clamped. */
+function bindNumber(el: HTMLInputElement, get: (s: Settings) => number, set: (value: number) => AppAction) {
+  el.value = String(get(store.getState().settings));
+  el.onchange = () => {
+    if (el.value !== "" && Number.isFinite(el.valueAsNumber)) store.dispatch(set(el.valueAsNumber));
+    el.value = String(get(store.getState().settings));
+  };
+  el.onkeydown = e => { if (e.key === "Enter" || e.key === "Escape") el.blur(); };
+  store.subscribe(s => { if (document.activeElement !== el) el.value = String(get(s.settings)); });
+}
+
 fillKeySelect($("keySel"), true);
 fillKeySelect($("exKey"), false);
 bindSelect($("keySel"), s => s.keyValue, value => ({ type: "setKey", value }));
@@ -99,6 +116,11 @@ bindSelect($("exOctaves"), s => String(s.exercise.octaves), v => setExercise({ o
 bindSelect($("exMinorForm"), s => s.exercise.minorForm, v => setExercise({ minorForm: v as MinorForm }));
 bindSelect($("exChords"), s => s.exercise.sevenths ? "sevenths" : "triads", v => setExercise({ sevenths: v === "sevenths" }));
 bindCheckbox($("exRootPosition"), s => s.exercise.rootPosition, rootPosition => setExercise({ rootPosition }));
+bindCheckbox($("exMetronome"), s => s.exercise.metronome, metronome => setExercise({ metronome }));
+bindNumber($("exBpm"), s => s.exercise.bpm, bpm => setExercise({ bpm }));
+bindSelect($("exSubdivision"), s => String(s.exercise.subdivision), v => setExercise({ subdivision: Number(v) as Subdivision }));
+bindSelect($("exStrictness"), s => s.exercise.strictness, v => setExercise({ strictness: v as Strictness }));
+bindNumber($("latency"), s => s.latencyMs, ms => ({ type: "setLatency", ms }));
 for (const r of ROUTINES) $("routineSel").append(new Option(r.name, r.id));
 bindSelect($("routineSel"), s => s.routine.id, id => ({ type: "setRoutineOptions", options: { id } }));
 bindSelect($("routineDir"), s => s.routine.direction,
@@ -115,6 +137,7 @@ store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 
 const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
+const metronomeViews = { click: createClickPlayer(), beat: createBeatView($("beat")) };
 const chordName = createChordNameView({ root: $("freeView"), name: $("chordName"), sub: $("chordSub"), roman: $("roman"), alts: $("alts") });
 const practice = createPracticeView({
   label: $("practiceLabel"), prompt: $("practicePrompt"), sub: $("practiceSub"), feedback: $("practiceFeedback"), score: $("practiceScore"),
@@ -141,9 +164,11 @@ function startMode(id: ModeId): Mode {
   const offIdle = PAGE_SETUP[id].fadeChordWhenIdle
     ? onIdle(store, IDLE_MS, { idle: () => chordName.setIdle(true), active: () => chordName.setIdle(false) })
     : null;
+  const offMetronome = PAGE_SETUP[id].metronome ? startMetronome(store, metronomeViews) : null;
   return {
     ...mode,
     stop() {
+      offMetronome?.();
       offIdle?.();
       chordName.setIdle(false);
       mode.stop();
@@ -187,6 +212,7 @@ function showControls(s: Settings) {
     const option = el.dataset.option as ExerciseOption;
     el.hidden = !used.has(option) || (option === "minorForm" && !ex.keys.some(k => k.endsWith(":minor")));
   }
+  $("metronomeDetails").hidden = !s.exercise.metronome;
 }
 
 let mode = startMode(store.getState().settings.mode);

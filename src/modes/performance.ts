@@ -3,6 +3,7 @@ import type { AppAction, AppState } from "../state/app";
 import { pedalOnlyNotes, soundingNotes } from "../state/performance";
 import type { Store } from "../state/store";
 import { analyze, type KeyContext } from "../theory";
+import type { TimingGrid } from "../timing/grid";
 import type { StaffView } from "../views/staff";
 
 export interface Mode {
@@ -16,6 +17,20 @@ export interface Mode {
 export type AppStore = Store<AppState, AppAction>;
 
 export const sounding = (s: AppState) => soundingNotes(s.perf, s.settings.includeSustained);
+
+/** The grid timed exercises are judged on: the transport while it runs, with the exercise's metronome options. */
+export function timingGrid(s: AppState): TimingGrid | null {
+  const { metronome, subdivision, strictness } = s.settings.exercise;
+  return metronome && s.transport ? { transport: s.transport, subdivision, strictness, latencyMs: s.settings.latencyMs } : null;
+}
+
+/** Calls `change` whenever the timing grid may have changed (the transport, the exercise options or the latency). */
+export function onTimingGrid(store: AppStore, change: (grid: TimingGrid | null) => void): () => void {
+  return store.subscribe((s, prev) => {
+    if (s.transport !== prev.transport || s.settings.exercise !== prev.settings.exercise || s.settings.latencyMs !== prev.settings.latencyMs)
+      change(timingGrid(s));
+  });
+}
 
 /** The keys held down, low to high (pedal-sustained notes are not held). */
 export const heldNotes = (s: AppState) => [...s.perf.held.keys()].sort((a, b) => a - b);

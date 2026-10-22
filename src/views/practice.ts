@@ -7,6 +7,7 @@ import type { ProgressionState } from "../exercises/progressions";
 import { itemExercise, itemLabel, keyProgress, mixesExercises, routineSummary, type RoutineState } from "../exercises/routines";
 import { bestRun, type RunResult, type SequenceState, type SequenceStep, type WrongStep } from "../exercises/sequence";
 import { analyze, buildKey, FLAT, pcName, prettyAcc, SHARP, templateById, type KeyContext } from "../theory";
+import { timingVerdict, type TimingSummary } from "../timing/grid";
 import { chordSymbolHtml } from "./chordName";
 import { esc } from "./html";
 
@@ -164,9 +165,10 @@ export function progressionDisplay(s: ProgressionState, style: PromptStyle): Pra
 /** done: played (or clean, in a routine); flawed: finished with mistakes; skipped: passed over */
 type StepState = "done" | "current" | "upcoming" | "flawed" | "skipped";
 
-/** One step in a row: green when done, underlined when current; an optional second line underneath. */
-function stepHtml(state: StepState, mainHtml: string, otherHtml?: string): string {
-  return `<span class="step ${state}"><span class="main">${mainHtml}</span>` +
+/** One step in a row: green when done, underlined when current; an optional second line underneath. `extra` adds
+ *  classes, e.g. "late" for a timed step that missed its beat. */
+function stepHtml(state: StepState, mainHtml: string, otherHtml?: string, extra = ""): string {
+  return `<span class="step ${state}${extra ? " " + extra : ""}"><span class="main">${mainHtml}</span>` +
     (otherHtml === undefined ? "" : `<span class="other">${otherHtml || "&nbsp;"}</span>`) + "</span>";
 }
 
@@ -184,17 +186,16 @@ function chordPromptText(c: ChordPrompt, style: PromptStyle): string {
  * A chord as a step: in the prompt's notation (chord name or Roman numeral), with the other notation revealed
  * underneath once it has been played.
  */
-function chordStepHtml(c: ChordPrompt, style: PromptStyle, state: StepState): string {
+function chordStepHtml(c: ChordPrompt, style: PromptStyle, state: StepState, extra = ""): string {
   const t = templateById(c.type)!;
   const slash = c.inversion && c.inversion.number > 0 ? c.inversion.bass : "";
   const roman = style === "roman" && c.roman;
   const main = roman ? romanHtml(c.roman!.numeral, c.inversion?.number) : chordSymbolHtml(c.root, t.symbol, slash);
   const other = roman ? esc(prettyAcc(chordName(c))) : c.roman ? esc(prettyAcc(c.roman.numeral)) : "";
-  return stepHtml(state, main, state === "done" ? other : "");
+  return stepHtml(state, main, state === "done" ? other : "", extra);
 }
 
 
-/** Scale (and other note-sequence) exercise: the notes in a row, live feedback, and run results. */
 /** A sequence exercise (scale, diatonic chords …): the steps in a row, live feedback, and run results. */
 export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeDisplay {
   const ex = s.exercise;
@@ -202,8 +203,12 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
   const steps = ex.steps.map((st, i) => {
     const state = s.status === "done" || (s.status === "playing" && i < s.index) ? "done"
       : i === (s.status === "playing" ? s.index : 0) ? "current" : "upcoming";
+    // Played to the metronome: steps that missed their beat say which way
+    const timing = state === "done" && s.grid && s.timings[i];
+    const verdict = timing ? timingVerdict(s.grid!, timing) : "onTime";
+    const extra = verdict === "onTime" ? "" : verdict;
     // Note steps are dots, not names: the exercise is to know the notes; chord steps name the chord to play
-    return st.kind === "note" ? stepHtml(state, "•") : chordStepHtml(st.chord, style, state);
+    return st.kind === "note" ? stepHtml(state, "•", undefined, extra) : chordStepHtml(st.chord, style, state, extra);
   });
   const stepText = (st: SequenceStep) => st.kind === "note" ? prettyAcc(st.name) : chordPromptText(st.chord, style);
   const first = ex.steps[0];
@@ -223,11 +228,11 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
   const best = bestRun(s.runs);
   const clean = s.runs.filter(r => !r.mistakes).length;
   return {
-    label: prettyNames(ex.instruction),
+    label: prettyNames(ex.instruction) + (s.grid ? ` · ${tempoText(s.grid.transport.bpm, s.grid.subdivision)}` : ""),
     promptHtml: `<div class="seqTitle">${esc(prettyNames(ex.title))}</div><div class="seqRow">${steps.join("")}</div>`,
     size: "sequence", sub, status, feedback,
     score: s.runs.length
-      ? `${s.runs.length} run${s.runs.length > 1 ? "s" : ""} · ${clean} clean · best: ${best!.mistakes ? `${best!.mistakes} mistake${best!.mistakes > 1 ? "s" : ""}, ` : ""}${Math.round(best!.evenness * 100)}% even`
+      ? `${s.runs.length} run${s.runs.length > 1 ? "s" : ""} · ${clean} clean · best: ${best!.mistakes ? `${best!.mistakes} mistake${best!.mistakes > 1 ? "s" : ""}, ` : ""}${steadinessText(best!)}`
       : "",
     skipLabel: "Restart",
   };
@@ -248,7 +253,7 @@ export function routineDisplay(r: RoutineState, style: PromptStyle): PracticeDis
   if (r.status === "done") {
     const sum = routineSummary(r);
     const weakest = sum.weakest.map(w => {
-      const what = w.result.mistakes ? `${w.result.mistakes} mistake${w.result.mistakes > 1 ? "s" : ""}` : `${Math.round(w.result.evenness * 100)}% even`;
+      const what = w.result.mistakes ? `${w.result.mistakes} mistake${w.result.mistakes > 1 ? "s" : ""}` : steadinessText(w.result);
       return `${prettyAcc(itemExercise(r.items[w.index], r.base).title)} (${what})`;
     });
     return {
@@ -306,7 +311,23 @@ const prettyNames = (text: string) => text.replace(/\b([A-G])(#{1,2}|b{1,2})(?![
 
 /** "4.2 s · 132 BPM · 91% even" */
 function runText(r: RunResult): string {
+  if (r.timing) return `${timingText(r.timing)} · ${(r.durationMs / 1000).toFixed(1)} s`;
   return `${(r.durationMs / 1000).toFixed(1)} s · ${Math.round(r.bpm)} BPM · ${Math.round(r.evenness * 100)}% even`;
+}
+
+/** How steady a run was, briefly: "92% on time" against the metronome, else "95% even" */
+const steadinessText = (r: RunResult) => r.timing ? `${Math.round(r.timing.onTime * 100)}% on time` : `${Math.round(r.evenness * 100)}% even`;
+
+const SUBDIVISION_NAMES: Record<number, string> = { 1: "quarters", 2: "eighths", 4: "sixteenths" };
+/** "96 BPM, eighths" */
+export const tempoText = (bpm: number, subdivision: number) => `${Math.round(bpm)} BPM, ${SUBDIVISION_NAMES[subdivision]}`;
+
+/** "92% on time · rushing 18 ms · 1 slip" — rushing/dragging only when it's more than a few ms */
+export function timingText(t: TimingSummary): string {
+  const lean = Math.round(t.meanOffsetMs);
+  return `${Math.round(t.onTime * 100)}% on time` +
+    (Math.abs(lean) >= 5 ? ` · ${lean < 0 ? "rushing" : "dragging"} ${Math.abs(lean)} ms` : "") +
+    (t.slips ? ` · ${t.slips} slip${t.slips > 1 ? "s" : ""}` : "");
 }
 
 const capitalize = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);

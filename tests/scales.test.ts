@@ -102,8 +102,8 @@ describe("run measurements", () => {
   });
 
   it("the best run has the fewest mistakes, then the most even", () => {
-    const a = { mistakes: 1, durationMs: 1, bpm: 1, evenness: 0.99 }, b = { mistakes: 0, durationMs: 1, bpm: 1, evenness: 0.8 },
-          c = { mistakes: 0, durationMs: 1, bpm: 1, evenness: 0.9 };
+    const a = { mistakes: 1, durationMs: 1, bpm: 1, evenness: 0.99, timing: null }, b = { mistakes: 0, durationMs: 1, bpm: 1, evenness: 0.8, timing: null },
+          c = { mistakes: 0, durationMs: 1, bpm: 1, evenness: 0.9, timing: null };
     expect(bestRun([a, b, c])).toBe(c);
     expect(bestRun([])).toBeNull();
   });
@@ -150,8 +150,9 @@ describe("sequenceDisplay", () => {
 });
 
 describe("exercise settings", () => {
-  it("default to C major, natural minor, one octave, triads in root position", () => {
-    expect(createAppState().settings.exercise).toEqual({ key: "C:major", minorForm: "natural", octaves: 1, sevenths: false, rootPosition: true });
+  it("default to C major, natural minor, one octave, triads in root position, metronome off", () => {
+    expect(createAppState().settings.exercise).toEqual({ key: "C:major", minorForm: "natural", octaves: 1, sevenths: false,
+      rootPosition: true, metronome: false, bpm: 80, subdivision: 1, strictness: "strict" });
   });
 
   it("change one option at a time, keep the rest, and ignore invalid values", () => {

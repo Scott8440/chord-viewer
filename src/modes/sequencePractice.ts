@@ -6,13 +6,13 @@ import { buildKey } from "../theory";
 import type { CircleView } from "../views/circleOfFifths";
 import { sequenceDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
-import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type Mode } from "./performance";
+import { createPerformanceDrawer, heldNotes, onPlayerInput, onTimingGrid, timingGrid, type AppStore, type Mode } from "./performance";
 
 export function startSequencePractice(store: AppStore, views: {
   staff: StaffView; practice: PracticeView; circle: CircleView;
 }, id: PrescriptiveId): Mode {
   const build = () => PRESCRIPTIVE[id].build(store.getState().settings.exercise);
-  let state: SequenceState = initialSequence(build(), heldNotes(store.getState()));
+  let state: SequenceState = initialSequence(build(), heldNotes(store.getState()), timingGrid(store.getState()));
   // The staff follows the exercise's key (exercises never use the header key)
   const drawer = createPerformanceDrawer(store, views, () => buildKey(state.exercise.keyValue));
 
@@ -32,6 +32,7 @@ export function startSequencePractice(store: AppStore, views: {
     noteOn: (note, time) => apply({ type: "noteOn", note, time }),
     held: (notes, time) => apply({ type: "held", notes, time }),
   });
+  const offGrid = onTimingGrid(store, grid => apply({ type: "setGrid", grid }));
   const offSettings = store.subscribe((s, prev) => {
     // Different options make a different exercise (and a fresh set of runs); the prompt style only changes the display
     if (s.settings.exercise !== prev.settings.exercise) apply({ type: "setExercise", exercise: build() });
@@ -42,6 +43,7 @@ export function startSequencePractice(store: AppStore, views: {
   return {
     stop() {
       offInput();
+      offGrid();
       offSettings();
       drawer.stop();
     },

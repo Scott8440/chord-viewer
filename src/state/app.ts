@@ -4,6 +4,7 @@ import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/pres
 import { sanitizeRoutineOptions, type RoutineOptions } from "../exercises/routines";
 import type { InputEvent } from "../input/events";
 import { buildKey, isKeyValue, type KeyContext } from "../theory";
+import type { Transport } from "../timing/transport";
 import { initialPerformance, reducePerformance, type PerformanceState } from "./performance";
 
 export const HISTORY_LIMIT = 512;
@@ -29,6 +30,8 @@ export interface Settings {
   readonly exercise: ExerciseOptions;
   /** Which routine, and which way round the circle of fifths */
   readonly routine: RoutineOptions;
+  /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
+  readonly latencyMs: number;
 }
 
 /** Settings as saved between sessions; anything missing or invalid falls back to its default. */
@@ -41,13 +44,20 @@ export interface SavedSettings {
   inversions?: unknown;
   exercise?: unknown;
   routine?: unknown;
+  latencyMs?: unknown;
 }
+
+export const LATENCY_RANGE = { min: -200, max: 300 } as const;
+const sanitizeLatency = (v: unknown) => typeof v === "number" && Number.isFinite(v)
+  ? Math.min(LATENCY_RANGE.max, Math.max(LATENCY_RANGE.min, Math.round(v))) : 0;
 
 export interface AppState {
   readonly perf: PerformanceState;
   /** Most recent input events, oldest first, at most HISTORY_LIMIT */
   readonly history: readonly InputEvent[];
   readonly settings: Settings;
+  /** Where the beats are, while a metronome (or, later, an external clock) runs; null otherwise */
+  readonly transport: Transport | null;
 }
 
 export type AppAction =
@@ -59,7 +69,10 @@ export type AppAction =
   | { type: "setPromptStyle"; style: PromptStyle }
   | { type: "setInversions"; on: boolean }
   | { type: "setExerciseOptions"; options: Partial<ExerciseOptions> }
-  | { type: "setRoutineOptions"; options: Partial<RoutineOptions> };
+  | { type: "setRoutineOptions"; options: Partial<RoutineOptions> }
+  | { type: "setLatency"; ms: number }
+  /** From whatever drives the clock */
+  | { type: "setTransport"; transport: Transport | null };
 
 const oneOf = <T>(values: readonly T[], v: unknown, fallback: T): T => values.includes(v as T) ? v as T : fallback;
 
@@ -69,6 +82,7 @@ export function createAppState(saved: SavedSettings = {}): AppState {
   return {
     perf: initialPerformance,
     history: [],
+    transport: null,
     settings: {
       keyValue, key: buildKey(keyValue),
       includeSustained: typeof saved.includeSustained === "boolean" ? saved.includeSustained : true,
@@ -78,6 +92,7 @@ export function createAppState(saved: SavedSettings = {}): AppState {
       inversions: saved.inversions === true,
       exercise: sanitizeExerciseOptions(saved.exercise),
       routine: sanitizeRoutineOptions(saved.routine),
+      latencyMs: sanitizeLatency(saved.latencyMs),
     },
   };
 }
@@ -112,5 +127,11 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return routine.id === s.settings.routine.id && routine.direction === s.settings.routine.direction ? s
         : { ...s, settings: { ...s.settings, routine } };
     }
+    case "setLatency": {
+      const latencyMs = sanitizeLatency(a.ms);
+      return latencyMs === s.settings.latencyMs ? s : { ...s, settings: { ...s.settings, latencyMs } };
+    }
+    case "setTransport":
+      return a.transport === s.transport ? s : { ...s, transport: a.transport };
   }
 }

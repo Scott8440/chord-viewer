@@ -9,18 +9,22 @@ export interface PageSetup {
   headerKey: boolean;
   /** Fade the chord name out after IDLE_MS without input (and nothing sounding) */
   fadeChordWhenIdle: boolean;
+  /** Run the metronome (click and beat light) while the exercise's metronome option is on */
+  metronome: boolean;
 }
 
 export const IDLE_MS = 10_000;
 
-const PRACTICE: PageSetup = { panel: "practice", headerKey: false, fadeChordWhenIdle: false };
+const PRACTICE: PageSetup = { panel: "practice", headerKey: false, fadeChordWhenIdle: false, metronome: false };
+/** Prescriptive exercises and routines of them: timed against the metronome when it's on */
+const TIMED: PageSetup = { ...PRACTICE, metronome: true };
 
 export const PAGE_SETUP: Record<ModeId, PageSetup> = {
-  free: { panel: "chordName", headerKey: true, fadeChordWhenIdle: true },
+  free: { panel: "chordName", headerKey: true, fadeChordWhenIdle: true, metronome: false },
   notes: PRACTICE,
   chords: PRACTICE,
   progressions: PRACTICE,
-  scales: PRACTICE,
-  diatonic: PRACTICE,
-  routines: PRACTICE,
+  scales: TIMED,
+  diatonic: TIMED,
+  routines: TIMED,
 };

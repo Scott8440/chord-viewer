@@ -40,6 +40,16 @@ header h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em;
 .chip.off { color: var(--muted); }
 .spacer { flex: 1; }
 .pick { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.pick input[type=number] {
+  width: 4.5em; background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 13px;
+}
+.metronomeOptions, #metronomeDetails { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+/* Beat light: one dot per beat, the downbeat bigger, the current beat lit */
+#beat { display: flex; gap: 8px; align-items: center; height: 14px; margin-bottom: 12px; }
+#beat .b { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+#beat .b.down { width: 12px; height: 12px; }
+#beat .b.lit { background: var(--accent); }
 .pick select {
   background: var(--panel); color: var(--text); border: 1px solid var(--line);
   border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 13px;
@@ -135,6 +145,9 @@ main {
 #practicePrompt .step.done .main { color: var(--ok); }
 #practicePrompt .step.current .main { border-bottom-color: var(--accent); }
 #practicePrompt .step.upcoming .main { color: var(--muted); }
+/* Timed steps that missed the beat: early cool, late warm */
+#practicePrompt .step.done.early .main { color: #6fa8dc; }
+#practicePrompt .step.done.late .main { color: var(--warn); }
 #practicePrompt .sep { color: var(--line); padding: 0 .12em; }
 #practicePrompt .acc { font-size: .8em; }
 #practicePrompt .ext { font-size: .55em; vertical-align: .55em; }

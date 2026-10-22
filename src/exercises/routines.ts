@@ -3,6 +3,7 @@
 // to the next item each time an item's run finishes (mistakes allowed; they are recorded).
 import { buildKey, CIRCLE_OF_FIFTHS_MAJOR } from "../theory";
 import { sanitizeExerciseOptions, PRESCRIPTIVE, type ExerciseOptions, type PrescriptiveId } from "./prescriptive";
+import type { TimingGrid } from "../timing/grid";
 import { initialSequence, reduceSequence, type RunResult, type SequenceAction, type SequenceExercise, type SequenceState } from "./sequence";
 
 export const CIRCLE_DIRECTIONS = ["sharps", "flats"] as const;
@@ -72,15 +73,16 @@ export interface RoutineState {
 }
 
 export type RoutineAction =
-  | Extract<SequenceAction, { type: "noteOn" | "held" }>
+  | Extract<SequenceAction, { type: "noteOn" | "held" | "setGrid" }>
   /** Move on without finishing the item */
   | { type: "skip"; held: number[] }
   /** The player's exercise settings changed: rebuild the item in progress (later items are built when reached) */
   | { type: "setBase"; base: ExerciseOptions };
 
-export function initialRoutine(routine: Routine, direction: CircleDirection, base: ExerciseOptions, held: number[] = []): RoutineState {
+export function initialRoutine(routine: Routine, direction: CircleDirection, base: ExerciseOptions, held: number[] = [],
+                               grid: TimingGrid | null = null): RoutineState {
   const items = routine.items(direction);
-  return { routine, items, base, index: 0, current: initialSequence(itemExercise(items[0], base), held),
+  return { routine, items, base, index: 0, current: initialSequence(itemExercise(items[0], base), held, grid),
            outcomes: [], previous: null, startTime: null, endTime: null, status: "playing" };
 }
 
@@ -100,6 +102,11 @@ export function reduceRoutine(s: RoutineState, a: RoutineAction): RoutineState {
       return advance({ ...next, endTime: current.times[current.times.length - 1],
                        previous: { index: s.index, result: current.result! } }, current.result!, current.tracker.prevHeld);
     }
+    case "setGrid": {
+      // The metronome plays on across items: the next item is built with the same grid
+      const current = reduceSequence(s.current, a);
+      return current === s.current ? s : { ...s, current };
+    }
     case "skip":
       return advance({ ...s, previous: null }, "skipped", a.held);
     case "setBase": {
@@ -113,7 +120,7 @@ function advance(s: RoutineState, outcome: ItemOutcome, held: number[]): Routine
   const outcomes = [...s.outcomes, outcome];
   const index = s.index + 1;
   if (index === s.items.length) return { ...s, outcomes, status: "done" };
-  return { ...s, outcomes, index, current: initialSequence(itemExercise(s.items[index], s.base), held) };
+  return { ...s, outcomes, index, current: initialSequence(itemExercise(s.items[index], s.base), held, s.current.grid) };
 }
 
 export interface RoutineSummary {
@@ -122,14 +129,16 @@ export interface RoutineSummary {
   skipped: number;
   totalMistakes: number;
   durationMs: number;
-  /** Items that went least well (most mistakes, then least even), worst first; at most three, never clean ones */
+  /** Items that went least well (most mistakes, then least on time or even), worst first; at most three, never clean ones */
   weakest: { index: number; result: RunResult }[];
 }
 
 export function routineSummary(s: RoutineState): RoutineSummary {
   const played = s.outcomes.flatMap((o, index) => o === "skipped" ? [] : [{ index, result: o }]);
-  const weakest = played.filter(p => p.result.mistakes > 0 || p.result.evenness < 0.8)
-    .sort((a, b) => b.result.mistakes - a.result.mistakes || a.result.evenness - b.result.evenness)
+  // Steadiness: on time against the metronome when there was one, else evenness
+  const steady = (r: RunResult) => r.timing ? r.timing.onTime : r.evenness;
+  const weakest = played.filter(p => p.result.mistakes > 0 || steady(p.result) < 0.8)
+    .sort((a, b) => b.result.mistakes - a.result.mistakes || steady(a.result) - steady(b.result))
     .slice(0, 3);
   return {
     finished: played.length,

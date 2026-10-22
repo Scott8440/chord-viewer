@@ -4,14 +4,15 @@ import { buildKey } from "../theory";
 import type { CircleView } from "../views/circleOfFifths";
 import { routineDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
-import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type Mode } from "./performance";
+import { createPerformanceDrawer, heldNotes, onPlayerInput, onTimingGrid, timingGrid, type AppStore, type Mode } from "./performance";
 
 export function startRoutinePractice(store: AppStore, views: {
   staff: StaffView; practice: PracticeView; circle: CircleView;
 }): Mode {
   const fresh = (): RoutineState => {
     const s = store.getState();
-    return initialRoutine(routineById(s.settings.routine.id)!, s.settings.routine.direction, s.settings.exercise, heldNotes(s));
+    return initialRoutine(routineById(s.settings.routine.id)!, s.settings.routine.direction, s.settings.exercise, heldNotes(s),
+                          timingGrid(s));
   };
   let state = fresh();
   // The staff follows the key of the item in progress
@@ -47,6 +48,7 @@ export function startRoutinePractice(store: AppStore, views: {
     noteOn: (note, time) => apply({ type: "noteOn", note, time }),
     held: (notes, time) => apply({ type: "held", notes, time }),
   });
+  const offGrid = onTimingGrid(store, grid => apply({ type: "setGrid", grid }));
   const offSettings = store.subscribe((s, prev) => {
     // Another routine or direction starts over; other exercise settings apply from the item in progress on
     if (s.settings.routine !== prev.settings.routine) restart();
@@ -58,6 +60,7 @@ export function startRoutinePractice(store: AppStore, views: {
   return {
     stop() {
       offInput();
+      offGrid();
       offSettings();
       drawer.stop();
     },

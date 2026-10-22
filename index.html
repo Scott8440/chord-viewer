@@ -41,6 +41,7 @@
       <div id="alts"></div>
     </div>
     <div id="practice" hidden>
+      <div id="beat" hidden title="Metronome"></div>
       <div id="practiceLabel"></div>
       <div id="practicePrompt"></div>
       <div id="practiceSub"></div>
@@ -89,6 +90,25 @@
           <select id="exChords"><option value="triads">Triads</option><option value="sevenths">Seventh chords</option></select>
         </label>
         <label class="opt" data-option="rootPosition"><input type="checkbox" id="exRootPosition"> Root position only</label>
+        <div class="metronomeOptions" data-option="metronome">
+          <label class="opt"><input type="checkbox" id="exMetronome"> Metronome</label>
+          <span id="metronomeDetails">
+            <label class="pick">BPM <input type="number" id="exBpm" min="30" max="240" step="1"></label>
+            <label class="pick">Notes per beat
+              <select id="exSubdivision">
+                <option value="1">1 (quarters)</option>
+                <option value="2">2 (eighths)</option>
+                <option value="4">4 (sixteenths)</option>
+              </select>
+            </label>
+            <label class="pick" title="How close to the beat counts as on time">Timing
+              <select id="exStrictness"><option value="strict">Strict (±40 ms)</option><option value="loose">Loose (±80 ms)</option></select>
+            </label>
+            <label class="pick" title="If you're judged consistently late (or early), set this to how late (ms). Negative if early.">Latency (ms)
+              <input type="number" id="latency" min="-200" max="300" step="5">
+            </label>
+          </span>
+        </div>
       </div>
     </div>
   </section>

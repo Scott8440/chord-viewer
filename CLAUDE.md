@@ -9,26 +9,45 @@ v1 is feature complete. **The next goal is to turn it into a broader music theor
 Do the architecture refactor (below) before adding features.
 
 ## Current layout
-Vite + TypeScript, built to one self-contained offline file with `vite-plugin-singlefile`.
-- `index.html`: page markup (Vite entry).
-- `src/style.css`: all styles.
-- `src/theory.ts`: pure theory module with no DOM and no globals. It holds `buildKey`, `analyze(notes, key)`,
-  `romanFor`, `spellNote(midi, result, key)` and `prettyAcc`. The key is always passed in explicitly.
-- `src/main.ts`: app shell with note state, Web MIDI, QWERTY input, VexFlow staff, chord name rendering and the key
-  selector. It owns `currentKey` and passes it to the theory functions.
+Vite + TypeScript, built to one self-contained offline file with `vite-plugin-singlefile`. The code is split into
+layers that only talk through data: input sources emit `InputEvent`s, a pure reducer turns them into state, and the
+mode and views subscribe to the store.
+- `index.html`: page markup (Vite entry). `src/style.css`: all styles.
+- `src/input/`: input sources.
+  - `events.ts`: the normalized `InputEvent` union: `noteOn`/`noteOff` `{note, velocity, time, source, channel}`,
+    `pedal`, `allNotesOff` (one source, all its channels) and `panic`. `time` comes from the originating event's
+    `timeStamp` (performance.now() clock), not handler time.
+  - `midi.ts`: `parseMidiMessage` (pure: raw bytes to event) and `createMidiSource` (access, per-input on/off,
+    hot-plug, status).
+  - `keyboard.ts`: computer-keyboard source (source `"kbd"`, channel 0).
+- `src/state/`: state, no DOM.
+  - `performance.ts`: pure reducer for held notes (per `source:channel`), pedal-sustained notes and pedals, plus
+    `soundingNotes` and `pedalOnlyNotes`. Returns the same object when nothing changed.
+  - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (key, pedal-notes-count
+    option); `reduceApp` over `AppAction`s.
+  - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed.
+- `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
+  `spelling.ts` (note names, `spellNote`, `prettyAcc`), `key.ts` (`buildKey`, `KeyContext`), `chords.ts`
+  (`analyze`), `roman.ts` (`romanFor`), re-exported from `index.ts`.
+- `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts`, `noteList.ts`, `header.ts` (MIDI status
+  and input chips, pedal light, octave, key selector).
+- `src/modes/freePlay.ts`: the free-play mode. Subscribes to the store and does the frame/40 ms debounce. Future
+  modes (exercises) sit beside it.
+- `src/main.ts`: wiring only. Creates the store, views, mode and input sources; owns localStorage for the key.
 - `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
-- `tests/voicings.json`: regression corpus of notes, key and expected chord name / Roman numeral.
-- `tests/voicings.test.ts`: Vitest runs the corpus directly against `src/theory.ts`, with no browser.
+- `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
+  `performance.test.ts`, `midi.test.ts` and `app.test.ts` cover the reducers and MIDI parsing.
 
 ```
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 42/42 should pass
+npm test           # Vitest: 62 tests (42 voicings) should pass
 npm run typecheck
 ```
-In the browser console, `__chord.analyze([60,64,67])`, `__chord.setKey("C:major")`, `__chord.noteOn(n, src)` and
-`__chord.noteOff(n, src)` are exposed for testing.
+In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
+`noteOn(n, source?, channel?)`, `noteOff(n, source?, channel?)`, `setPedal(source, down)`, `allOff(source?)` (no
+argument means panic) and `getState()`.
 
 ## Libraries
 - **tonal 6.5.1**: note, interval, key and scale primitives, plus `Chord.detect` as the candidate generator.
@@ -53,7 +72,7 @@ Both are bundled into the single output file so the app never touches the networ
 - **Errors:** a MIDI-denied error shows a Retry button, and a separate message when the page is stuck in an iframe or
   preview.
 
-## Chord recognizer (`analyze` / `interpret` in `src/theory.ts`)
+## Chord recognizer (`analyze` / `interpret` in `src/theory/chords.ts`)
 1. Reduce the notes to unique pitch classes, ordered from the bass up.
 2. Get candidates from `Chord.detect(names)`, plus `{assumePerfectFifth:true}` (penalty +0.5) to allow an omitted 5th.
 3. Score each candidate (lower is better):
@@ -85,7 +104,7 @@ Both are bundled into the single output file so the app never touches the networ
 1. ✅ **Done.** **Port to Vite + TypeScript** in this repo with identical behavior. Keep single-file offline output
    (`vite-plugin-singlefile`), and possibly a PWA later. Move the voicing corpus to Vitest and run it against the
    pure theory module, not through a browser.
-2. **Split into layers that only talk through data:**
+2. ✅ **Done, except the custom recognizer.** **Split into layers that only talk through data:**
    - **Input sources** (Web MIDI, QWERTY, a future on-screen piano, recorded-MIDI playback) all emit a normalized
      `NoteEvent {type, note, velocity, time, source, channel}`. Use MIDI event timestamps, not handler time.
    - **Performance state:** a pure reducer for held, sustained and pedal, plus a history buffer of recent events.
@@ -102,5 +121,5 @@ Both are bundled into the single output file so the app never touches the networ
 6. **Tests:** the voicing corpus, recorded MIDI performances replayed through the whole pipeline, and occasional
    notation screenshot tests.
 
-**Open question for the user:** desktop browser only, or tablet too? Safari has no Web MIDI, so iPad support would
-mean a native wrapper (Tauri or Capacitor) later. The layering above keeps that to swapping the input layer.
+**Platform:** desktop browser only (Chrome or Edge), decided by the user. Tablet is out of scope for now; Safari has
+no Web MIDI, so an iPad version would need a native wrapper (Tauri or Capacitor), and only the input layer would change.

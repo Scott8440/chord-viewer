@@ -7,14 +7,27 @@ export interface ChordNameView {
   render(result: Analysis | null): void;
   /** Forgets the last chord, so silence shows "Play something" again (e.g. after a key change). */
   reset(): void;
+  /** Whether a chord or note is on show (as opposed to "Play something") */
+  showing(): boolean;
+  /** Fades the whole display out (true) or brings it straight back (false) */
+  setFading(on: boolean): void;
+  /** Forgets the last chord and shows "Play something" */
+  clear(): void;
 }
 
 export function createChordNameView(els: {
-  name: HTMLElement; sub: HTMLElement; roman: HTMLElement; alts: HTMLElement;
+  root: HTMLElement; name: HTMLElement; sub: HTMLElement; roman: HTMLElement; alts: HTMLElement;
 }): ChordNameView {
   let lastResult: Analysis | null = null;
   return {
     reset() { lastResult = null; },
+    showing: () => !!lastResult,
+    setFading(on) { els.root.classList.toggle("fading", on); },
+    clear() {
+      lastResult = null;
+      els.name.classList.remove("stale");
+      els.name.innerHTML = ""; els.sub.textContent = "Play something"; els.roman.textContent = ""; els.alts.innerHTML = "";
+    },
     render(result) {
       if (!result) {
         els.name.classList.toggle("stale", !!lastResult);

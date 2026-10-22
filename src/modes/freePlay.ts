@@ -1,6 +1,6 @@
 // Free play: show whatever is being played, with its chord name. The staff redraws every
 // frame something changes; the chord name waits for ~40ms of stillness so a rolled chord
-// doesn't flicker through partial names.
+// doesn't flicker through partial names. After a while without input the chord fades out.
 import { analyze } from "../theory";
 import type { ChordNameView } from "../views/chordName";
 import { chordOnCircle, type CircleView } from "../views/circleOfFifths";
@@ -8,12 +8,31 @@ import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, sounding, type AppStore, type Mode } from "./performance";
 
 const NAME_SETTLE_MS = 40;
+/** No input for this long, with nothing sounding, and the chord fades out, over FADE_MS, leaving "Play something" */
+const IDLE_MS = 10_000;
+const FADE_MS = 2_000;
 
 export function startFreePlay(store: AppStore, views: {
   staff: StaffView; chordName: ChordNameView; circle: CircleView;
 }): Mode {
   const drawer = createPerformanceDrawer(store, views);
   let nameTimer: ReturnType<typeof setTimeout> | undefined;
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Any input brings the chord straight back and restarts the wait */
+  function active() {
+    clearTimeout(idleTimer);
+    views.chordName.setFading(false);
+    idleTimer = setTimeout(() => {
+      // Nothing to fade, or still sounding (letting go is input, and starts the wait again)
+      if (!views.chordName.showing() || sounding(store.getState()).length) return;
+      views.chordName.setFading(true);
+      idleTimer = setTimeout(() => {
+        views.chordName.clear();
+        views.chordName.setFading(false);
+      }, FADE_MS);
+    }, IDLE_MS);
+  }
 
   function nameSoon() {
     clearTimeout(nameTimer);
@@ -29,14 +48,18 @@ export function startFreePlay(store: AppStore, views: {
   const unsubscribe = store.subscribe((s, prev) => {
     if (s.settings.key !== prev.settings.key) views.chordName.reset();
     if (s.perf !== prev.perf || s.settings !== prev.settings) nameSoon();
+    if (s.history !== prev.history) active();
   });
   nameSoon();
+  active();
 
   return {
     stop() {
       unsubscribe();
       drawer.stop();
       clearTimeout(nameTimer);
+      clearTimeout(idleTimer);
+      views.chordName.setFading(false);
     },
   };
 }

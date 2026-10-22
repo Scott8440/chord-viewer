@@ -2,31 +2,39 @@
 import { prettyAcc, type Analysis } from "../theory";
 import { esc } from "./html";
 
+/** How long the chord takes to fade out when the player goes idle */
+const FADE_MS = 2_000;
+
 export interface ChordNameView {
   /** Shows a result; null keeps the last chord visible, faded. */
   render(result: Analysis | null): void;
   /** Forgets the last chord, so silence shows "Play something" again (e.g. after a key change). */
   reset(): void;
-  /** Whether a chord or note is on show (as opposed to "Play something") */
-  showing(): boolean;
-  /** Fades the whole display out (true) or brings it straight back (false) */
-  setFading(on: boolean): void;
-  /** Forgets the last chord and shows "Play something" */
-  clear(): void;
+  /** Idle: the chord fades out, leaving "Play something". Not idle: whatever is showing comes straight back. */
+  setIdle(idle: boolean): void;
 }
 
 export function createChordNameView(els: {
   root: HTMLElement; name: HTMLElement; sub: HTMLElement; roman: HTMLElement; alts: HTMLElement;
 }): ChordNameView {
   let lastResult: Analysis | null = null;
+  let fadeTimer: ReturnType<typeof setTimeout> | undefined;
+  els.root.style.setProperty("--fade-ms", `${FADE_MS}ms`);
+
+  function clear() {
+    lastResult = null;
+    els.name.classList.remove("stale");
+    els.name.innerHTML = ""; els.sub.textContent = "Play something"; els.roman.textContent = ""; els.alts.innerHTML = "";
+  }
+
   return {
     reset() { lastResult = null; },
-    showing: () => !!lastResult,
-    setFading(on) { els.root.classList.toggle("fading", on); },
-    clear() {
-      lastResult = null;
-      els.name.classList.remove("stale");
-      els.name.innerHTML = ""; els.sub.textContent = "Play something"; els.roman.textContent = ""; els.alts.innerHTML = "";
+    setIdle(idle) {
+      clearTimeout(fadeTimer);
+      // Nothing to fade when "Play something" is already showing
+      const fading = idle && !!lastResult;
+      els.root.classList.toggle("fading", fading);
+      if (fading) fadeTimer = setTimeout(() => { clear(); els.root.classList.remove("fading"); }, FADE_MS);
     },
     render(result) {
       if (!result) {

@@ -8,9 +8,8 @@ import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, sounding, type AppStore, type Mode } from "./performance";
 
 const NAME_SETTLE_MS = 40;
-/** No input for this long, with nothing sounding, and the chord fades out, over FADE_MS, leaving "Play something" */
+/** No input for this long, with nothing sounding, and the player is idle */
 const IDLE_MS = 10_000;
-const FADE_MS = 2_000;
 
 export function startFreePlay(store: AppStore, views: {
   staff: StaffView; chordName: ChordNameView; circle: CircleView;
@@ -19,18 +18,13 @@ export function startFreePlay(store: AppStore, views: {
   let nameTimer: ReturnType<typeof setTimeout> | undefined;
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
-  /** Any input brings the chord straight back and restarts the wait */
+  /** Any input ends idleness and restarts the wait; notes still sounding then keep it from starting
+   *  (letting go is input, and starts the wait again) */
   function active() {
     clearTimeout(idleTimer);
-    views.chordName.setFading(false);
+    views.chordName.setIdle(false);
     idleTimer = setTimeout(() => {
-      // Nothing to fade, or still sounding (letting go is input, and starts the wait again)
-      if (!views.chordName.showing() || sounding(store.getState()).length) return;
-      views.chordName.setFading(true);
-      idleTimer = setTimeout(() => {
-        views.chordName.clear();
-        views.chordName.setFading(false);
-      }, FADE_MS);
+      if (!sounding(store.getState()).length) views.chordName.setIdle(true);
     }, IDLE_MS);
   }
 
@@ -59,7 +53,7 @@ export function startFreePlay(store: AppStore, views: {
       drawer.stop();
       clearTimeout(nameTimer);
       clearTimeout(idleTimer);
-      views.chordName.setFading(false);
+      views.chordName.setIdle(false);
     },
   };
 }

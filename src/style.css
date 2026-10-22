@@ -101,8 +101,8 @@ main {
   transition: opacity .25s;
 }
 #chordName.stale { opacity: .3; }
-/* Free play after a while without input: the chord fades out (FADE_MS in freePlay.ts), and snaps back on the next note */
-#freeView.fading { opacity: 0; transition: opacity 2s linear; }
+/* Free play after a while without input: the chord fades out (--fade-ms is set by chordName.ts), and snaps back */
+#freeView.fading { opacity: 0; transition: opacity var(--fade-ms) linear; }
 #chordName .acc { font-size: .8em; }
 #chordName .ext { font-size: .55em; vertical-align: .55em; }
 #chordName .bass { color: var(--muted); }

@@ -92,8 +92,9 @@ mode and views subscribe to the store.
   the event behind it) and `heldNotes`.
   **Exercises never use the header key**, and the header Key picker is hidden outside free play: a key is either
   part of the prompt ("V7 in G major") or chosen inside the exercise (the scale selector).
-  `freePlay.ts` adds the chord name with the 40 ms debounce; after 10 s without input (and nothing sounding) the
-  chord fades out over 2 s to "Play something", and any input brings it straight back. `notePractice.ts` feeds each new note-on from the
+  `freePlay.ts` adds the chord name with the 40 ms debounce; after 10 s without input (and nothing sounding) it
+  tells the chord view the player is idle; the view owns how that looks (a 2 s fade to "Play something"), and any
+  input brings the chord straight back. `notePractice.ts` feeds each new note-on from the
   history to the exercise reducer and moves to the next prompt 700 ms after a correct answer. `chordPractice.ts`
   feeds the held keys to its reducer (900 ms before the next prompt) and asks again if the filter rules out the
   current chord. `progressionPractice.ts` feeds the held keys to the progression reducer and starts a new

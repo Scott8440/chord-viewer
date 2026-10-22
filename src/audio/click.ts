@@ -11,8 +11,15 @@ export interface ClickPlayer {
   follow(transport: Transport | null): void;
 }
 
-/** `blocked(true)` while clicks are due but the browser hasn't let audio start yet (it needs a click, tap or key). */
-export function createClickPlayer(blocked: (on: boolean) => void = () => {}): ClickPlayer {
+export interface ClickStatus {
+  /** Clicks are due but the browser hasn't let audio start yet (it needs a click, tap or key) */
+  blocked: boolean;
+  /** How long the audio output takes to sound (ms), as the browser reports it; null while not playing */
+  outputLatencyMs: number | null;
+}
+
+/** `onStatus` is called whenever the status changes. */
+export function createClickPlayer(onStatus: (status: ClickStatus) => void = () => {}): ClickPlayer {
   let ctx: AudioContext | null = null;
   let transport: Transport | null = null;
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -37,10 +44,16 @@ export function createClickPlayer(blocked: (on: boolean) => void = () => {}): Cl
   }
   for (const type of ["pointerdown", "touchend", "click", "keydown"]) addEventListener(type, unlock, { capture: true });
 
-  let wasBlocked = false;
+  let last: ClickStatus = { blocked: false, outputLatencyMs: null };
   function report() {
-    const now = !!transport && !!ctx && ctx.state !== "running";
-    if (now !== wasBlocked) blocked(wasBlocked = now);
+    const running = !!transport && !!ctx && ctx.state === "running";
+    // Browsers settle on the device's latency a little after starting, so this is checked on every schedule
+    const latency = running ? Math.round(((ctx!.outputLatency || 0) + (ctx!.baseLatency || 0)) * 1000) : null;
+    const status = { blocked: !!transport && !!ctx && !running, outputLatencyMs: latency };
+    // Only real changes (a few ms of jitter isn't one)
+    const moved = (status.outputLatencyMs == null) !== (last.outputLatencyMs == null) ||
+      Math.abs((status.outputLatencyMs ?? 0) - (last.outputLatencyMs ?? 0)) >= 10;
+    if (status.blocked !== last.blocked || moved) onStatus(last = status);
   }
 
   /** Audio-clock time (s) at which a sound is heard at performance time `ms`; output latency included */
@@ -65,6 +78,7 @@ export function createClickPlayer(blocked: (on: boolean) => void = () => {}): Cl
 
   function schedule() {
     if (!ctx || !transport || ctx.state !== "running") return;
+    report();
     // Look ahead on the audio clock: a click heard at a beat must start output latency earlier (Bluetooth headphones
     // can add 300 ms), so the beats to schedule reach that much further than AHEAD_MS of performance time
     const horizon = ctx.currentTime + AHEAD_MS / 1000;

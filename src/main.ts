@@ -138,7 +138,19 @@ store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
 const beat = createBeatView($("beat"));
-const metronomeViews = { click: createClickPlayer(blocked => beat.setSoundBlocked(blocked)), beat };
+/** Output latency above this gets a note: likely Bluetooth headphones or speakers */
+const HIGH_OUTPUT_LATENCY_MS = 60;
+const metronomeViews = {
+  click: createClickPlayer(({ blocked, outputLatencyMs }) => {
+    beat.setSoundBlocked(blocked);
+    const high = outputLatencyMs != null && outputLatencyMs > HIGH_OUTPUT_LATENCY_MS;
+    $("outputLatencyNote").hidden = !high;
+    if (high) $("outputLatencyNote").textContent =
+      `Your audio output adds about ${outputLatencyMs} ms of delay (Bluetooth?). The click is sent early to make up ` +
+      `for it, but wired headphones or speakers keep it tightest.`;
+  }),
+  beat,
+};
 const chordName = createChordNameView({ root: $("freeView"), name: $("chordName"), sub: $("chordSub"), roman: $("roman"), alts: $("alts") });
 const practice = createPracticeView({
   label: $("practiceLabel"), prompt: $("practicePrompt"), sub: $("practiceSub"), feedback: $("practiceFeedback"), score: $("practiceScore"),

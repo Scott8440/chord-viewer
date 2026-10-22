@@ -232,7 +232,10 @@ room to sync with Ableton later.
   are never silently scheduled in the past). It tracks the last click by time, so a tempo change never doubles a
   click. Audio starts on the first click, tap or key press (browser autoplay rules; unlocked in the capture phase on
   pointerdown/touchend/click/keydown, with a silent buffer for older iOS), and the beat light says so while it's
-  blocked. On iOS, `navigator.audioSession.type = "playback"` lets it sound with the silent switch on.
+  blocked. On iOS, `navigator.audioSession.type = "playback"` lets it sound with the silent switch on. It reports
+  the output latency the browser gives (`outputLatency + baseLatency`); above 60 ms the metronome options show a
+  note (likely Bluetooth). Browsers can't say what kind of device it is (names need microphone permission), and
+  can under-report Bluetooth delay.
 - **Judging** (`src/timing/grid.ts`): a grid = transport + notes per beat (1, 2 or 4) + strictness (±40 ms strict,
   ±80 ms loose, never more than 40% of a slot) + `latencyMs` (taken off note times: set it if you're judged
   consistently late). One step per slot. A run may start on any slot; each step is due on the slot after the

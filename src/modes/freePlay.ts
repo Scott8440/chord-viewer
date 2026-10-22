@@ -4,14 +4,13 @@
 import { analyze } from "../theory";
 import type { ChordNameView } from "../views/chordName";
 import { chordOnCircle, type CircleView } from "../views/circleOfFifths";
-import type { NoteListView } from "../views/noteList";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, sounding, type AppStore, type Mode } from "./performance";
 
 const NAME_SETTLE_MS = 40;
 
 export function startFreePlay(store: AppStore, views: {
-  staff: StaffView; chordName: ChordNameView; noteList: NoteListView; circle: CircleView;
+  staff: StaffView; chordName: ChordNameView; circle: CircleView;
 }): Mode {
   const drawer = createPerformanceDrawer(store, views);
   let nameTimer: ReturnType<typeof setTimeout> | undefined;

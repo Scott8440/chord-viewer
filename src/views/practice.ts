@@ -202,7 +202,8 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
   const steps = ex.steps.map((st, i) => {
     const state = s.status === "done" || (s.status === "playing" && i < s.index) ? "done"
       : i === (s.status === "playing" ? s.index : 0) ? "current" : "upcoming";
-    return st.kind === "note" ? stepHtml(state, esc(prettyAcc(st.name))) : chordStepHtml(st.chord, style, state);
+    // Note steps are dots, not names: the exercise is to know the notes; chord steps name the chord to play
+    return st.kind === "note" ? stepHtml(state, "•") : chordStepHtml(st.chord, style, state);
   });
   const stepText = (st: SequenceStep) => st.kind === "note" ? prettyAcc(st.name) : chordPromptText(st.chord, style);
   const first = ex.steps[0];

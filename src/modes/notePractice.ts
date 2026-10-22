@@ -3,7 +3,6 @@ import {
   initialNotePractice, makeNotePrompt, reduceNotePractice,
   type NotePracticeAction, type NotePracticeState, type Rng,
 } from "../exercises/notePractice";
-import type { NoteListView } from "../views/noteList";
 import { notePracticeDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, onPlayerInput, type AppStore, type Mode } from "./performance";
@@ -12,7 +11,7 @@ import { createPerformanceDrawer, onPlayerInput, type AppStore, type Mode } from
 const NEXT_PROMPT_MS = 700;
 
 export function startNotePractice(store: AppStore, views: {
-  staff: StaffView; noteList: NoteListView; practice: PracticeView;
+  staff: StaffView; practice: PracticeView;
 }, rng: Rng = Math.random): Mode {
   // Exercises don't use the header key; notes are spelled as a sharp or a flat at random
   const drawer = createPerformanceDrawer(store, views, () => null);

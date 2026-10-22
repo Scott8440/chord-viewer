@@ -152,9 +152,6 @@ main {
 #practiceFeedback.correct { color: var(--ok); }
 #practiceFeedback.wrong { color: var(--warn); }
 #practiceFooter { margin-top: 18px; display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 14px; min-height: 28px; }
-#notes { margin-top: 22px; font-size: 13px; color: var(--muted); letter-spacing: .04em; min-height: 1.4em; }
-#notes b { color: var(--text); font-weight: 500; }
-#notes .sus { color: var(--muted); }
 
 footer {
   padding: 10px 20px 14px; color: var(--muted); font-size: 12px;

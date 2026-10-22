@@ -130,6 +130,14 @@ describe("sequenceDisplay", () => {
                               sub: "Play C to go again", score: "1 run · 1 clean · best: 100% even" });
   });
 
+  it("shows the notes to play as dots, not names", () => {
+    const d = sequenceDisplay(run(initialSequence(Cmajor), ...play([60, 62])), "names");
+    const row = d.promptHtml.split('<div class="seqRow">')[1];
+    expect(row.match(/<span class="main">([^<]*)<\/span>/g)!.every(m => m.includes("•"))).toBe(true);
+    expect(row.match(/class="step done"/g)).toHaveLength(2);
+    expect(row.match(/class="step current"/g)).toHaveLength(1);
+  });
+
   it("writes accidentals as symbols in the title and instruction, without touching other words", () => {
     const d = sequenceDisplay(initialSequence(scaleExercise(buildKey("Bb:minor")!, "melodic", 2)), "names");
     expect(d.label).toBe("Play B♭ melodic minor up and back down, two octaves, starting on any B♭");

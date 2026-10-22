@@ -6,7 +6,6 @@ import {
 } from "../exercises/progressions";
 import type { Rng } from "../exercises/notePractice";
 import { buildKey } from "../theory";
-import type { NoteListView } from "../views/noteList";
 import { progressionDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type Mode } from "./performance";
@@ -15,7 +14,7 @@ import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type 
 const NEXT_PROGRESSION_MS = 1200;
 
 export function startProgressionPractice(store: AppStore, views: {
-  staff: StaffView; noteList: NoteListView; practice: PracticeView;
+  staff: StaffView; practice: PracticeView;
 }, rng: Rng = Math.random): Mode {
   // Exercises don't use the header key: each progression names its own (random) key
   const newPrompt = (previous?: ProgressionState["prompt"]) => makeProgressionPrompt(rng, null, previous);

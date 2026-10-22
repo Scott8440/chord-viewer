@@ -1,9 +1,8 @@
-// Shared by modes: the live staff and note list, and the player input exercises judge.
+// Shared by modes: the live staff, and the player input exercises judge.
 import type { AppAction, AppState } from "../state/app";
 import { pedalOnlyNotes, soundingNotes } from "../state/performance";
 import type { Store } from "../state/store";
 import { analyze, type KeyContext } from "../theory";
-import type { NoteListView } from "../views/noteList";
 import type { StaffView } from "../views/staff";
 
 export interface Mode {
@@ -22,11 +21,11 @@ export const sounding = (s: AppState) => soundingNotes(s.perf, s.settings.includ
 export const heldNotes = (s: AppState) => [...s.perf.held.keys()].sort((a, b) => a - b);
 
 /**
- * Redraws the staff and note list once per animation frame whenever the notes or settings change, until stopped.
+ * Redraws the staff once per animation frame whenever the notes or settings change, until stopped.
  * `keyOf` gives the key to draw and spell in: the header key in free play, the exercise's own key in practice
  * modes (which never use the header key). Call `schedule()` when that key changes.
  */
-export function createPerformanceDrawer(store: AppStore, views: { staff: StaffView; noteList: NoteListView },
+export function createPerformanceDrawer(store: AppStore, views: { staff: StaffView },
                                         keyOf: () => KeyContext | null = () => store.getState().settings.key) {
   let frameQueued = false, frame = 0;
   function schedule() {
@@ -39,7 +38,6 @@ export function createPerformanceDrawer(store: AppStore, views: { staff: StaffVi
       const notes = sounding(s);
       const result = analyze(notes, key);
       views.staff.render(notes, result, key, pedalOnlyNotes(s.perf));
-      views.noteList.render(notes, result, key, n => s.perf.held.has(n));
     });
   }
   const unsubscribe = store.subscribe((s, prev) => { if (s.perf !== prev.perf || s.settings !== prev.settings) schedule(); });

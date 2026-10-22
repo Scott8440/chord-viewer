@@ -71,7 +71,7 @@ mode and views subscribe to the store.
   has chord steps). `routines.ts`: routines (see "Routines" below): `circleOfFifths(direction)`, `eachKey`, the
   curated `ROUTINES`, the runner `reduceRoutine` (wraps `reduceSequence`), `routineSummary`, and `keyProgress`
   (state per key, shared by the routine row and the circle).
-- `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts` (also `chordSymbolHtml`), `noteList.ts`,
+- `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts` (also `chordSymbolHtml`),
   `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
   into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
   answered and add the played chord's numeral; inversions show as slash chords or figured bass (V⁶₅, I⁶₄, V⁴₂), and
@@ -86,7 +86,7 @@ mode and views subscribe to the store.
   status and input chips, pedal light, octave, key selector).
 - `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
   card; each returns `{stop, skip?}`. `performance.ts` holds what modes share: `createPerformanceDrawer` (subscribes
-  itself and redraws the staff and note list once per frame, in the key the mode gives it: free play the header
+  itself and redraws the staff once per frame, in the key the mode gives it: free play the header
   key; note and chord-name practice none; Roman numeral and progression prompts the prompt's key; exercises the
   exercise's key), `onPlayerInput` (each note-on with its time, then each change of the held keys with the time of
   the event behind it) and `heldNotes`.
@@ -116,7 +116,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 217 tests (54 voicings) should pass
+npm test           # Vitest: 218 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -201,6 +201,7 @@ the exercise and runs it again and again; each run is measured.
   it uses; the UI shows just those. Adding an exercise is a builder, a registry entry, a mode id and a menu item.
 - **Scales (built):** any of the 24 keys, up and back down, 1 or 2 octaves; minor scales offer natural, harmonic
   or melodic (melodic comes down natural). The prompt names it ("Play E♭ harmonic minor up and back down…").
+  Its steps show as dots, not note names: knowing the notes is the exercise. Wrong notes still name the expected one.
 - **Diatonic chords (built):** the key's triads or seventh chords in order, I up to vii° and back to I (minor:
   harmonic minor's V and vii°), in root position or any voicing; shown as chord names or Roman numerals.
 - **Next, on the same matcher:** arpeggios and broken chords (note steps, optionally ending on a chord step); hands together (steps with two notes); fingering

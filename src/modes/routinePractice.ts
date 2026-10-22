@@ -1,14 +1,13 @@
 // Routine mode: plays a routine's exercises one after another, moving on whenever an item's run finishes.
 import { initialRoutine, keyProgress, reduceRoutine, routineById, type RoutineAction, type RoutineState } from "../exercises/routines";
 import { buildKey } from "../theory";
-import type { NoteListView } from "../views/noteList";
 import type { CircleView } from "../views/circleOfFifths";
 import { routineDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type Mode } from "./performance";
 
 export function startRoutinePractice(store: AppStore, views: {
-  staff: StaffView; noteList: NoteListView; practice: PracticeView; circle: CircleView;
+  staff: StaffView; practice: PracticeView; circle: CircleView;
 }): Mode {
   const fresh = (): RoutineState => {
     const s = store.getState();

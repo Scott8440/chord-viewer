@@ -5,7 +5,6 @@ import {
 } from "../exercises/chordPractice";
 import type { Rng } from "../exercises/notePractice";
 import { buildKey } from "../theory";
-import type { NoteListView } from "../views/noteList";
 import { chordPracticeDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type Mode } from "./performance";
@@ -14,7 +13,7 @@ import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type 
 const NEXT_PROMPT_MS = 900;
 
 export function startChordPractice(store: AppStore, views: {
-  staff: StaffView; noteList: NoteListView; practice: PracticeView;
+  staff: StaffView; practice: PracticeView;
 }, rng: Rng = Math.random): Mode {
   const settings = () => store.getState().settings;
   // Exercises don't use the header key: Roman numeral prompts name their own (random) key, chord names need none

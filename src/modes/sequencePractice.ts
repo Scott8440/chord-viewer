@@ -3,14 +3,13 @@
 import { PRESCRIPTIVE, type PrescriptiveId } from "../exercises/prescriptive";
 import { initialSequence, reduceSequence, type SequenceAction, type SequenceState } from "../exercises/sequence";
 import { buildKey } from "../theory";
-import type { NoteListView } from "../views/noteList";
 import type { CircleView } from "../views/circleOfFifths";
 import { sequenceDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type Mode } from "./performance";
 
 export function startSequencePractice(store: AppStore, views: {
-  staff: StaffView; noteList: NoteListView; practice: PracticeView; circle: CircleView;
+  staff: StaffView; practice: PracticeView; circle: CircleView;
 }, id: PrescriptiveId): Mode {
   const build = () => PRESCRIPTIVE[id].build(store.getState().settings.exercise);
   let state: SequenceState = initialSequence(build(), heldNotes(store.getState()));

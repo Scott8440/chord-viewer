@@ -1,17 +1,21 @@
-// Chord type filter for chord practice: grouped checkboxes, with a summary of what is selected.
-import { CHORD_PRACTICE_GROUPS } from "../exercises/chordPractice";
+// Filter for practice modes (chord types, progressions): grouped checkboxes, with a summary of what is selected.
 import { prettyAcc } from "../theory";
 
-export interface ChordFilterView {
+export interface FilterGroup {
+  label: string;
+  types: readonly { id: string; label: string }[];
+}
+
+export interface FilterView {
   render(selected: readonly string[]): void;
 }
 
-/** `onChange` gets the new selection; the last selected type cannot be turned off. */
-export function createChordFilterView(els: { summary: HTMLElement; body: HTMLElement },
-                                      onChange: (selected: string[]) => void): ChordFilterView {
+/** `onChange` gets the new selection; the last selected item cannot be turned off. */
+export function createFilterView(els: { summary: HTMLElement; body: HTMLElement }, groups: readonly FilterGroup[],
+                                 summaryLabel: string, onChange: (selected: string[]) => void): FilterView {
   const boxes = new Map<string, { cb: HTMLInputElement; label: HTMLLabelElement }>();
   const labelOf = new Map<string, string>();
-  for (const group of CHORD_PRACTICE_GROUPS) {
+  for (const group of groups) {
     const row = document.createElement("div");
     row.className = "filterGroup";
     const title = document.createElement("span");
@@ -26,7 +30,7 @@ export function createChordFilterView(els: { summary: HTMLElement; body: HTMLEle
       cb.onchange = () => {
         cb.blur();   // so computer-key note input keeps working
         const selected = [...boxes].filter(([, b]) => b.cb.checked).map(([id]) => id);
-        if (!selected.length) { cb.checked = true; return; }   // keep at least one type
+        if (!selected.length) { cb.checked = true; return; }   // keep at least one
         onChange(selected);
       };
       label.append(cb, document.createTextNode(prettyAcc(t.label)));
@@ -43,7 +47,7 @@ export function createChordFilterView(els: { summary: HTMLElement; body: HTMLEle
         b.cb.checked = selected.includes(id);
         b.label.classList.toggle("off", !b.cb.checked);
       }
-      els.summary.textContent = "Chord types: " + selected.map(id => labelOf.get(id)).join(", ");
+      els.summary.textContent = summaryLabel + ": " + selected.map(id => labelOf.get(id)).join(", ");
     },
   };
 }

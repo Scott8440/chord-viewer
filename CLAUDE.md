@@ -24,7 +24,8 @@ mode and views subscribe to the store.
   - `performance.ts`: pure reducer for held notes (per `source:channel`), pedal-sustained notes and pedals, plus
     `soundingNotes` and `pedalOnlyNotes`. Returns the same object when nothing changed.
   - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (key, pedal-notes-count
-    option, active mode, and for chord practice the chord types, prompt style and whether inversions are required);
+    option, active mode, and for the practice modes the chord types, prompt style, whether inversions are required,
+    and which progressions to ask for);
     `reduceApp` over `AppAction`s.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed.
 - `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
@@ -47,19 +48,29 @@ mode and views subscribe to the store.
   `analyze` + `romanFor` give back the same numeral for every diatonic chord in all 24 keys. Inversions:
   `withInversion` adds a random required inversion (root position included; the bass is a chord tone up to the
   7th, never a 9th) and `isChord` then also needs that note lowest (`hasChordTones` + `hasBass`).
+  `progressions.ts`: `PROGRESSIONS` as data (id, name, major/minor, steps of numeral + scale degree + chord type;
+  minor uses the natural scale, so VII not vii°), `progressionChords`, `makeProgressionPrompt` (the header key, only
+  progressions in its mode, or a random key of the progression's mode; falls back to any progression of that mode,
+  flagged `filterIgnored`) and `reduceProgression` (fed the held keys; a chord counts as soon as the held keys form
+  it, so legato with held common tones works; releasing the previous chord is not an attempt, only new presses
+  followed by all keys up). A test checks every progression in every key analyzes back to its chords and numerals.
 - `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts` (also `chordSymbolHtml`), `noteList.ts`,
   `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
   into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
   answered and add the played chord's numeral; inversions show as slash chords or figured bass (V⁶₅, I⁶₄, V⁴₂), and
-  a wrong bass gets "Right notes, wrong bass. Put E in the bass"), `chordFilter.ts` (grouped type checkboxes; the last one
-  can't be unchecked), `header.ts` (MIDI status and input chips, pedal light, octave, key selector).
+  a wrong bass gets "Right notes, wrong bass. Put E in the bass"; `progressionDisplay` shows the chords in a row,
+  green when played with the other notation revealed underneath, the current one underlined), `filter.ts`
+  (grouped checkboxes, used for chord types and progressions; the last one can't be unchecked), `header.ts` (MIDI
+  status and input chips, pedal light, octave, key selector).
 - `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
   card; each returns `{stop, skip?}`. `performance.ts` is the shared once-per-frame staff and note-list redraw.
   `freePlay.ts` adds the chord name with the 40 ms debounce. `notePractice.ts` feeds each new note-on from the
   history to the exercise reducer and moves to the next prompt 700 ms after a correct answer. `chordPractice.ts`
   feeds the held keys to its reducer (900 ms before the next prompt) and asks again if the filter rules out the
-  current chord. The chord filter, the prompt style (chord names or Roman numerals) and the "Specific inversions"
-  option are saved in localStorage.
+  current chord. `progressionPractice.ts` feeds the held keys to the progression reducer and starts a new
+  progression 1.2 s after the last chord. The chord filter, the progression list, the prompt style (chord names or
+  Roman numerals, shared by chord and progression practice) and the "Specific inversions" option are saved in
+  localStorage.
 - `src/main.ts`: wiring only. Creates the store, views, mode and input sources; owns localStorage for the key.
 - `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
 - `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
@@ -70,7 +81,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 134 tests (54 voicings) should pass
+npm test           # Vitest: 149 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -149,8 +160,8 @@ Our own template matcher; tonal is only used for primitives (intervals, transpos
      matching and explaining why a reading won. Keep tonal for primitives.
    - **Views and modes:** subscribe to state. Free play is just one mode.
 3. **Started:** note practice (name a note, play it in any octave) and chord practice (a chord name or a Roman
-   numeral in a key, from a filtered set of types, played in any voicing or a required inversion), both with
-   right/wrong feedback and a first-try score.
+   numeral in a key, from a filtered set of types, played in any voicing or a required inversion) and progression
+   practice (a chosen progression in a key, chord by chord), all with right/wrong feedback and a first-try score.
    **Exercises as data:** a prompt generator, a matcher with configurable tolerances (any voicing or a specific
    inversion, octave sensitivity, timing window) and feedback.
 4. **Audio** for ear training and a metronome: Web Audio with a look-ahead scheduler and a small sampled piano.

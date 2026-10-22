@@ -3,17 +3,19 @@ import "./style.css";
 import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
 import { createMidiSource } from "./input/midi";
-import { PROMPT_STYLES, sanitizeChordTypes, type PromptStyle } from "./exercises/chordPractice";
+import { CHORD_PRACTICE_GROUPS, PROMPT_STYLES, sanitizeChordTypes, type PromptStyle } from "./exercises/chordPractice";
+import { PROGRESSION_GROUPS, sanitizeProgressions } from "./exercises/progressions";
 import { startChordPractice } from "./modes/chordPractice";
 import { startFreePlay } from "./modes/freePlay";
+import { startProgressionPractice } from "./modes/progressionPractice";
 import { startNotePractice } from "./modes/notePractice";
 import type { Mode } from "./modes/performance";
 import { createAppState, MODES, reduceApp, type ModeId } from "./state/app";
 import { pedalDown } from "./state/performance";
 import { createStore } from "./state/store";
 import { analyze } from "./theory";
-import { createChordFilterView } from "./views/chordFilter";
 import { createChordNameView } from "./views/chordName";
+import { createFilterView } from "./views/filter";
 import { createHeaderView, initKeySelect } from "./views/header";
 import { createNoteListView } from "./views/noteList";
 import { createPracticeView } from "./views/practice";
@@ -25,6 +27,7 @@ const MODE_STORAGE = "chordDisplay.mode";
 const CHORD_TYPES_STORAGE = "chordDisplay.chordTypes";
 const PROMPT_STYLE_STORAGE = "chordDisplay.promptStyle";
 const INVERSIONS_STORAGE = "chordDisplay.inversions";
+const PROGRESSIONS_STORAGE = "chordDisplay.progressions";
 
 // Settings
 const keySel = $<HTMLSelectElement>("keySel");
@@ -45,10 +48,13 @@ const initialPromptStyle: PromptStyle = (PROMPT_STYLES as readonly string[]).inc
 promptStyleSel.value = initialPromptStyle;
 const optInversions = $<HTMLInputElement>("optInversions");
 try { optInversions.checked = localStorage.getItem(INVERSIONS_STORAGE) === "1"; } catch {}
+let savedProgressions: string[] = [];
+try { savedProgressions = JSON.parse(localStorage.getItem(PROGRESSIONS_STORAGE) || "[]"); } catch {}
 
 const store = createStore(reduceApp, createAppState(initKeySelect(keySel, savedKey), optPedal.checked, initialMode,
                                                     sanitizeChordTypes(Array.isArray(savedChordTypes) ? savedChordTypes : []),
-                                                    initialPromptStyle, optInversions.checked));
+                                                    initialPromptStyle, optInversions.checked,
+                                                    sanitizeProgressions(Array.isArray(savedProgressions) ? savedProgressions : [])));
 const input = (event: InputEvent) => store.dispatch({ type: "input", event });
 
 // Views
@@ -64,25 +70,37 @@ const chordName = createChordNameView({ name: $("chordName"), sub: $("chordSub")
 const practice = createPracticeView({
   label: $("practiceLabel"), prompt: $("practicePrompt"), sub: $("practiceSub"), feedback: $("practiceFeedback"), score: $("practiceScore"),
 });
-const chordFilter = createChordFilterView({ summary: $("chordFilterSummary"), body: $("chordFilterBody") }, types => {
+const chordFilter = createFilterView({ summary: $("chordFilterSummary"), body: $("chordFilterBody") }, CHORD_PRACTICE_GROUPS, "Chord types", types => {
   store.dispatch({ type: "setChordTypes", types });
   try { localStorage.setItem(CHORD_TYPES_STORAGE, JSON.stringify(store.getState().settings.chordTypes)); } catch {}
 });
 chordFilter.render(store.getState().settings.chordTypes);
 $("chordFilters").addEventListener("toggle", () => $("chordFilterSummary").blur());   // so Space stays the pedal
 store.subscribe((s, prev) => { if (s.settings.chordTypes !== prev.settings.chordTypes) chordFilter.render(s.settings.chordTypes); });
+const progFilter = createFilterView({ summary: $("progFilterSummary"), body: $("progFilterBody") }, PROGRESSION_GROUPS, "Progressions", ids => {
+  store.dispatch({ type: "setProgressions", ids });
+  try { localStorage.setItem(PROGRESSIONS_STORAGE, JSON.stringify(store.getState().settings.progressions)); } catch {}
+});
+progFilter.render(store.getState().settings.progressions);
+$("progFilters").addEventListener("toggle", () => $("progFilterSummary").blur());   // so Space stays the pedal
+store.subscribe((s, prev) => { if (s.settings.progressions !== prev.settings.progressions) progFilter.render(s.settings.progressions); });
 
 // Modes: exactly one runs at a time and owns the right-hand card
 const startMode: Record<ModeId, () => Mode> = {
   free: () => startFreePlay(store, { staff, chordName, noteList }),
   notes: () => startNotePractice(store, { staff, noteList, practice }),
   chords: () => startChordPractice(store, { staff, noteList, practice }),
+  progressions: () => startProgressionPractice(store, { staff, noteList, practice }),
 };
 let mode: Mode;
 function showMode(id: ModeId) {
   $("freeView").hidden = id !== "free";
   $("practice").hidden = id === "free";
-  $("chordOptions").hidden = id !== "chords";
+  // Chord and progression practice share the prompt style; each has its own filter
+  $("chordOptions").hidden = id !== "chords" && id !== "progressions";
+  $("inversionsOpt").hidden = id !== "chords";
+  $("chordFilters").hidden = id !== "chords";
+  $("progFilters").hidden = id !== "progressions";
   mode = startMode[id]();
 }
 showMode(initialMode);

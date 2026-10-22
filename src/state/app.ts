@@ -1,12 +1,13 @@
 // Whole-app state: the performance, a history of recent input events, and user settings.
 import { DEFAULT_CHORD_TYPES, sanitizeChordTypes, type PromptStyle } from "../exercises/chordPractice";
+import { DEFAULT_PROGRESSIONS, sanitizeProgressions } from "../exercises/progressions";
 import type { InputEvent } from "../input/events";
 import { buildKey, type KeyContext } from "../theory";
 import { initialPerformance, reducePerformance, type PerformanceState } from "./performance";
 
 export const HISTORY_LIMIT = 512;
 
-export const MODES = ["free", "notes", "chords"] as const;
+export const MODES = ["free", "notes", "chords", "progressions"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
@@ -23,6 +24,8 @@ export interface Settings {
   readonly promptStyle: PromptStyle;
   /** Chord practice asks for a specific inversion */
   readonly inversions: boolean;
+  /** Progression ids that progression practice may ask for */
+  readonly progressions: readonly string[];
 }
 
 export interface AppState {
@@ -39,15 +42,17 @@ export type AppAction =
   | { type: "setMode"; mode: ModeId }
   | { type: "setChordTypes"; types: readonly string[] }
   | { type: "setPromptStyle"; style: PromptStyle }
-  | { type: "setInversions"; on: boolean };
+  | { type: "setInversions"; on: boolean }
+  | { type: "setProgressions"; ids: readonly string[] };
 
 export function createAppState(keyValue = "", includeSustained = true, mode: ModeId = "free",
                                chordTypes: readonly string[] = DEFAULT_CHORD_TYPES, promptStyle: PromptStyle = "names",
-                               inversions = false): AppState {
+                               inversions = false, progressions: readonly string[] = DEFAULT_PROGRESSIONS): AppState {
   return {
     perf: initialPerformance,
     history: [],
-    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes), promptStyle, inversions },
+    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes), promptStyle, inversions,
+                progressions: sanitizeProgressions(progressions) },
   };
 }
 
@@ -71,5 +76,7 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return a.style === s.settings.promptStyle ? s : { ...s, settings: { ...s.settings, promptStyle: a.style } };
     case "setInversions":
       return a.on === s.settings.inversions ? s : { ...s, settings: { ...s.settings, inversions: a.on } };
+    case "setProgressions":
+      return { ...s, settings: { ...s.settings, progressions: sanitizeProgressions(a.ids) } };
   }
 }

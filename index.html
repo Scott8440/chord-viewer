@@ -16,6 +16,7 @@
       <option value="free">Free play</option>
       <option value="notes">Note practice</option>
       <option value="chords">Chord practice</option>
+      <option value="progressions">Progression practice</option>
     </select>
   </label>
   <label class="pick">Key
@@ -49,10 +50,14 @@
             <option value="roman">Roman numerals</option>
           </select>
         </label>
-        <label class="opt"><input type="checkbox" id="optInversions"> Specific inversions</label>
+        <label class="opt" id="inversionsOpt"><input type="checkbox" id="optInversions"> Specific inversions</label>
         <details id="chordFilters">
           <summary id="chordFilterSummary"></summary>
           <div id="chordFilterBody"></div>
+        </details>
+        <details id="progFilters">
+          <summary id="progFilterSummary"></summary>
+          <div id="progFilterBody"></div>
         </details>
       </div>
     </div>

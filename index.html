@@ -11,7 +11,13 @@
   <h1>Chord Display</h1>
   <div id="status"><span class="dot" id="statusDot"></span><span id="statusText">Starting…</span></div>
   <div id="inputs"></div>
-  <label id="keyPick">Key
+  <label class="pick">Mode
+    <select id="modeSel">
+      <option value="free">Free play</option>
+      <option value="notes">Note practice</option>
+    </select>
+  </label>
+  <label class="pick">Key
     <select id="keySel"></select>
   </label>
   <div class="spacer"></div>
@@ -23,10 +29,18 @@
 <main>
   <section class="card" id="staffCard"><div id="staff"></div></section>
   <section class="card" id="chordCard">
-    <div id="chordName"></div>
-    <div id="chordSub">Play something</div>
-    <div id="roman"></div>
-    <div id="alts"></div>
+    <div id="freeView">
+      <div id="chordName"></div>
+      <div id="chordSub">Play something</div>
+      <div id="roman"></div>
+      <div id="alts"></div>
+    </div>
+    <div id="practice" hidden>
+      <div id="practiceLabel">Play this note, in any octave</div>
+      <div id="practicePrompt"></div>
+      <div id="practiceFeedback"></div>
+      <div id="practiceFooter"><span id="practiceScore"></span><button id="practiceSkip" title="Skip this note">Skip</button></div>
+    </div>
     <div id="notes"></div>
   </section>
 </main>

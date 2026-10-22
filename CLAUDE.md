@@ -24,16 +24,21 @@ mode and views subscribe to the store.
   - `performance.ts`: pure reducer for held notes (per `source:channel`), pedal-sustained notes and pedals, plus
     `soundingNotes` and `pedalOnlyNotes`. Returns the same object when nothing changed.
   - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (key, pedal-notes-count
-    option); `reduceApp` over `AppAction`s.
+    option, active mode); `reduceApp` over `AppAction`s.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed.
 - `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
   `spelling.ts` (note names, `spellNote`, `prettyAcc`), `key.ts` (`buildKey`, `KeyContext`), `chordTemplates.ts`
   (chord types and scoring weights: data only), `chords.ts` (`matchTemplate`, `chordReadings`, `analyze`),
   `roman.ts` (`romanFor`), re-exported from `index.ts`.
-- `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts`, `noteList.ts`, `header.ts` (MIDI status
-  and input chips, pedal light, octave, key selector).
-- `src/modes/freePlay.ts`: the free-play mode. Subscribes to the store and does the frame/40 ms debounce. Future
-  modes (exercises) sit beside it.
+- `src/exercises/`: exercises as pure data and functions. `notePractice.ts`: `makeNotePrompt` (random pitch class,
+  never the same twice; spelled from the key, else sharp or flat at random) and `reduceNotePractice` (judges each
+  note-on in any octave; tracks wrong attempts, answered and right-first-time counts; skip counts as answered).
+- `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts`, `noteList.ts`, `practice.ts` (prompt,
+  feedback, score), `header.ts` (MIDI status and input chips, pedal light, octave, key selector).
+- `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
+  card; each returns `{stop, skip?}`. `performance.ts` is the shared once-per-frame staff and note-list redraw.
+  `freePlay.ts` adds the chord name with the 40 ms debounce. `notePractice.ts` feeds each new note-on from the
+  history to the exercise reducer and moves to the next prompt 700 ms after a correct answer.
 - `src/main.ts`: wiring only. Creates the store, views, mode and input sources; owns localStorage for the key.
 - `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
 - `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
@@ -44,7 +49,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 84 tests (54 voicings) should pass
+npm test           # Vitest: 95 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -122,7 +127,8 @@ Our own template matcher; tonal is only used for primitives (intervals, transpos
      template-plus-scoring recognizer** whose weights live in a data table, so it can handle omissions, voicing
      matching and explaining why a reading won. Keep tonal for primitives.
    - **Views and modes:** subscribe to state. Free play is just one mode.
-3. **Exercises as data:** a prompt generator, a matcher with configurable tolerances (any voicing or a specific
+3. **Started:** note practice (name a note, play it in any octave, right/wrong feedback and a first-try score).
+   **Exercises as data:** a prompt generator, a matcher with configurable tolerances (any voicing or a specific
    inversion, octave sensitivity, timing window) and feedback.
 4. **Audio** for ear training and a metronome: Web Audio with a look-ahead scheduler and a small sampled piano.
    Keep it switchable, since the user often monitors through Ableton.

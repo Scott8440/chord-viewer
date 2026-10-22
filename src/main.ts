@@ -4,25 +4,34 @@ import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
 import { createMidiSource } from "./input/midi";
 import { startFreePlay } from "./modes/freePlay";
-import { createAppState, reduceApp } from "./state/app";
+import { startNotePractice } from "./modes/notePractice";
+import type { Mode } from "./modes/performance";
+import { createAppState, MODES, reduceApp, type ModeId } from "./state/app";
 import { pedalDown } from "./state/performance";
 import { createStore } from "./state/store";
 import { analyze } from "./theory";
 import { createChordNameView } from "./views/chordName";
 import { createHeaderView, initKeySelect } from "./views/header";
 import { createNoteListView } from "./views/noteList";
+import { createPracticeView } from "./views/practice";
 import { createStaffView } from "./views/staff";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const KEY_STORAGE = "chordDisplay.key";
+const MODE_STORAGE = "chordDisplay.mode";
 
 // Settings
 const keySel = $<HTMLSelectElement>("keySel");
 let savedKey = "";
 try { savedKey = localStorage.getItem(KEY_STORAGE) || ""; } catch {}
 const optPedal = $<HTMLInputElement>("optPedal");
+const modeSel = $<HTMLSelectElement>("modeSel");
+let savedMode = "";
+try { savedMode = localStorage.getItem(MODE_STORAGE) || ""; } catch {}
+const initialMode: ModeId = (MODES as readonly string[]).includes(savedMode) ? savedMode as ModeId : "free";
+modeSel.value = initialMode;
 
-const store = createStore(reduceApp, createAppState(initKeySelect(keySel, savedKey), optPedal.checked));
+const store = createStore(reduceApp, createAppState(initKeySelect(keySel, savedKey), optPedal.checked, initialMode));
 const input = (event: InputEvent) => store.dispatch({ type: "input", event });
 
 // Views
@@ -32,10 +41,27 @@ const header = createHeaderView({
 }, (id, on) => midi.setEnabled(id, on));
 store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 
-startFreePlay(store, {
-  staff: createStaffView($("staff")),
-  chordName: createChordNameView({ name: $("chordName"), sub: $("chordSub"), roman: $("roman"), alts: $("alts") }),
-  noteList: createNoteListView($("notes")),
+const staff = createStaffView($("staff"));
+const noteList = createNoteListView($("notes"));
+const chordName = createChordNameView({ name: $("chordName"), sub: $("chordSub"), roman: $("roman"), alts: $("alts") });
+const practice = createPracticeView({ prompt: $("practicePrompt"), feedback: $("practiceFeedback"), score: $("practiceScore") });
+
+// Modes: exactly one runs at a time and owns the right-hand card
+const startMode: Record<ModeId, () => Mode> = {
+  free: () => startFreePlay(store, { staff, chordName, noteList }),
+  notes: () => startNotePractice(store, { staff, noteList, practice }),
+};
+let mode: Mode;
+function showMode(id: ModeId) {
+  $("freeView").hidden = id !== "free";
+  $("practice").hidden = id !== "notes";
+  mode = startMode[id]();
+}
+showMode(initialMode);
+store.subscribe((s, prev) => {
+  if (s.settings.mode === prev.settings.mode) return;
+  mode.stop();
+  showMode(s.settings.mode);
 });
 
 // Input sources
@@ -56,6 +82,15 @@ function onKeyChange() {
 // Controls
 keySel.onchange = onKeyChange;
 optPedal.onchange = () => store.dispatch({ type: "setIncludeSustained", on: optPedal.checked });
+modeSel.onchange = () => {
+  store.dispatch({ type: "setMode", mode: modeSel.value as ModeId });
+  try { localStorage.setItem(MODE_STORAGE, modeSel.value); } catch {}
+  modeSel.blur();   // so computer-key note input keeps working
+};
+$("practiceSkip").onclick = () => {
+  $("practiceSkip").blur();   // so Space (pedal) doesn't press it again
+  mode.skip?.();
+};
 $("panic").onclick = panic;
 $("retry").onclick = () => { $("retry").hidden = true; header.showMidiStatus({ kind: "requesting" }); midi.start(); };
 

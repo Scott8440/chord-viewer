@@ -5,12 +5,17 @@ import { initialPerformance, reducePerformance, type PerformanceState } from "./
 
 export const HISTORY_LIMIT = 512;
 
+export const MODES = ["free", "notes"] as const;
+export type ModeId = typeof MODES[number];
+
 export interface Settings {
   /** Key selector value, e.g. "C:major", or "" for none */
   readonly keyValue: string;
   readonly key: KeyContext | null;
   /** Whether pedal-held notes count toward the chord */
   readonly includeSustained: boolean;
+  /** Active mode: free play or an exercise */
+  readonly mode: ModeId;
 }
 
 export interface AppState {
@@ -23,13 +28,14 @@ export interface AppState {
 export type AppAction =
   | { type: "input"; event: InputEvent }
   | { type: "setKey"; value: string }
-  | { type: "setIncludeSustained"; on: boolean };
+  | { type: "setIncludeSustained"; on: boolean }
+  | { type: "setMode"; mode: ModeId };
 
-export function createAppState(keyValue = "", includeSustained = true): AppState {
+export function createAppState(keyValue = "", includeSustained = true, mode: ModeId = "free"): AppState {
   return {
     perf: initialPerformance,
     history: [],
-    settings: { keyValue, key: buildKey(keyValue), includeSustained },
+    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode },
   };
 }
 
@@ -45,5 +51,7 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return { ...s, settings: { ...s.settings, keyValue: a.value, key: buildKey(a.value) } };
     case "setIncludeSustained":
       return { ...s, settings: { ...s.settings, includeSustained: a.on } };
+    case "setMode":
+      return a.mode === s.settings.mode ? s : { ...s, settings: { ...s.settings, mode: a.mode } };
   }
 }

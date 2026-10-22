@@ -37,8 +37,8 @@ header h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em;
 .chip input { margin: 0; accent-color: var(--accent); }
 .chip.off { color: var(--muted); }
 .spacer { flex: 1; }
-#keyPick { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-#keySel {
+.pick { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.pick select {
   background: var(--panel); color: var(--text); border: 1px solid var(--line);
   border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 13px;
 }
@@ -88,6 +88,15 @@ main {
   font-family: Georgia, serif; font-size: 17px; padding: 3px 10px;
   border: 1px solid var(--line); border-radius: 6px; color: var(--muted);
 }
+#practiceLabel { color: var(--muted); font-size: 16px; }
+#practicePrompt {
+  margin-top: 8px; font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(72px, 12vw, 160px); line-height: 1; color: var(--text);
+}
+#practiceFeedback { margin-top: 18px; font-size: 22px; min-height: 1.4em; }
+#practiceFeedback.correct { color: var(--ok); }
+#practiceFeedback.wrong { color: var(--warn); }
+#practiceFooter { margin-top: 18px; display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 14px; min-height: 28px; }
 #notes { margin-top: 22px; font-size: 13px; color: var(--muted); letter-spacing: .04em; min-height: 1.4em; }
 #notes b { color: var(--text); font-weight: 500; }
 #notes .sus { color: var(--muted); }

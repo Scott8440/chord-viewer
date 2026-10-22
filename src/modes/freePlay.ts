@@ -2,35 +2,23 @@
 // frame something changes; the chord name waits for ~40ms of stillness so a rolled chord
 // doesn't flicker through partial names.
 import type { AppAction, AppState } from "../state/app";
-import { pedalOnlyNotes, soundingNotes } from "../state/performance";
 import type { Store } from "../state/store";
 import { analyze } from "../theory";
 import type { ChordNameView } from "../views/chordName";
 import type { NoteListView } from "../views/noteList";
 import type { StaffView } from "../views/staff";
+import { createPerformanceDrawer, sounding, type Mode } from "./performance";
 
 const NAME_SETTLE_MS = 40;
 
 export function startFreePlay(store: Store<AppState, AppAction>, views: {
   staff: StaffView; chordName: ChordNameView; noteList: NoteListView;
-}): () => void {
-  let frameQueued = false, frame = 0;
+}): Mode {
+  const drawer = createPerformanceDrawer(store, views);
   let nameTimer: ReturnType<typeof setTimeout> | undefined;
 
-  const sounding = (s: AppState) => soundingNotes(s.perf, s.settings.includeSustained);
-
   function changed() {
-    if (!frameQueued) {
-      frameQueued = true;
-      frame = requestAnimationFrame(() => {
-        frameQueued = false;
-        const s = store.getState();
-        const notes = sounding(s);
-        const result = analyze(notes, s.settings.key);
-        views.staff.render(notes, result, s.settings.key, pedalOnlyNotes(s.perf));
-        views.noteList.render(notes, result, s.settings.key, n => s.perf.held.has(n));
-      });
-    }
+    drawer.schedule();
     clearTimeout(nameTimer);
     nameTimer = setTimeout(() => {
       const s = store.getState();
@@ -44,9 +32,11 @@ export function startFreePlay(store: Store<AppState, AppAction>, views: {
   });
   changed();
 
-  return () => {
-    unsubscribe();
-    cancelAnimationFrame(frame);
-    clearTimeout(nameTimer);
+  return {
+    stop() {
+      unsubscribe();
+      drawer.cancel();
+      clearTimeout(nameTimer);
+    },
   };
 }

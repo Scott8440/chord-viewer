@@ -11,7 +11,8 @@ export interface ClickPlayer {
   follow(transport: Transport | null): void;
 }
 
-export function createClickPlayer(): ClickPlayer {
+/** `blocked(true)` while clicks are due but the browser hasn't let audio start yet (it needs a click, tap or key). */
+export function createClickPlayer(blocked: (on: boolean) => void = () => {}): ClickPlayer {
   let ctx: AudioContext | null = null;
   let transport: Transport | null = null;
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -19,16 +20,37 @@ export function createClickPlayer(): ClickPlayer {
    *  on without a doubled click (nothing within half a beat of it is scheduled) */
   let lastClick = -Infinity;
 
-  // Browsers only start audio after a user gesture; any click or key press will do
-  const unlock = () => { void ctx?.resume(); };
-  addEventListener("pointerdown", unlock);
-  addEventListener("keydown", unlock);
+  // iOS: play through the ring/silent switch, like a music app (Safari 16.4+; elsewhere this does nothing)
+  const session = (navigator as { audioSession?: { type: string } }).audioSession;
+  if (session) try { session.type = "playback"; } catch {}
+
+  // Browsers only start audio after a user gesture. Listen in the capture phase so nothing can swallow it, and on
+  // every gesture event, since browsers differ in which count (iOS wants touchend or click, not pointerdown)
+  function unlock() {
+    if (!ctx || ctx.state === "running") return;
+    void ctx.resume().then(report);
+    // Older iOS only unlocks once a sound starts inside the gesture: a silent one will do
+    const silent = ctx.createBufferSource();
+    silent.buffer = ctx.createBuffer(1, 1, 22050);
+    silent.connect(ctx.destination);
+    silent.start();
+  }
+  for (const type of ["pointerdown", "touchend", "click", "keydown"]) addEventListener(type, unlock, { capture: true });
+
+  let wasBlocked = false;
+  function report() {
+    const now = !!transport && !!ctx && ctx.state !== "running";
+    if (now !== wasBlocked) blocked(wasBlocked = now);
+  }
 
   /** Audio-clock time (s) at which a sound is heard at performance time `ms`; output latency included */
   function audioTimeOf(c: AudioContext, ms: number): number {
+    const estimate = c.currentTime + (ms - performance.now()) / 1000 - (c.outputLatency || c.baseLatency || 0);
     const ts = c.getOutputTimestamp?.();
-    if (ts?.contextTime !== undefined && ts.performanceTime) return ts.contextTime + (ms - ts.performanceTime) / 1000;
-    return c.currentTime + (ms - performance.now()) / 1000 - (c.outputLatency || c.baseLatency || 0);
+    if (ts?.contextTime === undefined || !ts.performanceTime) return estimate;
+    const precise = ts.contextTime + (ms - ts.performanceTime) / 1000;
+    // A browser whose output timestamp is on another clock would put every click in the past (silence): ignore it
+    return Math.abs(precise - estimate) < 0.25 ? precise : estimate;
   }
 
   function click(c: AudioContext, at: number, accent: boolean) {
@@ -56,9 +78,14 @@ export function createClickPlayer(): ClickPlayer {
   return {
     follow(t) {
       transport = t;
-      if (!t) { clearInterval(timer); timer = undefined; lastClick = -Infinity; return; }
-      ctx ??= new AudioContext();
-      void ctx.resume();
+      if (!t) { clearInterval(timer); timer = undefined; lastClick = -Infinity; report(); return; }
+      if (!ctx) {
+        ctx = new AudioContext();
+        ctx.onstatechange = report;
+      }
+      // Works when this follows a gesture (ticking the Metronome box); otherwise unlock() does it on the next one
+      unlock();
+      report();
       timer ??= setInterval(schedule, TICK_MS);
       schedule();
     },

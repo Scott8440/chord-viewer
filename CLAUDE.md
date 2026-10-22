@@ -228,8 +228,11 @@ room to sync with Ableton later.
   via loopMIDI, say) would be another driver updating the same transport, and nothing downstream changes.
 - **Click** (`src/audio/click.ts`): a look-ahead scheduler (every 25 ms, schedule clicks due in the next 120 ms on
   the audio clock), accented on beat 1 of the 4/4 bar, mapped from performance time with `getOutputTimestamp()` so
-  output latency is included. It tracks the last click by time, so a tempo change never doubles a click. Audio
-  starts on the first click or key press (browser autoplay rules).
+  output latency is included (falling back to an estimate if a browser's timestamp disagrees by >250 ms, so clicks
+  are never silently scheduled in the past). It tracks the last click by time, so a tempo change never doubles a
+  click. Audio starts on the first click, tap or key press (browser autoplay rules; unlocked in the capture phase on
+  pointerdown/touchend/click/keydown, with a silent buffer for older iOS), and the beat light says so while it's
+  blocked. On iOS, `navigator.audioSession.type = "playback"` lets it sound with the silent switch on.
 - **Judging** (`src/timing/grid.ts`): a grid = transport + notes per beat (1, 2 or 4) + strictness (±40 ms strict,
   ±80 ms loose, never more than 40% of a slot) + `latencyMs` (taken off note times: set it if you're judged
   consistently late). One step per slot. A run may start on any slot; each step is due on the slot after the

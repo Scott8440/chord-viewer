@@ -137,7 +137,8 @@ store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 
 const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
-const metronomeViews = { click: createClickPlayer(), beat: createBeatView($("beat")) };
+const beat = createBeatView($("beat"));
+const metronomeViews = { click: createClickPlayer(blocked => beat.setSoundBlocked(blocked)), beat };
 const chordName = createChordNameView({ root: $("freeView"), name: $("chordName"), sub: $("chordSub"), roman: $("roman"), alts: $("alts") });
 const practice = createPracticeView({
   label: $("practiceLabel"), prompt: $("practicePrompt"), sub: $("practiceSub"), feedback: $("practiceFeedback"), score: $("practiceScore"),

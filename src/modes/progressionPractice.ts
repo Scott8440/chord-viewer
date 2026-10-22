@@ -22,7 +22,7 @@ export function startProgressionPractice(store: Store<AppState, AppAction>, view
 }, rng: Rng = Math.random): Mode {
   const drawer = createPerformanceDrawer(store, views);
   const settings = () => store.getState().settings;
-  const newPrompt = (previous?: ProgressionState["prompt"]) => makeProgressionPrompt(rng, settings().progressions, settings().key, previous);
+  const newPrompt = (previous?: ProgressionState["prompt"]) => makeProgressionPrompt(rng, settings().key, previous);
   let state: ProgressionState = initialProgression(newPrompt(), heldNotes(store.getState()));
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -49,9 +49,8 @@ export function startProgressionPractice(store: Store<AppState, AppAction>, view
       const now = heldNotes(s);
       if (now.join() !== heldNotes(prev).join()) apply({ type: "held", notes: now });
     }
-    // A new key or a narrower list needs a new progression; the prompt style only changes how it is shown
-    if (s.settings.key !== prev.settings.key ||
-        (s.settings.progressions !== prev.settings.progressions && !s.settings.progressions.includes(state.prompt.id))) {
+    // A new key needs a new progression; the prompt style only changes how it is shown
+    if (s.settings.key !== prev.settings.key) {
       restart();
     } else if (s.settings.promptStyle !== prev.settings.promptStyle) {
       render();

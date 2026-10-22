@@ -1,10 +1,9 @@
 // Progression practice: progression data, prompts, judging chord by chord, and display.
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_PROGRESSIONS, initialProgression, makeProgressionPrompt, progressionChords, PROGRESSIONS, reduceProgression,
-  sanitizeProgressions, type ProgressionAction, type ProgressionPrompt, type ProgressionState,
+  initialProgression, makeProgressionPrompt, progressionById, progressionChords, PROGRESSIONS, progressionsWhere,
+  reduceProgression, type ProgressionAction, type ProgressionPrompt, type ProgressionState,
 } from "../src/exercises/progressions";
-import { createAppState, reduceApp } from "../src/state/app";
 import { analyze, buildKey, KEY_MAJORS, KEY_MINORS, matchTemplate, prettyAcc, templateById } from "../src/theory";
 import { progressionDisplay } from "../src/views/practice";
 
@@ -12,7 +11,7 @@ const held = (...notes: number[]): ProgressionAction => ({ type: "held", notes }
 const run = (s: ProgressionState, ...actions: ProgressionAction[]) => actions.reduce(reduceProgression, s);
 const prompt = (id: string, keyValue: string): ProgressionPrompt => {
   const def = PROGRESSIONS.find(p => p.id === id)!;
-  return { id, name: def.name, keyValue, chords: progressionChords(def, buildKey(keyValue)!), filterIgnored: false };
+  return { id, name: def.name, keyValue, chords: progressionChords(def, buildKey(keyValue)!) };
 };
 /** Close root-position voicing of a chord prompt, from C3 up */
 const voice = (c: { rootPc: number; type: string }) => {
@@ -42,44 +41,67 @@ describe("progression data", () => {
     expect(prompt("i-VII-VI-V", "A:minor").chords.map(c => c.root + templateById(c.type)!.symbol)).toEqual(["Am", "G", "F", "E"]);
   });
 
-  it("sanitizes the selection", () => {
-    expect(sanitizeProgressions(["ii-V-I", "nope", "I-IV-V-I"])).toEqual(["I-IV-V-I", "ii-V-I"]);
-    expect(sanitizeProgressions([])).toEqual([...DEFAULT_PROGRESSIONS]);
-    expect(createAppState().settings.progressions).toEqual([...DEFAULT_PROGRESSIONS]);
-    expect(reduceApp(createAppState(), { type: "setProgressions", ids: ["circle"] }).settings.progressions).toEqual(["circle"]);
+  it("has unique ids, positive weights and at least one tag each", () => {
+    expect(new Set(PROGRESSIONS.map(p => p.id)).size).toBe(PROGRESSIONS.length);
+    for (const p of PROGRESSIONS) {
+      expect(p.weight, p.id).toBeGreaterThan(0);
+      expect(p.tags.length, p.id).toBeGreaterThan(0);
+    }
+  });
+
+  it("can be looked up by id, mode and tag", () => {
+    expect(progressionById("ii-V-I")?.name).toBe("ii–V–I");
+    expect(progressionById("nope")).toBeUndefined();
+    expect(progressionsWhere({ mode: "minor" }).every(p => p.mode === "minor")).toBe(true);
+    const jazz = progressionsWhere({ tag: "jazz" }).map(p => p.id);
+    expect(jazz).toContain("ii7-V7-Imaj7");
+    expect(jazz).not.toContain("I-V-vi-IV");
   });
 });
 
 describe("makeProgressionPrompt", () => {
-  it("only uses progressions in the selected key's mode", () => {
-    for (let i = 0; i < 100; i++) {
-      const p = makeProgressionPrompt(Math.random, DEFAULT_PROGRESSIONS, buildKey("D:minor"));
-      expect(p).toMatchObject({ id: "i-iv-V-i", keyValue: "D:minor", filterIgnored: false });
+  it("only uses progressions in the selected key's mode, in that key", () => {
+    for (let i = 0; i < 200; i++) {
+      const p = makeProgressionPrompt(Math.random, buildKey("D:minor"));
+      expect(p.keyValue).toBe("D:minor");
+      expect(progressionById(p.id)!.mode).toBe("minor");
     }
   });
 
-  it("picks a random key of the right mode when none is selected", () => {
+  it("picks a random key of the progression's mode when none is selected", () => {
     const keys = new Set<string>();
-    for (let i = 0; i < 200; i++) {
-      const p = makeProgressionPrompt(Math.random, ["ii-V-I"], null);
-      expect(p.keyValue).toMatch(/:major$/);
+    for (let i = 0; i < 300; i++) {
+      const p = makeProgressionPrompt(Math.random, null);
+      expect(p.keyValue.endsWith(":" + progressionById(p.id)!.mode)).toBe(true);
       keys.add(p.keyValue);
     }
-    expect(keys.size).toBeGreaterThan(8);
+    expect(keys.size).toBeGreaterThan(15);
   });
 
-  it("falls back to any progression in the key's mode when none selected fits, and says so", () => {
-    const p = makeProgressionPrompt(Math.random, ["ii-V-I"], buildKey("E:minor"));
-    expect(p.filterIgnored).toBe(true);
-    expect(PROGRESSIONS.find(d => d.id === p.id)!.mode).toBe("minor");
+  it("asks for common progressions more often, in proportion to their weight", () => {
+    const counts = new Map<string, number>();
+    const N = 20000;
+    for (let i = 0; i < N; i++) {
+      const id = makeProgressionPrompt(Math.random, buildKey("C:major")).id;
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    const major = progressionsWhere({ mode: "major" });
+    const total = major.reduce((sum, p) => sum + p.weight, 0);
+    for (const p of major) expect(counts.get(p.id)! / N, p.id).toBeCloseTo(p.weight / total, 1);
+    expect(counts.get("I-V-vi-IV")!).toBeGreaterThan(2 * counts.get("circle")!);
+  });
+
+  it("can draw from a smaller pool, e.g. by tag", () => {
+    for (let i = 0; i < 50; i++) {
+      const p = makeProgressionPrompt(Math.random, buildKey("C:major"), undefined, progressionsWhere({ tag: "jazz" }));
+      expect(progressionById(p.id)!.tags).toContain("jazz");
+    }
   });
 
   it("does not repeat the same progression in the same key", () => {
+    const pool = progressionsWhere({ mode: "major" }).filter(p => p.id === "ii-V-I" || p.id === "I-IV-V-I");
     const prev = prompt("ii-V-I", "C:major");
-    for (let i = 0; i < 50; i++) {
-      const p = makeProgressionPrompt(Math.random, ["ii-V-I", "I-IV-V-I"], buildKey("C:major"), prev);
-      expect(p.id).toBe("I-IV-V-I");
-    }
+    for (let i = 0; i < 50; i++) expect(makeProgressionPrompt(Math.random, buildKey("C:major"), prev, pool).id).toBe("I-IV-V-I");
   });
 });
 

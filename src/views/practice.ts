@@ -154,8 +154,7 @@ export function progressionDisplay(s: ProgressionState, style: PromptStyle): Pra
     label: "Play this progression, one chord at a time",
     promptHtml: steps.join('<span class="sep">–</span>'),
     size: "progression",
-    sub: `${prettyAcc(s.prompt.name)} in ${prettyAcc(key.label)}` +
-      (s.prompt.filterIgnored ? " · none of the selected progressions is in this mode, so any" : ""),
+    sub: `${prettyAcc(s.prompt.name)} in ${prettyAcc(key.label)}`,
     status: s.status === "done" ? "correct" : s.status === "wrong" ? "wrong" : "waiting",
     feedback, score,
   };

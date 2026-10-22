@@ -92,12 +92,17 @@ describe("reduceChordPractice", () => {
     expect(reduceChordPractice(s, held())).toBe(s);
   });
 
-  it("waits for all keys up when a new prompt appears while keys are held", () => {
+  it("after a new prompt, letting go of the previous chord is not a wrong attempt", () => {
+    let s = run(start, held(48, 52, 55, 59), { type: "next", prompt: { rootPc: 2, root: "D", type: "m" }, held: [48, 52, 55, 59] });
+    expect(s).toMatchObject({ status: "waiting", answered: 1, firstTry: 1 });
+    s = run(s, held(48, 52), held());
+    expect(s).toMatchObject({ status: "waiting", missed: false });
+  });
+
+  it("accepts the next chord reached legato from the previous one", () => {
+    // Cmaj7 held; the next prompt is C major: lifting the B leaves C E G
     let s = run(start, held(48, 52, 55, 59), { type: "next", prompt: { rootPc: 0, root: "C", type: "M" }, held: [48, 52, 55, 59] });
-    expect(s).toMatchObject({ status: "waiting", waitForRelease: true, answered: 1, firstTry: 1 });
-    s = run(s, held(48, 52, 55));                 // still holding: ignored, even though it is C major
-    expect(s.status).toBe("waiting");
-    s = run(s, held(), held(48, 52, 55));
+    s = run(s, held(48, 52, 55));
     expect(s).toMatchObject({ status: "correct", answered: 2, firstTry: 2 });
   });
 

@@ -1,6 +1,7 @@
 // Chord practice: the app names a chord, the player plays it in any voicing, inversion or octave.
 // Pure data and functions; the mode in src/modes/chordPractice.ts drives it.
 import { Note } from "tonal";
+import { freshAttempt, trackAttempt, type ChordAttempt } from "./chordAttempt";
 import {
   buildKey, chromaOf, KEY_MAJORS, KEY_MINORS, matchTemplate, ROOT_MAJOR, ROOT_MINOR, templateById,
   type KeyContext, type TemplateTone,
@@ -58,12 +59,15 @@ export function inversionTones(type: string): TemplateTone[] {
   return [...m.missing, ...m.omitted].filter(t => t.degree <= 7).sort((a, b) => a.degree - b.degree);
 }
 
+/** Requires a specific inversion: 0 = root position, 1 = 3rd (or sus tone) in the bass, and so on. */
+export function atInversion(prompt: ChordPrompt, number: number): ChordPrompt {
+  const bass = Note.transpose(prompt.root, inversionTones(prompt.type)[number].interval);
+  return { ...prompt, inversion: { number, bass, bassPc: chromaOf(bass) } };
+}
+
 /** Adds a random inversion (root position included) to a prompt. */
 export function withInversion(rng: Rng, prompt: ChordPrompt): ChordPrompt {
-  const tones = inversionTones(prompt.type);
-  const number = Math.floor(rng() * tones.length);
-  const bass = Note.transpose(prompt.root, tones[number].interval);
-  return { ...prompt, inversion: { number, bass, bassPc: chromaOf(bass) } };
+  return atInversion(prompt, Math.floor(rng() * inversionTones(prompt.type).length));
 }
 
 export interface RomanPrompt {
@@ -219,12 +223,10 @@ export interface ChordPracticeState {
   prompt: ChordPrompt;
   /** waiting: no judged attempt yet; wrong: the last attempt was wrong; correct: answered, about to move on */
   status: "waiting" | "wrong" | "correct";
-  /** Fullest set of notes held during the attempt in progress */
-  peak: number[];
+  /** The attempt in progress (see chordAttempt.ts) */
+  tracker: ChordAttempt;
   /** Notes of the last judged attempt, for feedback */
   attempt: number[] | null;
-  /** Ignore input until every key is up (after a new prompt appears while keys are held) */
-  waitForRelease: boolean;
   /** A wrong attempt was made on this prompt */
   missed: boolean;
   /** Prompts finished (answered or skipped) */
@@ -240,7 +242,7 @@ export type ChordPracticeAction =
   | { type: "skip"; prompt: ChordPrompt; held: number[] };
 
 export function initialChordPractice(prompt: ChordPrompt, held: number[] = []): ChordPracticeState {
-  return { prompt, status: "waiting", peak: [], attempt: null, waitForRelease: held.length > 0, missed: false, answered: 0, firstTry: 0 };
+  return { prompt, status: "waiting", tracker: freshAttempt(held), attempt: null, missed: false, answered: 0, firstTry: 0 };
 }
 
 export function reduceChordPractice(s: ChordPracticeState, a: ChordPracticeAction,
@@ -248,16 +250,12 @@ export function reduceChordPractice(s: ChordPracticeState, a: ChordPracticeActio
   switch (a.type) {
     case "held": {
       if (s.status === "correct") return s;   // answered; ignore input until the next prompt
-      if (s.waitForRelease) return a.notes.length ? s : { ...s, waitForRelease: false };
-      // Correct as soon as the held keys are the chord, so rolled chords work
-      if (isChord(a.notes, s.prompt, opts)) {
-        return { ...s, status: "correct", peak: [], attempt: a.notes, answered: s.answered + 1, firstTry: s.firstTry + (s.missed ? 0 : 1) };
+      const { attempt: tracker, outcome } = trackAttempt(s.tracker, a.notes, notes => isChord(notes, s.prompt, opts));
+      if (outcome.kind === "match") {
+        return { ...s, tracker, status: "correct", attempt: a.notes, answered: s.answered + 1, firstTry: s.firstTry + (s.missed ? 0 : 1) };
       }
-      // All keys up without ever matching: that attempt was wrong
-      if (!a.notes.length) {
-        return s.peak.length ? { ...s, status: "wrong", peak: [], attempt: s.peak, missed: true } : s;
-      }
-      return a.notes.length >= s.peak.length ? { ...s, peak: a.notes } : s;
+      if (outcome.kind === "miss") return { ...s, tracker, status: "wrong", attempt: outcome.notes, missed: true };
+      return { ...s, tracker };
     }
     case "next":
     case "skip":

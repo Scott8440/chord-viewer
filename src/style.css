@@ -12,7 +12,7 @@
   --warn: #e07a5f;
 }
 * { box-sizing: border-box; }
-/* The hidden attribute must win over display rules (e.g. .opt, #chordOptions) */
+/* The hidden attribute must win over display rules (e.g. .opt, #chordOptions, #exerciseOptions) */
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body {
@@ -102,6 +102,7 @@ main {
 #practicePrompt.sequence { font-size: clamp(22px, 2.6vw, 30px); }
 #practicePrompt .seqTitle { font-size: 1.6em; line-height: 1.1; margin-bottom: .35em; }
 #practicePrompt .seqRow { display: flex; flex-wrap: wrap; gap: .15em .45em; }
+#practicePrompt .seqRow .step .other { font-size: .5em; }
 #practicePrompt .step { display: inline-flex; flex-direction: column; align-items: center; }
 #practicePrompt .step .main { padding: 0 .08em .06em; border-bottom: 3px solid transparent; }
 #practicePrompt .step .other { font-family: system-ui, sans-serif; font-size: .3em; color: var(--muted); margin-top: .35em; }
@@ -112,7 +113,7 @@ main {
 #practicePrompt .acc { font-size: .8em; }
 #practicePrompt .ext { font-size: .55em; vertical-align: .55em; }
 #practiceSub { margin-top: 10px; color: var(--muted); font-size: 16px; min-height: 1.4em; }
-#chordOptions, #scaleOptions { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+#chordOptions, #exerciseOptions { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font-size: 13px; color: var(--muted); }
 #chordOptions details { flex-basis: 100%; }
 #practicePrompt .fig {
   display: inline-flex; flex-direction: column; font-size: .4em; line-height: .95;

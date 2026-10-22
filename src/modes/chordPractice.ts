@@ -4,20 +4,16 @@ import {
   type ChordPracticeAction, type ChordPracticeState,
 } from "../exercises/chordPractice";
 import type { Rng } from "../exercises/notePractice";
-import type { AppAction, AppState } from "../state/app";
-import type { Store } from "../state/store";
+import { buildKey } from "../theory";
 import type { NoteListView } from "../views/noteList";
 import { chordPracticeDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
-import { buildKey } from "../theory";
-import { createPerformanceDrawer, type Mode } from "./performance";
+import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type Mode } from "./performance";
 
 /** How long "✓ Correct" stays up before the next prompt */
 const NEXT_PROMPT_MS = 900;
 
-const heldNotes = (s: AppState) => [...s.perf.held.keys()].sort((a, b) => a - b);
-
-export function startChordPractice(store: Store<AppState, AppAction>, views: {
+export function startChordPractice(store: AppStore, views: {
   staff: StaffView; noteList: NoteListView; practice: PracticeView;
 }, rng: Rng = Math.random): Mode {
   const settings = () => store.getState().settings;
@@ -44,27 +40,21 @@ export function startChordPractice(store: Store<AppState, AppAction>, views: {
     }
   }
 
-  const unsubscribe = store.subscribe((s, prev) => {
-    if (s.perf.held !== prev.perf.held) {
-      const now = heldNotes(s), before = heldNotes(prev);
-      if (now.join() !== before.join()) apply({ type: "held", notes: now });
-    }
+  const offInput = onPlayerInput(store, { held: notes => apply({ type: "held", notes }) });
+  const offSettings = store.subscribe((s, prev) => {
     // A new prompt style needs a new prompt; a narrower filter may rule out the current chord
-    if (s.settings.promptStyle !== prev.settings.promptStyle ||
-        s.settings.inversions !== prev.settings.inversions ||
+    if (s.settings.promptStyle !== prev.settings.promptStyle || s.settings.inversions !== prev.settings.inversions ||
         (s.settings.chordTypes !== prev.settings.chordTypes && !s.settings.chordTypes.includes(state.prompt.type))) {
       apply({ type: "next", prompt: newPrompt(state.prompt), held: heldNotes(s) });
     }
-    if (s.perf !== prev.perf || s.settings !== prev.settings) drawer.schedule();
   });
-
   views.practice.render(chordPracticeDisplay(state, null));
-  drawer.schedule();
 
   return {
     stop() {
-      unsubscribe();
-      drawer.cancel();
+      offInput();
+      offSettings();
+      drawer.stop();
       clearTimeout(nextTimer);
     },
     skip() {

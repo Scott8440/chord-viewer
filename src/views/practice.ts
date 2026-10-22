@@ -4,7 +4,7 @@ import { Note } from "tonal";
 import { chordCorrections, hasBass, hasChordTones, type ChordPracticeState, type ChordPrompt, type PromptStyle } from "../exercises/chordPractice";
 import type { NotePracticeState } from "../exercises/notePractice";
 import type { ProgressionState } from "../exercises/progressions";
-import { bestRun, type RunResult, type SequenceState } from "../exercises/sequence";
+import { bestRun, type RunResult, type SequenceState, type SequenceStep, type WrongStep } from "../exercises/sequence";
 import { analyze, buildKey, FLAT, pcName, prettyAcc, SHARP, templateById, type KeyContext } from "../theory";
 import { chordSymbolHtml } from "./chordName";
 import { esc } from "./html";
@@ -139,15 +139,8 @@ function describeMiss(prompt: ChordPrompt, notes: number[], key: KeyContext | nu
 
 export function progressionDisplay(s: ProgressionState, style: PromptStyle): PracticeDisplay {
   const key = buildKey(s.prompt.keyValue)!;
-  // Each chord in the row: the prompt notation, plus the other notation once it has been played
-  const steps = s.prompt.chords.map((c, i) => {
-    const t = templateById(c.type)!;
-    const done = i < s.index;
-    const state = done ? "done" : i === s.index && s.status !== "done" ? "current" : "upcoming";
-    const main = style === "roman" ? romanHtml(c.roman!.numeral) : chordSymbolHtml(c.root, t.symbol);
-    const other = style === "roman" ? esc(prettyAcc(c.root + t.symbol)) : esc(prettyAcc(c.roman!.numeral));
-    return `<span class="step ${state}"><span class="main">${main}</span><span class="other">${done ? other : "&nbsp;"}</span></span>`;
-  });
+  const steps = s.prompt.chords.map((c, i) =>
+    chordStepHtml(c, style, i < s.index ? "done" : i === s.index && s.status !== "done" ? "current" : "upcoming"));
   let feedback = "";
   if (s.status === "done") feedback = "✓ Progression complete";
   else if (s.status === "wrong" && s.attempt) feedback = "✗ " + describeMiss(s.prompt.chords[s.index], s.attempt, key);
@@ -164,30 +157,65 @@ export function progressionDisplay(s: ProgressionState, style: PromptStyle): Pra
   };
 }
 
+/* ---------------------------------------------------------------
+   Rows of steps, shared by progressions and sequence exercises
+   --------------------------------------------------------------- */
+type StepState = "done" | "current" | "upcoming";
+
+/** One step in a row: green when done, underlined when current; an optional second line underneath. */
+function stepHtml(state: StepState, mainHtml: string, otherHtml?: string): string {
+  return `<span class="step ${state}"><span class="main">${mainHtml}</span>` +
+    (otherHtml === undefined ? "" : `<span class="other">${otherHtml || "&nbsp;"}</span>`) + "</span>";
+}
+
+/** A chord's name with its required bass, e.g. "Cmaj7/E" */
+function chordName(c: ChordPrompt): string {
+  return c.root + templateById(c.type)!.symbol + (c.inversion && c.inversion.number > 0 ? "/" + c.inversion.bass : "");
+}
+
+/** How a chord is asked for in a prompt style: "Cmaj7/E" or "Imaj7" (with figures when an inversion is required) */
+function chordPromptText(c: ChordPrompt, style: PromptStyle): string {
+  return prettyAcc(style === "roman" && c.roman ? c.roman.numeral : chordName(c));
+}
+
+/**
+ * A chord as a step: in the prompt's notation (chord name or Roman numeral), with the other notation revealed
+ * underneath once it has been played.
+ */
+function chordStepHtml(c: ChordPrompt, style: PromptStyle, state: StepState): string {
+  const t = templateById(c.type)!;
+  const slash = c.inversion && c.inversion.number > 0 ? c.inversion.bass : "";
+  const roman = style === "roman" && c.roman;
+  const main = roman ? romanHtml(c.roman!.numeral, c.inversion?.number) : chordSymbolHtml(c.root, t.symbol, slash);
+  const other = roman ? esc(prettyAcc(chordName(c))) : c.roman ? esc(prettyAcc(c.roman.numeral)) : "";
+  return stepHtml(state, main, state === "done" ? other : "");
+}
+
+
 /** Scale (and other note-sequence) exercise: the notes in a row, live feedback, and run results. */
-export function sequenceDisplay(s: SequenceState, key: KeyContext | null): PracticeDisplay {
+/** A sequence exercise (scale, diatonic chords …): the steps in a row, live feedback, and run results. */
+export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeDisplay {
   const ex = s.exercise;
+  const key = buildKey(ex.keyValue);
   const steps = ex.steps.map((st, i) => {
-    const state = s.status === "done" || i < s.index ? "done" : i === s.index ? "current" : "upcoming";
-    return `<span class="step ${state}"><span class="main">${esc(prettyAcc(st.name))}</span></span>`;
+    const state = s.status === "done" || (s.status === "playing" && i < s.index) ? "done"
+      : i === (s.status === "playing" ? s.index : 0) ? "current" : "upcoming";
+    return st.kind === "note" ? stepHtml(state, esc(prettyAcc(st.name))) : chordStepHtml(st.chord, style, state);
   });
-  const start = prettyAcc(ex.steps[0].name);
+  const stepText = (st: SequenceStep) => st.kind === "note" ? prettyAcc(st.name) : chordPromptText(st.chord, style);
+  const first = ex.steps[0];
   let feedback = "", status: PracticeDisplay["status"] = "waiting", sub = "";
   if (s.status === "playing" && s.lastWrong) {
-    const expected = ex.steps[s.index].name;
-    const { played } = s.lastWrong;
-    feedback = played % 12 === s.lastWrong.expected % 12
-      ? `✗ Right note, wrong octave: ${prettyAcc(expected)} ${played > s.lastWrong.expected ? "lower" : "higher"}`
-      : `✗ Expected ${prettyAcc(expected)}, not ${prettyAcc(pcName(played % 12, key))}`;
+    feedback = "✗ " + describeWrongStep(ex.steps[s.index], s.lastWrong, key);
     status = "wrong";
   } else if (s.startHint) {
-    feedback = `Start on ${start}`;
+    feedback = `Start ${first.kind === "note" ? "on" : "with"} ${stepText(first)}`;
   } else if (s.status === "done" && s.result) {
     feedback = (s.result.mistakes ? `Done · ${s.result.mistakes} mistake${s.result.mistakes > 1 ? "s" : ""}` : "✓ Clean run") +
       " · " + runText(s.result);
     status = s.result.mistakes ? "waiting" : "correct";
   }
-  if (s.status === "done") sub = `Play ${start} to go again`;
+  if (s.status === "done") sub = `Play ${stepText(first)} to go again`;
   else if (s.status === "playing" && s.mistakes) sub = `${s.mistakes} mistake${s.mistakes > 1 ? "s" : ""} so far`;
   const best = bestRun(s.runs);
   const clean = s.runs.filter(r => !r.mistakes).length;
@@ -196,10 +224,21 @@ export function sequenceDisplay(s: SequenceState, key: KeyContext | null): Pract
     promptHtml: `<div class="seqTitle">${esc(prettyNames(ex.title))}</div><div class="seqRow">${steps.join("")}</div>`,
     size: "sequence", sub, status, feedback,
     score: s.runs.length
-      ? `${s.runs.length} run${s.runs.length > 1 ? "s" : ""} · ${clean} clean · best: ${best!.mistakes ? best!.mistakes + " mistakes, " : ""}${Math.round(best!.evenness * 100)}% even`
+      ? `${s.runs.length} run${s.runs.length > 1 ? "s" : ""} · ${clean} clean · best: ${best!.mistakes ? `${best!.mistakes} mistake${best!.mistakes > 1 ? "s" : ""}, ` : ""}${Math.round(best!.evenness * 100)}% even`
       : "",
     skipLabel: "Restart",
   };
+}
+
+/** What went wrong at a step: a wrong note (or the right note in the wrong octave), or a chord's corrections. */
+function describeWrongStep(step: SequenceStep, wrong: WrongStep, key: KeyContext | null): string {
+  if (step.kind === "chord" && wrong.kind === "chord") return describeMiss(step.chord, wrong.notes, key);
+  if (step.kind !== "note" || wrong.kind !== "note") return "Not quite";
+  const expected = prettyAcc(step.name), { played } = wrong;
+  if (wrong.expected != null && played % 12 === wrong.expected % 12) {
+    return `Right note, wrong octave: ${expected} ${played > wrong.expected ? "lower" : "higher"}`;
+  }
+  return `Expected ${expected}, not ${prettyAcc(pcName(played % 12, key))}`;
 }
 
 /** Pretty accidentals on note names inside prose ("Eb major" -> "E♭ major"), leaving words like "back" alone. */

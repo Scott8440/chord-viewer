@@ -1,6 +1,7 @@
 // Progression practice: the app names a chord progression in a key; the player plays it one chord at a time.
 // Pure data and functions; the mode in src/modes/progressionPractice.ts drives it.
 import { buildKey, chromaOf, KEY_MAJORS, KEY_MINORS, type KeyContext } from "../theory";
+import { freshAttempt, trackAttempt, type ChordAttempt } from "./chordAttempt";
 import { isChord, type ChordPrompt } from "./chordPractice";
 import type { Rng } from "./notePractice";
 
@@ -121,12 +122,8 @@ export interface ProgressionState {
   index: number;
   /** playing: in progress; wrong: the last attempt at the current chord was wrong; done: all chords played */
   status: "playing" | "wrong" | "done";
-  /** Keys held at the last update, to tell new presses from releases */
-  prevHeld: number[];
-  /** A key was pressed since the last correct chord, so releasing everything judges an attempt */
-  pressed: boolean;
-  /** Fullest set of notes held during the attempt in progress */
-  peak: number[];
+  /** The attempt at the current chord (see chordAttempt.ts) */
+  tracker: ChordAttempt;
   /** Notes of the last wrong attempt, for feedback */
   attempt: number[] | null;
   /** A wrong attempt was made at the current chord */
@@ -143,34 +140,27 @@ export type ProgressionAction =
   | { type: "next"; prompt: ProgressionPrompt };
 
 export function initialProgression(prompt: ProgressionPrompt, held: number[] = []): ProgressionState {
-  return { prompt, index: 0, status: "playing", prevHeld: held, pressed: false, peak: [], attempt: null, missed: false,
+  return { prompt, index: 0, status: "playing", tracker: freshAttempt(held), attempt: null, missed: false,
            chordsAnswered: 0, chordsFirstTry: 0, completed: 0 };
 }
 
 export function reduceProgression(s: ProgressionState, a: ProgressionAction): ProgressionState {
   switch (a.type) {
     case "held": {
-      if (s.status === "done") return { ...s, prevHeld: a.notes };
-      const notes = a.notes;
-      const newPress = notes.some(n => !s.prevHeld.includes(n));
-      const next = { ...s, prevHeld: notes };
-      // Correct as soon as the held keys are the current chord, however they got there (legato is fine)
-      if (isChord(notes, s.prompt.chords[s.index])) {
+      if (s.status === "done") return { ...s, tracker: freshAttempt(a.notes) };
+      const { attempt: tracker, outcome } = trackAttempt(s.tracker, a.notes, notes => isChord(notes, s.prompt.chords[s.index]));
+      if (outcome.kind === "match") {
         const index = s.index + 1;
         const done = index === s.prompt.chords.length;
-        return { ...next, index, status: done ? "done" : "playing", pressed: false, peak: [], attempt: null, missed: false,
+        return { ...s, tracker, index, status: done ? "done" : "playing", attempt: null, missed: false,
                  chordsAnswered: s.chordsAnswered + 1, chordsFirstTry: s.chordsFirstTry + (s.missed ? 0 : 1),
                  completed: s.completed + (done ? 1 : 0) };
       }
-      // All keys up after pressing something: that attempt was wrong. Just letting go of the last chord is not.
-      if (!notes.length) {
-        return s.pressed ? { ...next, status: "wrong", pressed: false, peak: [], attempt: s.peak, missed: true } : next;
-      }
-      const pressed = s.pressed || newPress;
-      return { ...next, pressed, peak: pressed && notes.length >= s.peak.length ? notes : s.peak };
+      if (outcome.kind === "miss") return { ...s, tracker, status: "wrong", attempt: outcome.notes, missed: true };
+      return { ...s, tracker };
     }
     case "next":
-      return { ...initialProgression(a.prompt, s.prevHeld),
+      return { ...initialProgression(a.prompt, s.tracker.prevHeld),
                chordsAnswered: s.chordsAnswered, chordsFirstTry: s.chordsFirstTry, completed: s.completed };
   }
 }

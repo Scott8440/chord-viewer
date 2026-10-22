@@ -24,9 +24,9 @@ mode and views subscribe to the store.
   - `performance.ts`: pure reducer for held notes (per `source:channel`), pedal-sustained notes and pedals, plus
     `soundingNotes` and `pedalOnlyNotes`. Returns the same object when nothing changed.
   - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (the header key, which
-    is for free play only; pedal-notes-count option; active mode; and for the practice modes the chord types,
-    prompt style, whether inversions are required, and the scale exercise's own key, minor form and octaves);
-    `reduceApp` over `AppAction`s.
+    is for free play only; pedal-notes-count option; active mode; chord types, prompt style and inversions for chord
+    practice; and `exercise`, the `ExerciseOptions` shared by the prescriptive exercises). `createAppState(saved)`
+    takes saved settings and validates each one; `reduceApp` over `AppAction`s.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed. A subscriber
     that unsubscribes during a dispatch is not called for the rest of it (the old mode on a mode switch).
 - `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
@@ -36,43 +36,52 @@ mode and views subscribe to the store.
 - `src/exercises/`: exercises as pure data and functions. `notePractice.ts`: `makeNotePrompt` (random pitch class,
   never the same twice; spelled from the key, else sharp or flat at random) and `reduceNotePractice` (judges each
   note-on in any octave; tracks wrong attempts, answered and right-first-time counts; skip counts as answered).
+  `chordAttempt.ts`: the one place chords are judged from the held keys (`trackAttempt`): a match as soon as the
+  held keys form the target (rolled, or legato with common tones held); a miss only when keys were newly pressed
+  and then all released; letting go of keys already held is never an attempt. Used by chord practice,
+  progressions and chord steps in sequence exercises.
   `chordPractice.ts`: `CHORD_PRACTICE_GROUPS` (the types offered in the filter: triads, sixths/sevenths, ninths;
   ids are chord template ids), `makeChordPrompt` (random root + allowed type, never the same chord twice; root
   spelled from the key, else conventionally), `isChord` (every tone present in any voicing/inversion/octave,
   nothing extra; a left-out 5th fails unless `allowOmissions`) and `reduceChordPractice` (fed the held keys: correct
-  as soon as they form the chord, so rolled chords work; a wrong attempt is judged when every key is released, from
-  the fullest set held; after a new prompt it waits for all keys up). `chordCorrections` turns a wrong attempt into
+  via `chordAttempt.ts`). `chordCorrections` turns a wrong attempt into
   replace/add/remove steps (a wrong note within a whole step of a missing tone is a "replace"). Roman numeral prompts:
   `DIATONIC` lists each key's triads and sevenths (minor uses harmonic minor for V, V7, vii°, vii°7);
   `makeRomanPrompt` picks one in the given key, or a random key per prompt when none (the mode always passes none), limited to the
   selected chord types (if none occur in the key, any diatonic triad, flagged `filterIgnored`). A test checks that
   `analyze` + `romanFor` give back the same numeral for every diatonic chord in all 24 keys. Inversions:
   `withInversion` adds a random required inversion (root position included; the bass is a chord tone up to the
-  7th, never a 9th) and `isChord` then also needs that note lowest (`hasChordTones` + `hasBass`).
+  7th, never a 9th; `atInversion` asks for a specific one) and `isChord` then also needs that note lowest
+  (`hasChordTones` + `hasBass`).
   `progressions.ts`: `PROGRESSIONS`, the app's shared list of popular progressions (id, name, major/minor, steps of
   numeral + scale degree + chord type, a `weight` for how common it is, and style `tags`: basic, pop, jazz,
   classical; minor uses the natural scale, so VII not vii°). There is deliberately no user selector: other features
   should pick from this list (`progressionById`, `progressionsWhere({mode, tag})`). `progressionChords`,
   `makeProgressionPrompt` (weighted random pick, optionally from a smaller pool; a given key and only
-  progressions in its mode, or a random key of the progression's mode, which is what the mode uses) and `reduceProgression` (fed the held keys; a chord counts as soon as the held keys form
-  it, so legato with held common tones works; releasing the previous chord is not an attempt, only new presses
-  followed by all keys up). A test checks every progression in every key analyzes back to its chords and numerals.
-  **Prescriptive exercises** (see "Prescriptive exercises" below): `sequence.ts` is the generic exact-sequence
-  matcher (`reduceSequence`, `runResult`, `bestRun`); `scales.ts` builds `scaleExercise(key, minorForm, octaves)`.
+  progressions in its mode, or a random key of the progression's mode, which is what the mode uses) and
+  `reduceProgression` (judges each chord via `chordAttempt.ts`). A test checks every progression in every key
+  analyzes back to its chords and numerals.
+  **Prescriptive exercises** (see "Prescriptive exercises" below): `sequence.ts` is the generic sequence matcher
+  (note steps and chord steps; `reduceSequence`, `runResult`, `bestRun`); `scales.ts` builds `scaleExercise`;
+  `diatonicChords.ts` builds `diatonicChordsExercise`; `prescriptive.ts` is the registry (`PRESCRIPTIVE`: how each
+  exercise builds its sequence from the shared `ExerciseOptions`, and which options it uses).
 - `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts` (also `chordSymbolHtml`), `noteList.ts`,
   `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
   into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
   answered and add the played chord's numeral; inversions show as slash chords or figured bass (V⁶₅, I⁶₄, V⁴₂), and
-  a wrong bass gets "Right notes, wrong bass. Put E in the bass"; `progressionDisplay` shows the chords in a row,
-  green when played with the other notation revealed underneath, the current one underlined; `sequenceDisplay`
-  shows a sequence exercise's notes as a progress row, wrong note vs wrong octave, run results and a session
+  a wrong bass gets "Right notes, wrong bass. Put E in the bass"; rows of steps share `stepHtml` and
+  `chordStepHtml` (green when done, current underlined, a chord in the prompt's notation with the other one
+  revealed underneath once played); `progressionDisplay` and `sequenceDisplay` both use them; `sequenceDisplay`
+  covers note and chord steps: wrong note vs wrong octave, chord corrections, start hints, run results and a session
   summary, and relabels Skip as Restart), `filter.ts`
   (grouped checkboxes, used for the chord-type filter; the last one can't be unchecked), `header.ts` (MIDI
   status and input chips, pedal light, octave, key selector).
 - `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
-  card; each returns `{stop, skip?}`. `performance.ts` is the shared once-per-frame staff and note-list redraw; it
-  draws and spells in the key the mode gives it (free play: the header key; note and chord-name practice: none;
-  Roman numeral and progression prompts: the prompt's key; scales: the scale's key).
+  card; each returns `{stop, skip?}`. `performance.ts` holds what modes share: `createPerformanceDrawer` (subscribes
+  itself and redraws the staff and note list once per frame, in the key the mode gives it: free play the header
+  key; note and chord-name practice none; Roman numeral and progression prompts the prompt's key; exercises the
+  exercise's key), `onPlayerInput` (each note-on with its time, then each change of the held keys with the time of
+  the event behind it) and `heldNotes`.
   **Exercises never use the header key**, and the header Key picker is hidden outside free play: a key is either
   part of the prompt ("V7 in G major") or chosen inside the exercise (the scale selector).
   `freePlay.ts` adds the chord name with the 40 ms debounce. `notePractice.ts` feeds each new note-on from the
@@ -81,10 +90,13 @@ mode and views subscribe to the store.
   current chord. `progressionPractice.ts` feeds the held keys to the progression reducer and starts a new
   progression 1.2 s after the last chord. The chord filter, the prompt style (chord names or Roman numerals, shared
   by chord and progression practice) and the "Specific inversions" option are saved in localStorage.
-  `scalePractice.ts` builds the scale from the exercise's own Scale selector (24 keys, default C major), feeds each
-  note-on with its time to the sequence reducer, and swaps the exercise when the scale, minor form or octaves
-  change. The scale options are saved in localStorage.
-- `src/main.ts`: wiring only. Creates the store, views, mode and input sources; owns localStorage for the key.
+  `sequencePractice.ts` runs any exercise in `PRESCRIPTIVE` (modes "scales" and "diatonic"): builds it from the
+  shared exercise options, feeds note-ons and held keys with their times to the sequence reducer, and swaps in a
+  fresh exercise when the options change.
+- `src/main.ts`: wiring only. Loads saved settings into `createAppState` and saves them on every change
+  (localStorage), binds each control to its setting (`bindSelect`/`bindCheckbox`, which also blur so the computer
+  keys keep working), shows the controls the mode uses (exercise options are tagged `data-option` and shown when the
+  exercise lists them), and starts the mode, views and input sources.
 - `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
 - `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
   `chords.test.ts` covers template matching, cost explanations and transposition consistency;
@@ -94,7 +106,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 171 tests (54 voicings) should pass
+npm test           # Vitest: 192 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -163,18 +175,25 @@ Our own template matcher; tonal is only used for primitives (intervals, transpos
 ## Prescriptive exercises
 Repeatable exercises that need precise playing, as opposed to the random-prompt practice modes. The player picks
 the exercise and runs it again and again; each run is measured.
-- **Model:** a `SequenceExercise` is an ordered list of steps (semitone offset from the first note + spelled name).
-  The first note may be played in any octave and sets the octave of the run; after that every note-on must be the
-  exact next note. A wrong note is a mistake and the step waits for the right note (no restart). Judged on
-  note-ons, so releases and legato overlap don't matter.
-- **Runs:** finishing gives a `RunResult` (mistakes, duration, tempo in BPM with one note per beat, evenness =
-  1 − coefficient of variation of the gaps between notes, using the MIDI event timestamps). Playing the first note
+- **Model:** a `SequenceExercise` is an ordered list of steps, each a **note** (semitone offset from the
+  exercise's base pitch class + spelled name) or a **chord** (a `ChordPrompt`, optionally with a required
+  inversion). Note steps are judged on note-ons: the first one played may be in any octave and sets the octave of
+  the run, after that each must be exact. Chord steps are judged from the held keys via `chordAttempt.ts` (any
+  voicing, rolled or legato). A wrong attempt is a mistake and the step waits for the right one (no restart).
+  Steps can be mixed (an arpeggio then its chord); the note that completes a note step doesn't count against a
+  chord step that follows.
+- **Runs:** finishing gives a `RunResult` (mistakes, duration, tempo in BPM with one step per beat, evenness =
+  1 − coefficient of variation of the gaps between steps, using the MIDI event timestamps). Playing the first step
   again starts the next run; Restart abandons one. The session keeps every run and shows the best (fewest
   mistakes, then most even).
-- **Scales (built):** chosen in the exercise (Scale: any of the 24 keys), up and back down, 1 or 2 octaves; minor
-  scales offer natural, harmonic or melodic (melodic comes down natural). The prompt names it ("Play E♭ harmonic
-  minor up and back down…").
-- **Next, on the same matcher:** arpeggios and broken chords; hands together (steps with two notes); fingering
+- **Options and registry:** the exercises share `ExerciseOptions` (key, minor form, octaves, sevenths, root
+  position), with one Key selector inside the exercise. `PRESCRIPTIVE` lists each exercise's builder and the options
+  it uses; the UI shows just those. Adding an exercise is a builder, a registry entry, a mode id and a menu item.
+- **Scales (built):** any of the 24 keys, up and back down, 1 or 2 octaves; minor scales offer natural, harmonic
+  or melodic (melodic comes down natural). The prompt names it ("Play E♭ harmonic minor up and back down…").
+- **Diatonic chords (built):** the key's triads or seventh chords in order, I up to vii° and back to I (minor:
+  harmonic minor's V and vii°), in root position or any voicing; shown as chord names or Roman numerals.
+- **Next, on the same matcher:** arpeggios and broken chords (note steps, optionally ending on a chord step); hands together (steps with two notes); fingering
   hints; a target tempo with the metronome (step 4) and timing windows; keeping best runs (step 5); drawing the
   target notes on the staff.
 
@@ -194,7 +213,7 @@ the exercise and runs it again and again; each run is measured.
 3. **Started:** note practice (name a note, play it in any octave) and chord practice (a chord name or a Roman
    numeral in a key, from a filtered set of types, played in any voicing or a required inversion) and progression
    practice (a popular progression in a key, chord by chord), all with right/wrong feedback and a first-try score.
-   Prescriptive exercises (above) have started with scale practice.
+   Prescriptive exercises (above): scales and diatonic chords.
    **Exercises as data:** a prompt generator, a matcher with configurable tolerances (any voicing or a specific
    inversion, octave sensitivity, timing window) and feedback.
 4. **Audio** for ear training and a metronome: Web Audio with a look-ahead scheduler and a small sampled piano.

@@ -18,6 +18,7 @@
       <option value="chords">Chord practice</option>
       <option value="progressions">Progression practice</option>
       <option value="scales">Scale practice</option>
+      <option value="diatonic">Diatonic chords</option>
     </select>
   </label>
   <label class="pick" id="keyPick" title="Key for free play">Key
@@ -57,20 +58,24 @@
           <div id="chordFilterBody"></div>
         </details>
       </div>
-      <div id="scaleOptions" hidden>
-        <label class="pick">Scale
-          <select id="scaleKeySel"></select>
+      <div id="exerciseOptions" hidden>
+        <label class="pick" data-option="key">Key
+          <select id="exKey"></select>
         </label>
-        <label class="pick">Octaves
-          <select id="scaleOctaves"><option value="1">1</option><option value="2">2</option></select>
+        <label class="pick" data-option="octaves">Octaves
+          <select id="exOctaves"><option value="1">1</option><option value="2">2</option></select>
         </label>
-        <label class="pick" id="minorFormPick">Minor scale
-          <select id="minorForm">
+        <label class="pick" data-option="minorForm">Minor scale
+          <select id="exMinorForm">
             <option value="natural">Natural</option>
             <option value="harmonic">Harmonic</option>
             <option value="melodic">Melodic</option>
           </select>
         </label>
+        <label class="pick" data-option="sevenths">Chords
+          <select id="exChords"><option value="triads">Triads</option><option value="sevenths">Seventh chords</option></select>
+        </label>
+        <label class="opt" data-option="rootPosition"><input type="checkbox" id="exRootPosition"> Root position only</label>
       </div>
     </div>
     <div id="notes"></div>

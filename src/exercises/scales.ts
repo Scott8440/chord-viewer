@@ -1,7 +1,7 @@
 // Scale exercise: a scale played up and back down, as a prescriptive note sequence.
 import { Key } from "tonal";
 import { chromaOf, type KeyContext } from "../theory";
-import type { SequenceExercise, SequenceStep } from "./sequence";
+import type { NoteStep, SequenceExercise } from "./sequence";
 
 /** Minor scale forms; major keys always use the major scale */
 export const MINOR_FORMS = ["natural", "harmonic", "melodic"] as const;
@@ -13,7 +13,7 @@ export type ScaleOctaves = typeof SCALE_OCTAVES[number];
  * The scale of a key, up and back down over 1 or 2 octaves, starting and ending on the tonic.
  * Melodic minor goes up with the raised 6th and 7th and comes down as natural minor.
  */
-export function scaleExercise(key: KeyContext, minorForm: MinorForm, octaves: ScaleOctaves): SequenceExercise {
+export function scaleExercise(key: KeyContext, minorForm: MinorForm, octaves: ScaleOctaves): SequenceExercise<NoteStep> {
   const tonic = key.tonic;
   let up: readonly string[], down: readonly string[];
   if (key.mode === "major") {
@@ -25,17 +25,19 @@ export function scaleExercise(key: KeyContext, minorForm: MinorForm, octaves: Sc
   }
   const t = chromaOf(tonic);
   const offset = (name: string) => (chromaOf(name) - t + 12) % 12;
-  const steps: SequenceStep[] = [];
-  for (let o = 0; o < octaves; o++) for (const n of up) steps.push({ offset: 12 * o + offset(n), name: n });
-  steps.push({ offset: 12 * octaves, name: tonic });
-  for (let o = octaves - 1; o >= 0; o--) for (const n of [...down].reverse()) steps.push({ offset: 12 * o + offset(n), name: n });
+  const step = (octave: number, name: string): NoteStep => ({ kind: "note", offset: 12 * octave + offset(name), name });
+  const steps: NoteStep[] = [];
+  for (let o = 0; o < octaves; o++) for (const n of up) steps.push(step(o, n));
+  steps.push(step(octaves, tonic));
+  for (let o = octaves - 1; o >= 0; o--) for (const n of [...down].reverse()) steps.push(step(o, n));
 
   const form = key.mode === "major" ? "major" : `${minorForm} minor`;
   return {
     id: `scale:${tonic}:${key.mode}:${key.mode === "minor" ? minorForm : ""}:${octaves}`,
     title: `${tonic} ${form}`,
     instruction: `Play ${tonic} ${form} up and back down, ${octaves === 1 ? "one octave" : "two octaves"}, starting on any ${tonic}`,
-    startPc: t,
+    basePc: t,
+    keyValue: `${tonic}:${key.mode}`,
     steps,
   };
 }

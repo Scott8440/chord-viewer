@@ -1,71 +1,102 @@
 // Wiring: input sources dispatch events into the store; views and the active mode subscribe to it.
 import "./style.css";
+import { CHORD_PRACTICE_GROUPS, type PromptStyle } from "./exercises/chordPractice";
+import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "./exercises/prescriptive";
+import type { MinorForm, ScaleOctaves } from "./exercises/scales";
 import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
 import { createMidiSource } from "./input/midi";
-import { CHORD_PRACTICE_GROUPS, PROMPT_STYLES, sanitizeChordTypes, type PromptStyle } from "./exercises/chordPractice";
 import { startChordPractice } from "./modes/chordPractice";
 import { startFreePlay } from "./modes/freePlay";
-import { startProgressionPractice } from "./modes/progressionPractice";
-import { startScalePractice } from "./modes/scalePractice";
-import { MINOR_FORMS, SCALE_OCTAVES, type MinorForm, type ScaleOctaves } from "./exercises/scales";
 import { startNotePractice } from "./modes/notePractice";
 import type { Mode } from "./modes/performance";
-import { createAppState, MODES, reduceApp, type ModeId } from "./state/app";
+import { startProgressionPractice } from "./modes/progressionPractice";
+import { startSequencePractice } from "./modes/sequencePractice";
+import { createAppState, reduceApp, type AppAction, type ModeId, type Settings } from "./state/app";
 import { pedalDown } from "./state/performance";
 import { createStore } from "./state/store";
 import { analyze } from "./theory";
 import { createChordNameView } from "./views/chordName";
 import { createFilterView } from "./views/filter";
-import { createHeaderView, initKeySelect } from "./views/header";
+import { createHeaderView, fillKeySelect } from "./views/header";
 import { createNoteListView } from "./views/noteList";
 import { createPracticeView } from "./views/practice";
 import { createStaffView } from "./views/staff";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-const KEY_STORAGE = "chordDisplay.key";
-const MODE_STORAGE = "chordDisplay.mode";
-const CHORD_TYPES_STORAGE = "chordDisplay.chordTypes";
-const PROMPT_STYLE_STORAGE = "chordDisplay.promptStyle";
-const INVERSIONS_STORAGE = "chordDisplay.inversions";
-const SCALE_STORAGE = "chordDisplay.scale";
 
-// Settings
-const keySel = $<HTMLSelectElement>("keySel");
-let savedKey = "";
-try { savedKey = localStorage.getItem(KEY_STORAGE) || ""; } catch {}
-const optPedal = $<HTMLInputElement>("optPedal");
-const modeSel = $<HTMLSelectElement>("modeSel");
-let savedMode = "";
-try { savedMode = localStorage.getItem(MODE_STORAGE) || ""; } catch {}
-const initialMode: ModeId = (MODES as readonly string[]).includes(savedMode) ? savedMode as ModeId : "free";
-modeSel.value = initialMode;
-let savedChordTypes: string[] = [];
-try { savedChordTypes = JSON.parse(localStorage.getItem(CHORD_TYPES_STORAGE) || "[]"); } catch {}
-const promptStyleSel = $<HTMLSelectElement>("promptStyle");
-let savedPromptStyle = "";
-try { savedPromptStyle = localStorage.getItem(PROMPT_STYLE_STORAGE) || ""; } catch {}
-const initialPromptStyle: PromptStyle = (PROMPT_STYLES as readonly string[]).includes(savedPromptStyle) ? savedPromptStyle as PromptStyle : "names";
-promptStyleSel.value = initialPromptStyle;
-const optInversions = $<HTMLInputElement>("optInversions");
-try { optInversions.checked = localStorage.getItem(INVERSIONS_STORAGE) === "1"; } catch {}
-const minorFormSel = $<HTMLSelectElement>("minorForm"), scaleOctavesSel = $<HTMLSelectElement>("scaleOctaves");
-let savedScale: { key?: unknown; minorForm?: unknown; octaves?: unknown } = {};
-try { savedScale = JSON.parse(localStorage.getItem(SCALE_STORAGE) || "{}") ?? {}; } catch {}
-const initialMinorForm: MinorForm = (MINOR_FORMS as readonly unknown[]).includes(savedScale.minorForm) ? savedScale.minorForm as MinorForm : "natural";
-const initialOctaves: ScaleOctaves = (SCALE_OCTAVES as readonly unknown[]).includes(savedScale.octaves) ? savedScale.octaves as ScaleOctaves : 1;
-minorFormSel.value = initialMinorForm;
-const scaleKeySel = $<HTMLSelectElement>("scaleKeySel");
-const initialScaleKey = initKeySelect(scaleKeySel, typeof savedScale.key === "string" ? savedScale.key : "C:major", false);
-scaleOctavesSel.value = String(initialOctaves);
+/* ---------------------------------------------------------------
+   Settings, saved between sessions in localStorage
+   --------------------------------------------------------------- */
+const STORAGE = {
+  key: "chordDisplay.key", mode: "chordDisplay.mode", chordTypes: "chordDisplay.chordTypes",
+  promptStyle: "chordDisplay.promptStyle", inversions: "chordDisplay.inversions", exercise: "chordDisplay.exercise",
+  /** Scale options saved by an earlier version ({key, minorForm, octaves}), read if there are no exercise options */
+  legacyScale: "chordDisplay.scale",
+};
+const load = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+const loadJson = (k: string): unknown => { try { return JSON.parse(load(k) ?? "null"); } catch { return null; } };
+const save = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
 
-const store = createStore(reduceApp, createAppState(initKeySelect(keySel, savedKey), optPedal.checked, initialMode,
-                                                    sanitizeChordTypes(Array.isArray(savedChordTypes) ? savedChordTypes : []),
-                                                    initialPromptStyle, optInversions.checked, initialMinorForm, initialOctaves,
-                                                    initialScaleKey));
+const store = createStore(reduceApp, createAppState({
+  keyValue: load(STORAGE.key),
+  includeSustained: $<HTMLInputElement>("optPedal").checked,
+  mode: load(STORAGE.mode),
+  chordTypes: loadJson(STORAGE.chordTypes),
+  promptStyle: load(STORAGE.promptStyle),
+  inversions: load(STORAGE.inversions) === "1",
+  exercise: loadJson(STORAGE.exercise) ?? loadJson(STORAGE.legacyScale),
+}));
+store.subscribe((s, prev) => {
+  if (s.settings === prev.settings) return;
+  const t = s.settings;
+  save(STORAGE.key, t.keyValue);
+  save(STORAGE.mode, t.mode);
+  save(STORAGE.chordTypes, JSON.stringify(t.chordTypes));
+  save(STORAGE.promptStyle, t.promptStyle);
+  save(STORAGE.inversions, t.inversions ? "1" : "0");
+  save(STORAGE.exercise, JSON.stringify(t.exercise));
+});
 const input = (event: InputEvent) => store.dispatch({ type: "input", event });
 
-// Views
+/* ---------------------------------------------------------------
+   Controls: each shows a setting and dispatches changes to it
+   --------------------------------------------------------------- */
+function bindSelect(el: HTMLSelectElement, get: (s: Settings) => string, set: (value: string) => AppAction) {
+  el.value = get(store.getState().settings);
+  el.onchange = () => {
+    store.dispatch(set(el.value));
+    el.blur();   // so computer-key note input keeps working
+  };
+  store.subscribe(s => { if (el.value !== get(s.settings)) el.value = get(s.settings); });
+}
+
+function bindCheckbox(el: HTMLInputElement, get: (s: Settings) => boolean, set: (on: boolean) => AppAction) {
+  el.checked = get(store.getState().settings);
+  el.onchange = () => {
+    store.dispatch(set(el.checked));
+    el.blur();
+  };
+  store.subscribe(s => { el.checked = get(s.settings); });
+}
+
+fillKeySelect($("keySel"), true);
+fillKeySelect($("exKey"), false);
+bindSelect($("keySel"), s => s.keyValue, value => ({ type: "setKey", value }));
+bindSelect($("modeSel"), s => s.mode, mode => ({ type: "setMode", mode: mode as ModeId }));
+bindCheckbox($("optPedal"), s => s.includeSustained, on => ({ type: "setIncludeSustained", on }));
+bindSelect($("promptStyle"), s => s.promptStyle, style => ({ type: "setPromptStyle", style: style as PromptStyle }));
+bindCheckbox($("optInversions"), s => s.inversions, on => ({ type: "setInversions", on }));
+const setExercise = (options: Partial<ExerciseOptions>): AppAction => ({ type: "setExerciseOptions", options });
+bindSelect($("exKey"), s => s.exercise.key, key => setExercise({ key }));
+bindSelect($("exOctaves"), s => String(s.exercise.octaves), v => setExercise({ octaves: Number(v) as ScaleOctaves }));
+bindSelect($("exMinorForm"), s => s.exercise.minorForm, v => setExercise({ minorForm: v as MinorForm }));
+bindSelect($("exChords"), s => s.exercise.sevenths ? "sevenths" : "triads", v => setExercise({ sevenths: v === "sevenths" }));
+bindCheckbox($("exRootPosition"), s => s.exercise.rootPosition, rootPosition => setExercise({ rootPosition }));
+
+/* ---------------------------------------------------------------
+   Views
+   --------------------------------------------------------------- */
 const header = createHeaderView({
   statusDot: $("statusDot"), statusText: $("statusText"), inputs: $("inputs"), retry: $("retry"),
   pedal: $("pedal"), kbdOct: $("kbdOct"),
@@ -79,48 +110,56 @@ const practice = createPracticeView({
   label: $("practiceLabel"), prompt: $("practicePrompt"), sub: $("practiceSub"), feedback: $("practiceFeedback"), score: $("practiceScore"),
   skip: $("practiceSkip"),
 });
-const chordFilter = createFilterView({ summary: $("chordFilterSummary"), body: $("chordFilterBody") }, CHORD_PRACTICE_GROUPS, "Chord types", types => {
-  store.dispatch({ type: "setChordTypes", types });
-  try { localStorage.setItem(CHORD_TYPES_STORAGE, JSON.stringify(store.getState().settings.chordTypes)); } catch {}
-});
+const chordFilter = createFilterView({ summary: $("chordFilterSummary"), body: $("chordFilterBody") }, CHORD_PRACTICE_GROUPS, "Chord types",
+  types => store.dispatch({ type: "setChordTypes", types }));
 chordFilter.render(store.getState().settings.chordTypes);
 $("chordFilters").addEventListener("toggle", () => $("chordFilterSummary").blur());   // so Space stays the pedal
 store.subscribe((s, prev) => { if (s.settings.chordTypes !== prev.settings.chordTypes) chordFilter.render(s.settings.chordTypes); });
 
+/* ---------------------------------------------------------------
+   Modes: exactly one runs at a time and owns the right-hand card
+   --------------------------------------------------------------- */
+const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRESCRIPTIVE;
+const practiceViews = { staff, noteList, practice };
+const startMode = (id: ModeId): Mode =>
+  id === "free" ? startFreePlay(store, { staff, chordName, noteList })
+  : id === "notes" ? startNotePractice(store, practiceViews)
+  : id === "chords" ? startChordPractice(store, practiceViews)
+  : id === "progressions" ? startProgressionPractice(store, practiceViews)
+  : startSequencePractice(store, practiceViews, id);
 
-// Modes: exactly one runs at a time and owns the right-hand card
-const startMode: Record<ModeId, () => Mode> = {
-  free: () => startFreePlay(store, { staff, chordName, noteList }),
-  notes: () => startNotePractice(store, { staff, noteList, practice }),
-  chords: () => startChordPractice(store, { staff, noteList, practice }),
-  progressions: () => startProgressionPractice(store, { staff, noteList, practice }),
-  scales: () => startScalePractice(store, { staff, noteList, practice }),
-};
-let mode: Mode;
-function showMode(id: ModeId) {
+/** Shows the controls the mode uses: each exercise lists its options; the minor form only matters in minor keys. */
+function showControls(s: Settings) {
+  const id = s.mode;
   // The header key is for free play only; exercises name their key or have their own selector
   $("keyPick").hidden = id !== "free";
   $("freeView").hidden = id !== "free";
   $("practice").hidden = id === "free";
-  // Chord and progression practice share the prompt style; inversions and the type filter are chord practice only
-  $("chordOptions").hidden = id !== "chords" && id !== "progressions";
-  $("inversionsOpt").hidden = id !== "chords";
-  $("chordFilters").hidden = id !== "chords";
-  $("scaleOptions").hidden = id !== "scales";
-  mode = startMode[id]();
+  // Chord names vs Roman numerals matters wherever chords are prompted
+  $("chordOptions").hidden = !(id === "chords" || id === "progressions" || id === "diatonic");
+  $("inversionsOpt").hidden = $("chordFilters").hidden = id !== "chords";
+  const used: readonly ExerciseOption[] = isPrescriptive(id) ? PRESCRIPTIVE[id].options : [];
+  $("exerciseOptions").hidden = !used.length;
+  for (const el of document.querySelectorAll<HTMLElement>("#exerciseOptions [data-option]")) {
+    const option = el.dataset.option as ExerciseOption;
+    el.hidden = !used.includes(option) || (option === "minorForm" && !s.exercise.key.endsWith(":minor"));
+  }
 }
-showMode(initialMode);
-// Scale options: the minor form only matters for a minor scale
-const showMinorForm = (s = store.getState()) => { $("minorFormPick").hidden = !s.settings.scaleKey.endsWith(":minor"); };
-showMinorForm();
-store.subscribe((s, prev) => { if (s.settings.scaleKey !== prev.settings.scaleKey) showMinorForm(s); });
+
+let mode = startMode(store.getState().settings.mode);
+showControls(store.getState().settings);
 store.subscribe((s, prev) => {
-  if (s.settings.mode === prev.settings.mode) return;
-  mode.stop();
-  showMode(s.settings.mode);
+  if (s.settings === prev.settings) return;
+  showControls(s.settings);
+  if (s.settings.mode !== prev.settings.mode) {
+    mode.stop();
+    mode = startMode(s.settings.mode);
+  }
 });
 
-// Input sources
+/* ---------------------------------------------------------------
+   Input sources and buttons
+   --------------------------------------------------------------- */
 const midi = createMidiSource(input, status => header.showMidiStatus(status));
 const keyboard = createKeyboardSource(input, octave => header.setOctave(octave));
 
@@ -129,49 +168,6 @@ function panic() {
   keyboard.reset();
 }
 
-function onKeyChange() {
-  store.dispatch({ type: "setKey", value: keySel.value });
-  try { localStorage.setItem(KEY_STORAGE, keySel.value); } catch {}
-  keySel.blur();   // so computer-key note input keeps working
-}
-
-// Controls
-keySel.onchange = onKeyChange;
-optPedal.onchange = () => store.dispatch({ type: "setIncludeSustained", on: optPedal.checked });
-optInversions.onchange = () => {
-  store.dispatch({ type: "setInversions", on: optInversions.checked });
-  try { localStorage.setItem(INVERSIONS_STORAGE, optInversions.checked ? "1" : "0"); } catch {}
-  optInversions.blur();   // so computer-key note input keeps working
-};
-const saveScaleOptions = () => {
-  const { scaleKey, minorForm, scaleOctaves } = store.getState().settings;
-  try { localStorage.setItem(SCALE_STORAGE, JSON.stringify({ key: scaleKey, minorForm, octaves: scaleOctaves })); } catch {}
-};
-scaleKeySel.onchange = () => {
-  store.dispatch({ type: "setScaleOptions", key: scaleKeySel.value });
-  saveScaleOptions();
-  scaleKeySel.blur();   // so computer-key note input keeps working
-};
-minorFormSel.onchange = () => {
-  store.dispatch({ type: "setScaleOptions", minorForm: minorFormSel.value as MinorForm });
-  saveScaleOptions();
-  minorFormSel.blur();   // so computer-key note input keeps working
-};
-scaleOctavesSel.onchange = () => {
-  store.dispatch({ type: "setScaleOptions", octaves: Number(scaleOctavesSel.value) as ScaleOctaves });
-  saveScaleOptions();
-  scaleOctavesSel.blur();
-};
-promptStyleSel.onchange = () => {
-  store.dispatch({ type: "setPromptStyle", style: promptStyleSel.value as PromptStyle });
-  try { localStorage.setItem(PROMPT_STYLE_STORAGE, promptStyleSel.value); } catch {}
-  promptStyleSel.blur();   // so computer-key note input keeps working
-};
-modeSel.onchange = () => {
-  store.dispatch({ type: "setMode", mode: modeSel.value as ModeId });
-  try { localStorage.setItem(MODE_STORAGE, modeSel.value); } catch {}
-  modeSel.blur();   // so computer-key note input keeps working
-};
 $("practiceSkip").onclick = () => {
   $("practiceSkip").blur();   // so Space (pedal) doesn't press it again
   mode.skip?.();
@@ -187,7 +183,7 @@ declare global {
 }
 const now = () => performance.now();
 window.__chord = {
-  setKey: (v: string) => { keySel.value = v; onKeyChange(); },
+  setKey: (value: string) => store.dispatch({ type: "setKey", value }),
   analyze: (notes: number[]) => analyze(notes, store.getState().settings.key),
   noteOn: (note: number, source = "console", channel = 0) => input({ type: "noteOn", note, velocity: 100, time: now(), source, channel }),
   noteOff: (note: number, source = "console", channel = 0) => input({ type: "noteOff", note, velocity: 0, time: now(), source, channel }),

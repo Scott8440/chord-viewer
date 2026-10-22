@@ -1,49 +1,72 @@
-// Prescriptive exercises: an exact sequence of notes, played in order, judged note-on by note-on.
+// Prescriptive exercises: an exact sequence of steps, played in order. Each step is either a single note (judged
+// note-on by note-on, octave included) or a chord (judged from the held keys, like chord practice).
 // Repeatable: the same exercise can be run again and again, and each run is measured.
-// Pure data and functions; scales are the first exercise built on it (see scales.ts).
+// Pure data and functions; exercises are built from it in scales.ts and diatonicChords.ts.
+import { freshAttempt, trackAttempt, type ChordAttempt } from "./chordAttempt";
+import { isChord, type ChordPrompt } from "./chordPractice";
 
-export interface SequenceStep {
-  /** Semitones above the first note of the run */
+export interface NoteStep {
+  kind: "note";
+  /** Semitones above the exercise's base pitch class, in the octave the run is played in */
   offset: number;
   /** Spelled note name, e.g. "F#" */
   name: string;
 }
 
-export interface SequenceExercise {
-  /** Identifies the exercise and its settings, e.g. "scale:C:major:1" */
+export interface ChordStep {
+  kind: "chord";
+  /** The chord to play: any voicing, or a required bass if `chord.inversion` is set */
+  chord: ChordPrompt;
+}
+
+export type SequenceStep = NoteStep | ChordStep;
+
+/** An exercise; `S` narrows the kind of steps (a scale is all note steps, diatonic chords all chord steps). */
+export interface SequenceExercise<S extends SequenceStep = SequenceStep> {
+  /** Identifies the exercise and its settings, e.g. "scale:C:major::1" */
   id: string;
   title: string;
   /** Instruction shown above the exercise */
   instruction: string;
-  /** The first step must be this pitch class; the octave it is played in sets the octave of the run */
-  startPc: number;
-  steps: readonly SequenceStep[];
+  /** Note steps' offsets count from this pitch class; the first note step played sets the octave of the run */
+  basePc: number;
+  /** Key the exercise is in, e.g. "C:major": for spelling and the staff's key signature */
+  keyValue: string;
+  steps: readonly S[];
 }
 
 export interface RunResult {
   mistakes: number;
-  /** First note to last note */
+  /** First step to last step */
   durationMs: number;
-  /** Average tempo, counting each note as one beat */
+  /** Average tempo, counting each step as one beat */
   bpm: number;
-  /** 1 = perfectly even gaps between notes; 1 minus the coefficient of variation of the gaps, floored at 0 */
+  /** 1 = perfectly even gaps between steps; 1 minus the coefficient of variation of the gaps, floored at 0 */
   evenness: number;
 }
 
+export type WrongStep =
+  /** A wrong note; `expected` is null when the run's octave is not known yet */
+  | { kind: "note"; expected: number | null; played: number }
+  /** A chord attempt that never formed the chord */
+  | { kind: "chord"; notes: number[] };
+
 export interface SequenceState {
   exercise: SequenceExercise;
-  /** ready: waiting for the first note; playing: a run is in progress; done: the last run finished */
+  /** ready: waiting for the first step; playing: a run is in progress; done: the last run finished */
   status: "ready" | "playing" | "done";
-  /** MIDI note the run started on */
+  /** MIDI note of the base pitch class in the octave of the run, once a note step has been played */
   anchor: number | null;
   /** Index of the next step to play */
   index: number;
   mistakes: number;
-  /** The last note played was wrong: what was expected and what was played */
-  lastWrong: { expected: number; played: number } | null;
-  /** A note other than the starting note was played while waiting to start */
+  /** The last attempt at the current step was wrong */
+  lastWrong: WrongStep | null;
+  /** Something other than the first step was played while waiting to start */
   startHint: boolean;
-  /** Times of the correct notes in the current run */
+  /** The chord attempt in progress (see chordAttempt.ts) */
+  tracker: ChordAttempt;
+  /** Times the steps of the current run were completed */
   times: number[];
   /** Result of the last finished run */
   result: RunResult | null;
@@ -53,45 +76,67 @@ export interface SequenceState {
 
 export type SequenceAction =
   | { type: "noteOn"; note: number; time: number }
+  /** The keys currently held changed (MIDI numbers, low to high) */
+  | { type: "held"; notes: number[]; time: number }
   | { type: "restart" }
   | { type: "setExercise"; exercise: SequenceExercise };
 
-export function initialSequence(exercise: SequenceExercise): SequenceState {
+export function initialSequence(exercise: SequenceExercise, held: number[] = []): SequenceState {
   return { exercise, status: "ready", anchor: null, index: 0, mistakes: 0, lastWrong: null, startHint: false,
-           times: [], result: null, runs: [] };
+           tracker: freshAttempt(held), times: [], result: null, runs: [] };
 }
 
-/** MIDI note expected at a step, once the run's octave is known. */
-export const expectedNote = (s: SequenceState, index = s.index) => s.anchor! + s.exercise.steps[index].offset;
+/** The step being waited for: the next one in a run, or the first one before a run starts. */
+export const currentStep = (s: SequenceState): SequenceStep => s.exercise.steps[s.status === "playing" ? s.index : 0];
 
 export function reduceSequence(s: SequenceState, a: SequenceAction): SequenceState {
   switch (a.type) {
     case "noteOn": {
-      if (s.status !== "playing") {
-        // Start (or start again) on the first note, in any octave
-        if (a.note % 12 !== s.exercise.startPc) return s.startHint ? s : { ...s, startHint: true };
-        const started: SequenceState = { ...s, status: "playing", anchor: a.note, index: 1, mistakes: 0, lastWrong: null,
-                                         startHint: false, times: [a.time], result: null };
-        return started.index === s.exercise.steps.length ? finish(started) : started;
+      const step = currentStep(s);
+      if (step.kind !== "note") return s;    // chord steps are judged from the held keys
+      const anchor = s.status === "playing" ? s.anchor : null;
+      const ok = anchor != null
+        ? a.note === anchor + step.offset
+        // No octave yet: the right pitch class in any octave sets it
+        : (a.note - step.offset - s.exercise.basePc) % 12 === 0;
+      // The note just played is still down: if a chord step comes next, it is not part of that chord's attempt
+      if (ok) return advance({ ...s, tracker: freshAttempt([...new Set([...s.tracker.prevHeld, a.note])]) },
+                             a.time, anchor ?? a.note - step.offset);
+      if (s.status !== "playing") return s.startHint ? s : { ...s, startHint: true };
+      return { ...s, mistakes: s.mistakes + 1,
+               lastWrong: { kind: "note", expected: anchor == null ? null : anchor + step.offset, played: a.note } };
+    }
+    case "held": {
+      const step = currentStep(s);
+      // Keep the chord tracker in step with the keys even while note steps are being played
+      if (step.kind !== "chord") return { ...s, tracker: freshAttempt(a.notes) };
+      const { attempt: tracker, outcome } = trackAttempt(s.tracker, a.notes, notes => isChord(notes, step.chord));
+      if (outcome.kind === "match") return advance({ ...s, tracker }, a.time, s.anchor);
+      if (outcome.kind === "miss") {
+        if (s.status !== "playing") return { ...s, tracker, startHint: true };
+        return { ...s, tracker, mistakes: s.mistakes + 1, lastWrong: { kind: "chord", notes: outcome.notes } };
       }
-      const expected = expectedNote(s);
-      if (a.note !== expected) return { ...s, mistakes: s.mistakes + 1, lastWrong: { expected, played: a.note } };
-      const next = { ...s, index: s.index + 1, lastWrong: null, times: [...s.times, a.time] };
-      return next.index === s.exercise.steps.length ? finish(next) : next;
+      return { ...s, tracker };
     }
     case "restart":
       return { ...s, status: "ready", anchor: null, index: 0, mistakes: 0, lastWrong: null, startHint: false, times: [] };
     case "setExercise":
-      return a.exercise.id === s.exercise.id ? s : initialSequence(a.exercise);
+      return a.exercise.id === s.exercise.id ? s : initialSequence(a.exercise, s.tracker.prevHeld);
   }
 }
 
-function finish(s: SequenceState): SequenceState {
-  const result = runResult(s.times, s.mistakes);
-  return { ...s, status: "done", result, runs: [...s.runs, result] };
+/** The current step was played at `time`: start a run, move on, or finish. */
+function advance(s: SequenceState, time: number, anchor: number | null): SequenceState {
+  const next: SequenceState = s.status === "playing"
+    ? { ...s, anchor, index: s.index + 1, lastWrong: null, times: [...s.times, time] }
+    // Start (or start again) with the first step
+    : { ...s, status: "playing", anchor, index: 1, mistakes: 0, lastWrong: null, startHint: false, times: [time], result: null };
+  if (next.index < s.exercise.steps.length) return next;
+  const result = runResult(next.times, next.mistakes);
+  return { ...next, status: "done", result, runs: [...next.runs, result] };
 }
 
-/** Tempo and evenness from the times of the notes of a run. */
+/** Tempo and evenness from the times of the steps of a run. */
 export function runResult(times: readonly number[], mistakes: number): RunResult {
   const gaps = times.slice(1).map((t, i) => t - times[i]);
   const durationMs = times.length ? times[times.length - 1] - times[0] : 0;

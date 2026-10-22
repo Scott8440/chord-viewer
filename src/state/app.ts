@@ -1,13 +1,13 @@
 // Whole-app state: the performance, a history of recent input events, and user settings.
-import { DEFAULT_CHORD_TYPES, sanitizeChordTypes, type PromptStyle } from "../exercises/chordPractice";
-import type { MinorForm, ScaleOctaves } from "../exercises/scales";
+import { DEFAULT_CHORD_TYPES, PROMPT_STYLES, sanitizeChordTypes, type PromptStyle } from "../exercises/chordPractice";
+import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/prescriptive";
 import type { InputEvent } from "../input/events";
 import { buildKey, isKeyValue, type KeyContext } from "../theory";
 import { initialPerformance, reducePerformance, type PerformanceState } from "./performance";
 
 export const HISTORY_LIMIT = 512;
 
-export const MODES = ["free", "notes", "chords", "progressions", "scales"] as const;
+export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
@@ -20,14 +20,23 @@ export interface Settings {
   readonly mode: ModeId;
   /** Chord template ids that chord practice may ask for */
   readonly chordTypes: readonly string[];
-  /** Chord practice prompts: chord names or Roman numerals */
+  /** Chord and progression practice (and chord steps in exercises): chord names or Roman numerals */
   readonly promptStyle: PromptStyle;
   /** Chord practice asks for a specific inversion */
   readonly inversions: boolean;
-  /** Scale practice: the scale's key (e.g. "A:minor"), which minor scale to use in minor keys, and how many octaves */
-  readonly scaleKey: string;
-  readonly minorForm: MinorForm;
-  readonly scaleOctaves: ScaleOctaves;
+  /** Options shared by the prescriptive exercises (scales, diatonic chords) */
+  readonly exercise: ExerciseOptions;
+}
+
+/** Settings as saved between sessions; anything missing or invalid falls back to its default. */
+export interface SavedSettings {
+  keyValue?: unknown;
+  includeSustained?: unknown;
+  mode?: unknown;
+  chordTypes?: unknown;
+  promptStyle?: unknown;
+  inversions?: unknown;
+  exercise?: unknown;
 }
 
 export interface AppState {
@@ -45,17 +54,25 @@ export type AppAction =
   | { type: "setChordTypes"; types: readonly string[] }
   | { type: "setPromptStyle"; style: PromptStyle }
   | { type: "setInversions"; on: boolean }
-  | { type: "setScaleOptions"; key?: string; minorForm?: MinorForm; octaves?: ScaleOctaves };
+  | { type: "setExerciseOptions"; options: Partial<ExerciseOptions> };
 
-export function createAppState(keyValue = "", includeSustained = true, mode: ModeId = "free",
-                               chordTypes: readonly string[] = DEFAULT_CHORD_TYPES, promptStyle: PromptStyle = "names",
-                               inversions = false, minorForm: MinorForm = "natural", scaleOctaves: ScaleOctaves = 1,
-                               scaleKey = "C:major"): AppState {
+const oneOf = <T>(values: readonly T[], v: unknown, fallback: T): T => values.includes(v as T) ? v as T : fallback;
+
+/** Initial state from saved settings, validating each one. */
+export function createAppState(saved: SavedSettings = {}): AppState {
+  const keyValue = typeof saved.keyValue === "string" && isKeyValue(saved.keyValue) ? saved.keyValue : "";
   return {
     perf: initialPerformance,
     history: [],
-    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes), promptStyle, inversions,
-                scaleKey: isKeyValue(scaleKey) ? scaleKey : "C:major", minorForm, scaleOctaves },
+    settings: {
+      keyValue, key: buildKey(keyValue),
+      includeSustained: typeof saved.includeSustained === "boolean" ? saved.includeSustained : true,
+      mode: oneOf(MODES, saved.mode, "free"),
+      chordTypes: sanitizeChordTypes(Array.isArray(saved.chordTypes) ? saved.chordTypes : DEFAULT_CHORD_TYPES),
+      promptStyle: oneOf(PROMPT_STYLES, saved.promptStyle, "names"),
+      inversions: saved.inversions === true,
+      exercise: sanitizeExerciseOptions(saved.exercise),
+    },
   };
 }
 
@@ -79,11 +96,10 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return a.style === s.settings.promptStyle ? s : { ...s, settings: { ...s.settings, promptStyle: a.style } };
     case "setInversions":
       return a.on === s.settings.inversions ? s : { ...s, settings: { ...s.settings, inversions: a.on } };
-    case "setScaleOptions": {
-      const scaleKey = a.key && isKeyValue(a.key) ? a.key : s.settings.scaleKey;
-      const minorForm = a.minorForm ?? s.settings.minorForm, scaleOctaves = a.octaves ?? s.settings.scaleOctaves;
-      return scaleKey === s.settings.scaleKey && minorForm === s.settings.minorForm && scaleOctaves === s.settings.scaleOctaves ? s
-        : { ...s, settings: { ...s.settings, scaleKey, minorForm, scaleOctaves } };
+    case "setExerciseOptions": {
+      const exercise = sanitizeExerciseOptions({ ...s.settings.exercise, ...a.options });
+      const same = (Object.keys(exercise) as (keyof ExerciseOptions)[]).every(k => exercise[k] === s.settings.exercise[k]);
+      return same ? s : { ...s, settings: { ...s.settings, exercise } };
     }
   }
 }

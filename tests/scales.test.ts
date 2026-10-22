@@ -19,14 +19,14 @@ describe("scaleExercise", () => {
   it("goes up and back down one octave, starting and ending on the tonic", () => {
     expect(Cmajor.steps.map(s => s.name).join(" ")).toBe("C D E F G A B C B A G F E D C");
     expect(Cmajor.steps.map(s => s.offset)).toEqual([0, 2, 4, 5, 7, 9, 11, 12, 11, 9, 7, 5, 4, 2, 0]);
-    expect(Cmajor).toMatchObject({ title: "C major", startPc: 0 });
+    expect(Cmajor).toMatchObject({ title: "C major", basePc: 0, keyValue: "C:major" });
   });
 
   it("covers two octaves with 29 notes", () => {
     const two = scaleExercise(C, "natural", 2);
     expect(two.steps).toHaveLength(29);
     expect(Math.max(...two.steps.map(s => s.offset))).toBe(24);
-    expect(two.steps[14]).toEqual({ offset: 24, name: "C" });
+    expect(two.steps[14]).toEqual({ kind: "note", offset: 24, name: "C" });
   });
 
   it("spells from the key, with sharps and flats as the scale needs", () => {
@@ -112,49 +112,58 @@ describe("run measurements", () => {
 describe("sequenceDisplay", () => {
   it("shows the scale, progress and feedback", () => {
     let s = run(initialSequence(Cmajor), ...play([60, 62]));
-    let d = sequenceDisplay(s, C);
+    let d = sequenceDisplay(s, "names");
     expect(d.label).toBe("Play C major up and back down, one octave, starting on any C");
     expect(d.promptHtml).toMatch(/^<div class="seqTitle">C major<\/div><div class="seqRow"><span class="step done">/);
     expect(d.skipLabel).toBe("Restart");
     s = run(s, { type: "noteOn", note: 63, time: 600 });
-    expect(sequenceDisplay(s, C).feedback).toBe("✗ Expected E, not E♭");
+    expect(sequenceDisplay(s, "names").feedback).toBe("✗ Expected E, not E♭");
     s = run(s, { type: "noteOn", note: 52, time: 700 });
-    expect(sequenceDisplay(s, C).feedback).toBe("✗ Right note, wrong octave: E higher");
-    expect(sequenceDisplay(s, C).sub).toBe("2 mistakes so far");
+    expect(sequenceDisplay(s, "names").feedback).toBe("✗ Right note, wrong octave: E higher");
+    expect(sequenceDisplay(s, "names").sub).toBe("2 mistakes so far");
   });
 
   it("reports a run when it ends", () => {
     const s = run(initialSequence(Cmajor), ...play(absolute(Cmajor, 60)));
-    const d = sequenceDisplay(s, C);
+    const d = sequenceDisplay(s, "names");
     expect(d).toMatchObject({ status: "correct", feedback: "✓ Clean run · 3.5 s · 240 BPM · 100% even",
                               sub: "Play C to go again", score: "1 run · 1 clean · best: 100% even" });
   });
 
   it("writes accidentals as symbols in the title and instruction, without touching other words", () => {
-    const d = sequenceDisplay(initialSequence(scaleExercise(buildKey("Bb:minor")!, "melodic", 2)), null);
+    const d = sequenceDisplay(initialSequence(scaleExercise(buildKey("Bb:minor")!, "melodic", 2)), "names");
     expect(d.label).toBe("Play B♭ melodic minor up and back down, two octaves, starting on any B♭");
     expect(d.promptHtml).toMatch(/^<div class="seqTitle">B♭ melodic minor<\/div>/);
   });
 
   it("asks for the starting note", () => {
-    expect(sequenceDisplay(run(initialSequence(Cmajor), { type: "noteOn", note: 61, time: 0 }), C).feedback).toBe("Start on C");
+    expect(sequenceDisplay(run(initialSequence(Cmajor), { type: "noteOn", note: 61, time: 0 }), "names").feedback).toBe("Start on C");
   });
 });
 
-describe("scale settings", () => {
-  it("default to C major, natural minor and one octave, and change independently", () => {
+describe("exercise settings", () => {
+  it("default to C major, natural minor, one octave, triads in root position", () => {
+    expect(createAppState().settings.exercise).toEqual({ key: "C:major", minorForm: "natural", octaves: 1, sevenths: false, rootPosition: true });
+  });
+
+  it("change one option at a time, keep the rest, and ignore invalid values", () => {
     const s = createAppState();
-    expect(s.settings).toMatchObject({ scaleKey: "C:major", minorForm: "natural", scaleOctaves: 1 });
-    expect(reduceApp(s, { type: "setScaleOptions", key: "F#:minor" }).settings.scaleKey).toBe("F#:minor");
-    expect(reduceApp(s, { type: "setScaleOptions", key: "nonsense" })).toBe(s);
-    expect(createAppState("", true, "free", undefined, "names", false, "natural", 1, "bogus").settings.scaleKey).toBe("C:major");
-    const t = reduceApp(s, { type: "setScaleOptions", octaves: 2 });
-    expect(t.settings).toMatchObject({ minorForm: "natural", scaleOctaves: 2 });
-    expect(reduceApp(t, { type: "setScaleOptions", octaves: 2 })).toBe(t);
+    const t = reduceApp(s, { type: "setExerciseOptions", options: { octaves: 2, key: "F#:minor" } });
+    expect(t.settings.exercise).toMatchObject({ key: "F#:minor", octaves: 2, minorForm: "natural" });
+    expect(reduceApp(t, { type: "setExerciseOptions", options: { octaves: 2 } })).toBe(t);
+    expect(reduceApp(s, { type: "setExerciseOptions", options: { key: "nonsense" } })).toBe(s);
+  });
+
+  it("load saved options, including scale options saved by an older version, and drop bad ones", () => {
+    expect(createAppState({ exercise: { key: "Eb:minor", minorForm: "melodic", octaves: 2 } }).settings.exercise)
+      .toMatchObject({ key: "Eb:minor", minorForm: "melodic", octaves: 2, sevenths: false, rootPosition: true });
+    expect(createAppState({ exercise: { key: "bogus", octaves: 7, sevenths: "yes" } }).settings.exercise)
+      .toEqual(createAppState().settings.exercise);
+    expect(createAppState({ exercise: "garbage" }).settings.exercise).toEqual(createAppState().settings.exercise);
   });
 
   it("are separate from the header key, which exercises never use", () => {
     const s = reduceApp(createAppState(), { type: "setKey", value: "G:major" });
-    expect(s.settings).toMatchObject({ keyValue: "G:major", scaleKey: "C:major" });
+    expect(s.settings).toMatchObject({ keyValue: "G:major", exercise: { key: "C:major" } });
   });
 });

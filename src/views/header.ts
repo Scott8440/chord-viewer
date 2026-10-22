@@ -62,11 +62,8 @@ export function createHeaderView(els: {
   };
 }
 
-/**
- * Fills a key <select> (12 major and 12 minor keys, plus "None" unless `withNone` is false) and selects `saved`
- * if it is a valid option, else the first option. Returns the value actually selected.
- */
-export function initKeySelect(sel: HTMLSelectElement, saved: string, withNone = true): string {
+/** Fills a key <select> with the 12 major and 12 minor keys, plus "None" unless `withNone` is false. */
+export function fillKeySelect(sel: HTMLSelectElement, withNone = true): void {
   const opt = (value: string, text: string) => { const o = document.createElement("option"); o.value = value; o.textContent = text; return o; };
   if (withNone) sel.append(opt("", "None"));
   const gMaj = document.createElement("optgroup"); gMaj.label = "Major";
@@ -74,7 +71,4 @@ export function initKeySelect(sel: HTMLSelectElement, saved: string, withNone = 
   const gMin = document.createElement("optgroup"); gMin.label = "Minor";
   KEY_MINORS.forEach(t => gMin.append(opt(t + ":minor", prettyAcc(t) + " minor")));
   sel.append(gMaj, gMin);
-  sel.value = saved;
-  if (sel.value !== saved) sel.selectedIndex = 0;
-  return sel.value;
 }

@@ -93,6 +93,15 @@ main {
   margin-top: 8px; font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(72px, 12vw, 160px); line-height: 1; color: var(--text);
 }
+#practicePrompt.compact { font-size: clamp(56px, 8vw, 112px); }
+#practicePrompt .acc { font-size: .8em; }
+#practicePrompt .ext { font-size: .55em; vertical-align: .55em; }
+#practiceSub { margin-top: 10px; color: var(--muted); font-size: 16px; min-height: 1.4em; }
+#chordFilters { margin-top: 22px; font-size: 13px; color: var(--muted); }
+#chordFilters summary { cursor: pointer; user-select: none; }
+#chordFilterBody { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.filterGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.filterTitle { width: 100%; font-size: 12px; letter-spacing: .04em; }
 #practiceFeedback { margin-top: 18px; font-size: 22px; min-height: 1.4em; }
 #practiceFeedback.correct { color: var(--ok); }
 #practiceFeedback.wrong { color: var(--warn); }

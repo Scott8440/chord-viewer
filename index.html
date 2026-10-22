@@ -15,6 +15,7 @@
     <select id="modeSel">
       <option value="free">Free play</option>
       <option value="notes">Note practice</option>
+      <option value="chords">Chord practice</option>
     </select>
   </label>
   <label class="pick">Key
@@ -36,10 +37,15 @@
       <div id="alts"></div>
     </div>
     <div id="practice" hidden>
-      <div id="practiceLabel">Play this note, in any octave</div>
+      <div id="practiceLabel"></div>
       <div id="practicePrompt"></div>
+      <div id="practiceSub"></div>
       <div id="practiceFeedback"></div>
-      <div id="practiceFooter"><span id="practiceScore"></span><button id="practiceSkip" title="Skip this note">Skip</button></div>
+      <div id="practiceFooter"><span id="practiceScore"></span><button id="practiceSkip" title="Skip this one">Skip</button></div>
+      <details id="chordFilters" hidden>
+        <summary id="chordFilterSummary"></summary>
+        <div id="chordFilterBody"></div>
+      </details>
     </div>
     <div id="notes"></div>
   </section>

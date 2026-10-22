@@ -1,11 +1,12 @@
 // Whole-app state: the performance, a history of recent input events, and user settings.
+import { DEFAULT_CHORD_TYPES, sanitizeChordTypes } from "../exercises/chordPractice";
 import type { InputEvent } from "../input/events";
 import { buildKey, type KeyContext } from "../theory";
 import { initialPerformance, reducePerformance, type PerformanceState } from "./performance";
 
 export const HISTORY_LIMIT = 512;
 
-export const MODES = ["free", "notes"] as const;
+export const MODES = ["free", "notes", "chords"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
@@ -16,6 +17,8 @@ export interface Settings {
   readonly includeSustained: boolean;
   /** Active mode: free play or an exercise */
   readonly mode: ModeId;
+  /** Chord template ids that chord practice may ask for */
+  readonly chordTypes: readonly string[];
 }
 
 export interface AppState {
@@ -29,13 +32,15 @@ export type AppAction =
   | { type: "input"; event: InputEvent }
   | { type: "setKey"; value: string }
   | { type: "setIncludeSustained"; on: boolean }
-  | { type: "setMode"; mode: ModeId };
+  | { type: "setMode"; mode: ModeId }
+  | { type: "setChordTypes"; types: readonly string[] };
 
-export function createAppState(keyValue = "", includeSustained = true, mode: ModeId = "free"): AppState {
+export function createAppState(keyValue = "", includeSustained = true, mode: ModeId = "free",
+                               chordTypes: readonly string[] = DEFAULT_CHORD_TYPES): AppState {
   return {
     perf: initialPerformance,
     history: [],
-    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode },
+    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes) },
   };
 }
 
@@ -53,5 +58,7 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return { ...s, settings: { ...s.settings, includeSustained: a.on } };
     case "setMode":
       return a.mode === s.settings.mode ? s : { ...s, settings: { ...s.settings, mode: a.mode } };
+    case "setChordTypes":
+      return { ...s, settings: { ...s.settings, chordTypes: sanitizeChordTypes(a.types) } };
   }
 }

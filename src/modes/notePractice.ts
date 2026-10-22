@@ -6,7 +6,7 @@ import {
 import type { AppAction, AppState } from "../state/app";
 import type { Store } from "../state/store";
 import type { NoteListView } from "../views/noteList";
-import type { PracticeView } from "../views/practice";
+import { notePracticeDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, type Mode } from "./performance";
 
@@ -25,7 +25,7 @@ export function startNotePractice(store: Store<AppState, AppAction>, views: {
     const prev = state;
     state = reduceNotePractice(state, action);
     if (state === prev) return;
-    views.practice.render(state, key());
+    views.practice.render(notePracticeDisplay(state, key()));
     clearTimeout(nextTimer);
     if (state.status === "correct") {
       nextTimer = setTimeout(() => apply({ type: "next", prompt: makeNotePrompt(rng, key(), state.prompt) }), NEXT_PROMPT_MS);
@@ -43,7 +43,7 @@ export function startNotePractice(store: Store<AppState, AppAction>, views: {
     if (s.perf !== prev.perf || s.settings !== prev.settings) drawer.schedule();
   });
 
-  views.practice.render(state, key());
+  views.practice.render(notePracticeDisplay(state, key()));
   drawer.schedule();
 
   return {

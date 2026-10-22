@@ -24,8 +24,8 @@ mode and views subscribe to the store.
   - `performance.ts`: pure reducer for held notes (per `source:channel`), pedal-sustained notes and pedals, plus
     `soundingNotes` and `pedalOnlyNotes`. Returns the same object when nothing changed.
   - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (key, pedal-notes-count
-    option, active mode, and for the practice modes the chord types, prompt style and whether inversions are
-    required);
+    option, active mode, and for the practice modes the chord types, prompt style, whether inversions are
+    required, and the scale exercise's minor form and octaves);
     `reduceApp` over `AppAction`s.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed.
 - `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
@@ -56,12 +56,16 @@ mode and views subscribe to the store.
   progressions in its mode, or a random key of the progression's mode) and `reduceProgression` (fed the held keys; a chord counts as soon as the held keys form
   it, so legato with held common tones works; releasing the previous chord is not an attempt, only new presses
   followed by all keys up). A test checks every progression in every key analyzes back to its chords and numerals.
+  **Prescriptive exercises** (see "Prescriptive exercises" below): `sequence.ts` is the generic exact-sequence
+  matcher (`reduceSequence`, `runResult`, `bestRun`); `scales.ts` builds `scaleExercise(key, minorForm, octaves)`.
 - `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts` (also `chordSymbolHtml`), `noteList.ts`,
   `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
   into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
   answered and add the played chord's numeral; inversions show as slash chords or figured bass (V⁶₅, I⁶₄, V⁴₂), and
   a wrong bass gets "Right notes, wrong bass. Put E in the bass"; `progressionDisplay` shows the chords in a row,
-  green when played with the other notation revealed underneath, the current one underlined), `filter.ts`
+  green when played with the other notation revealed underneath, the current one underlined; `sequenceDisplay`
+  shows a sequence exercise's notes as a progress row, wrong note vs wrong octave, run results and a session
+  summary, and relabels Skip as Restart), `filter.ts`
   (grouped checkboxes, used for the chord-type filter; the last one can't be unchecked), `header.ts` (MIDI
   status and input chips, pedal light, octave, key selector).
 - `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
@@ -72,6 +76,8 @@ mode and views subscribe to the store.
   current chord. `progressionPractice.ts` feeds the held keys to the progression reducer and starts a new
   progression 1.2 s after the last chord. The chord filter, the prompt style (chord names or Roman numerals, shared
   by chord and progression practice) and the "Specific inversions" option are saved in localStorage.
+  `scalePractice.ts` builds the scale from the header key (C major when none), feeds each note-on with its time to
+  the sequence reducer, and swaps the exercise when the key, minor form or octaves change.
 - `src/main.ts`: wiring only. Creates the store, views, mode and input sources; owns localStorage for the key.
 - `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
 - `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
@@ -82,7 +88,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 151 tests (54 voicings) should pass
+npm test           # Vitest: 168 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -147,6 +153,23 @@ Our own template matcher; tonal is only used for primitives (intervals, transpos
 - Rootless voicings are not recognized (the root must be played). `matchTemplate` can still score them for exercises.
 - Some sets are truly ambiguous (Am11/E vs Cmaj13/E; Ebm6/Gb vs Cm7b5/Gb); the weights pick one consistently.
 
+## Prescriptive exercises
+Repeatable exercises that need precise playing, as opposed to the random-prompt practice modes. The player picks
+the exercise and runs it again and again; each run is measured.
+- **Model:** a `SequenceExercise` is an ordered list of steps (semitone offset from the first note + spelled name).
+  The first note may be played in any octave and sets the octave of the run; after that every note-on must be the
+  exact next note. A wrong note is a mistake and the step waits for the right note (no restart). Judged on
+  note-ons, so releases and legato overlap don't matter.
+- **Runs:** finishing gives a `RunResult` (mistakes, duration, tempo in BPM with one note per beat, evenness =
+  1 − coefficient of variation of the gaps between notes, using the MIDI event timestamps). Playing the first note
+  again starts the next run; Restart abandons one. The session keeps every run and shows the best (fewest
+  mistakes, then most even).
+- **Scales (built):** the header key's scale, up and back down, 1 or 2 octaves; minor keys offer natural,
+  harmonic or melodic (melodic comes down natural). No key means C major.
+- **Next, on the same matcher:** arpeggios and broken chords; hands together (steps with two notes); fingering
+  hints; a target tempo with the metronome (step 4) and timing windows; keeping best runs (step 5); drawing the
+  target notes on the staff.
+
 ## Planned architecture (agreed direction; do this first)
 1. ✅ **Done.** **Port to Vite + TypeScript** in this repo with identical behavior. Keep single-file offline output
    (`vite-plugin-singlefile`), and possibly a PWA later. Move the voicing corpus to Vitest and run it against the
@@ -163,6 +186,7 @@ Our own template matcher; tonal is only used for primitives (intervals, transpos
 3. **Started:** note practice (name a note, play it in any octave) and chord practice (a chord name or a Roman
    numeral in a key, from a filtered set of types, played in any voicing or a required inversion) and progression
    practice (a popular progression in a key, chord by chord), all with right/wrong feedback and a first-try score.
+   Prescriptive exercises (above) have started with scale practice.
    **Exercises as data:** a prompt generator, a matcher with configurable tolerances (any voicing or a specific
    inversion, octave sensitivity, timing window) and feedback.
 4. **Audio** for ear training and a metronome: Web Audio with a look-ahead scheduler and a small sampled piano.

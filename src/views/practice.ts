@@ -4,6 +4,7 @@ import { Note } from "tonal";
 import { chordCorrections, hasBass, hasChordTones, type ChordPracticeState, type ChordPrompt, type PromptStyle } from "../exercises/chordPractice";
 import type { NotePracticeState } from "../exercises/notePractice";
 import type { ProgressionState } from "../exercises/progressions";
+import { bestRun, type RunResult, type SequenceState } from "../exercises/sequence";
 import { analyze, buildKey, FLAT, pcName, prettyAcc, SHARP, templateById, type KeyContext } from "../theory";
 import { chordSymbolHtml } from "./chordName";
 import { esc } from "./html";
@@ -12,13 +13,15 @@ export interface PracticeDisplay {
   label: string;
   /** Prompt as HTML */
   promptHtml: string;
-  /** Prompt font size: one big note, a chord symbol, or a row of chords */
-  size: "note" | "chord" | "progression";
+  /** Prompt font size: one big note, a chord symbol, a row of chords, or a titled row of notes */
+  size: "note" | "chord" | "progression" | "sequence";
   /** Line under the prompt, e.g. "D♭ major seventh" */
   sub: string;
   status: "waiting" | "wrong" | "correct";
   feedback: string;
   score: string;
+  /** Text of the button under the prompt; defaults to "Skip" */
+  skipLabel?: string;
 }
 
 export interface PracticeView {
@@ -26,7 +29,7 @@ export interface PracticeView {
 }
 
 export function createPracticeView(els: {
-  label: HTMLElement; prompt: HTMLElement; sub: HTMLElement; feedback: HTMLElement; score: HTMLElement;
+  label: HTMLElement; prompt: HTMLElement; sub: HTMLElement; feedback: HTMLElement; score: HTMLElement; skip: HTMLElement;
 }): PracticeView {
   return {
     render(d) {
@@ -37,6 +40,7 @@ export function createPracticeView(els: {
       els.feedback.className = d.status;
       els.feedback.textContent = d.feedback;
       els.score.textContent = d.score;
+      els.skip.textContent = d.skipLabel ?? "Skip";
     },
   };
 }
@@ -158,6 +162,49 @@ export function progressionDisplay(s: ProgressionState, style: PromptStyle): Pra
     status: s.status === "done" ? "correct" : s.status === "wrong" ? "wrong" : "waiting",
     feedback, score,
   };
+}
+
+/** Scale (and other note-sequence) exercise: the notes in a row, live feedback, and run results. */
+export function sequenceDisplay(s: SequenceState, key: KeyContext | null): PracticeDisplay {
+  const ex = s.exercise;
+  const steps = ex.steps.map((st, i) => {
+    const state = s.status === "done" || i < s.index ? "done" : i === s.index ? "current" : "upcoming";
+    return `<span class="step ${state}"><span class="main">${esc(prettyAcc(st.name))}</span></span>`;
+  });
+  const start = prettyAcc(ex.steps[0].name);
+  let feedback = "", status: PracticeDisplay["status"] = "waiting", sub = "";
+  if (s.status === "playing" && s.lastWrong) {
+    const expected = ex.steps[s.index].name;
+    const { played } = s.lastWrong;
+    feedback = played % 12 === s.lastWrong.expected % 12
+      ? `✗ Right note, wrong octave: ${prettyAcc(expected)} ${played > s.lastWrong.expected ? "lower" : "higher"}`
+      : `✗ Expected ${prettyAcc(expected)}, not ${prettyAcc(pcName(played % 12, key))}`;
+    status = "wrong";
+  } else if (s.startHint) {
+    feedback = `Start on ${start}`;
+  } else if (s.status === "done" && s.result) {
+    feedback = (s.result.mistakes ? `Done · ${s.result.mistakes} mistake${s.result.mistakes > 1 ? "s" : ""}` : "✓ Clean run") +
+      " · " + runText(s.result);
+    status = s.result.mistakes ? "waiting" : "correct";
+  }
+  if (s.status === "done") sub = `Play ${start} to go again`;
+  else if (s.status === "playing" && s.mistakes) sub = `${s.mistakes} mistake${s.mistakes > 1 ? "s" : ""} so far`;
+  const best = bestRun(s.runs);
+  const clean = s.runs.filter(r => !r.mistakes).length;
+  return {
+    label: ex.instruction,
+    promptHtml: `<div class="seqTitle">${esc(prettyAcc(ex.title))}</div><div class="seqRow">${steps.join("")}</div>`,
+    size: "sequence", sub, status, feedback,
+    score: s.runs.length
+      ? `${s.runs.length} run${s.runs.length > 1 ? "s" : ""} · ${clean} clean · best: ${best!.mistakes ? best!.mistakes + " mistakes, " : ""}${Math.round(best!.evenness * 100)}% even`
+      : "",
+    skipLabel: "Restart",
+  };
+}
+
+/** "4.2 s · 132 BPM · 91% even" */
+function runText(r: RunResult): string {
+  return `${(r.durationMs / 1000).toFixed(1)} s · ${Math.round(r.bpm)} BPM · ${Math.round(r.evenness * 100)}% even`;
 }
 
 const capitalize = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);

@@ -1,12 +1,13 @@
 // Whole-app state: the performance, a history of recent input events, and user settings.
 import { DEFAULT_CHORD_TYPES, sanitizeChordTypes, type PromptStyle } from "../exercises/chordPractice";
+import type { MinorForm, ScaleOctaves } from "../exercises/scales";
 import type { InputEvent } from "../input/events";
 import { buildKey, type KeyContext } from "../theory";
 import { initialPerformance, reducePerformance, type PerformanceState } from "./performance";
 
 export const HISTORY_LIMIT = 512;
 
-export const MODES = ["free", "notes", "chords", "progressions"] as const;
+export const MODES = ["free", "notes", "chords", "progressions", "scales"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
@@ -23,6 +24,9 @@ export interface Settings {
   readonly promptStyle: PromptStyle;
   /** Chord practice asks for a specific inversion */
   readonly inversions: boolean;
+  /** Scale practice: which minor scale to use in minor keys, and how many octaves */
+  readonly minorForm: MinorForm;
+  readonly scaleOctaves: ScaleOctaves;
 }
 
 export interface AppState {
@@ -39,15 +43,17 @@ export type AppAction =
   | { type: "setMode"; mode: ModeId }
   | { type: "setChordTypes"; types: readonly string[] }
   | { type: "setPromptStyle"; style: PromptStyle }
-  | { type: "setInversions"; on: boolean };
+  | { type: "setInversions"; on: boolean }
+  | { type: "setScaleOptions"; minorForm?: MinorForm; octaves?: ScaleOctaves };
 
 export function createAppState(keyValue = "", includeSustained = true, mode: ModeId = "free",
                                chordTypes: readonly string[] = DEFAULT_CHORD_TYPES, promptStyle: PromptStyle = "names",
-                               inversions = false): AppState {
+                               inversions = false, minorForm: MinorForm = "natural", scaleOctaves: ScaleOctaves = 1): AppState {
   return {
     perf: initialPerformance,
     history: [],
-    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes), promptStyle, inversions },
+    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes), promptStyle, inversions,
+                minorForm, scaleOctaves },
   };
 }
 
@@ -71,5 +77,10 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return a.style === s.settings.promptStyle ? s : { ...s, settings: { ...s.settings, promptStyle: a.style } };
     case "setInversions":
       return a.on === s.settings.inversions ? s : { ...s, settings: { ...s.settings, inversions: a.on } };
+    case "setScaleOptions": {
+      const minorForm = a.minorForm ?? s.settings.minorForm, scaleOctaves = a.octaves ?? s.settings.scaleOctaves;
+      return minorForm === s.settings.minorForm && scaleOctaves === s.settings.scaleOctaves ? s
+        : { ...s, settings: { ...s.settings, minorForm, scaleOctaves } };
+    }
   }
 }

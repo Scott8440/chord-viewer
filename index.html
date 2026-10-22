@@ -17,6 +17,7 @@
       <option value="notes">Note practice</option>
       <option value="chords">Chord practice</option>
       <option value="progressions">Progression practice</option>
+      <option value="scales">Scale practice</option>
     </select>
   </label>
   <label class="pick">Key
@@ -55,6 +56,19 @@
           <summary id="chordFilterSummary"></summary>
           <div id="chordFilterBody"></div>
         </details>
+      </div>
+      <div id="scaleOptions" hidden>
+        <label class="pick">Octaves
+          <select id="scaleOctaves"><option value="1">1</option><option value="2">2</option></select>
+        </label>
+        <label class="pick" id="minorFormPick">Minor scale
+          <select id="minorForm">
+            <option value="natural">Natural</option>
+            <option value="harmonic">Harmonic</option>
+            <option value="melodic">Melodic</option>
+          </select>
+        </label>
+        <span id="scaleKeyHint">Choose a key above to practice another scale</span>
       </div>
     </div>
     <div id="notes"></div>

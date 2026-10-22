@@ -1,13 +1,14 @@
 // Whole-app state: the performance, a history of recent input events, and user settings.
 import { DEFAULT_CHORD_TYPES, PROMPT_STYLES, sanitizeChordTypes, type PromptStyle } from "../exercises/chordPractice";
 import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/prescriptive";
+import { sanitizeRoutineOptions, type RoutineOptions } from "../exercises/routines";
 import type { InputEvent } from "../input/events";
 import { buildKey, isKeyValue, type KeyContext } from "../theory";
 import { initialPerformance, reducePerformance, type PerformanceState } from "./performance";
 
 export const HISTORY_LIMIT = 512;
 
-export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic"] as const;
+export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "routines"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
@@ -24,8 +25,10 @@ export interface Settings {
   readonly promptStyle: PromptStyle;
   /** Chord practice asks for a specific inversion */
   readonly inversions: boolean;
-  /** Options shared by the prescriptive exercises (scales, diatonic chords) */
+  /** Options shared by the prescriptive exercises (scales, diatonic chords), also the base for routine items */
   readonly exercise: ExerciseOptions;
+  /** Which routine, and which way round the circle of fifths */
+  readonly routine: RoutineOptions;
 }
 
 /** Settings as saved between sessions; anything missing or invalid falls back to its default. */
@@ -37,6 +40,7 @@ export interface SavedSettings {
   promptStyle?: unknown;
   inversions?: unknown;
   exercise?: unknown;
+  routine?: unknown;
 }
 
 export interface AppState {
@@ -54,7 +58,8 @@ export type AppAction =
   | { type: "setChordTypes"; types: readonly string[] }
   | { type: "setPromptStyle"; style: PromptStyle }
   | { type: "setInversions"; on: boolean }
-  | { type: "setExerciseOptions"; options: Partial<ExerciseOptions> };
+  | { type: "setExerciseOptions"; options: Partial<ExerciseOptions> }
+  | { type: "setRoutineOptions"; options: Partial<RoutineOptions> };
 
 const oneOf = <T>(values: readonly T[], v: unknown, fallback: T): T => values.includes(v as T) ? v as T : fallback;
 
@@ -72,6 +77,7 @@ export function createAppState(saved: SavedSettings = {}): AppState {
       promptStyle: oneOf(PROMPT_STYLES, saved.promptStyle, "names"),
       inversions: saved.inversions === true,
       exercise: sanitizeExerciseOptions(saved.exercise),
+      routine: sanitizeRoutineOptions(saved.routine),
     },
   };
 }
@@ -100,6 +106,11 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       const exercise = sanitizeExerciseOptions({ ...s.settings.exercise, ...a.options });
       const same = (Object.keys(exercise) as (keyof ExerciseOptions)[]).every(k => exercise[k] === s.settings.exercise[k]);
       return same ? s : { ...s, settings: { ...s.settings, exercise } };
+    }
+    case "setRoutineOptions": {
+      const routine = sanitizeRoutineOptions({ ...s.settings.routine, ...a.options });
+      return routine.id === s.settings.routine.id && routine.direction === s.settings.routine.direction ? s
+        : { ...s, settings: { ...s.settings, routine } };
     }
   }
 }

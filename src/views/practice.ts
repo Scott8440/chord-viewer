@@ -4,6 +4,7 @@ import { Note } from "tonal";
 import { chordCorrections, hasBass, hasChordTones, type ChordPracticeState, type ChordPrompt, type PromptStyle } from "../exercises/chordPractice";
 import type { NotePracticeState } from "../exercises/notePractice";
 import type { ProgressionState } from "../exercises/progressions";
+import { itemExercise, itemLabel, mixesExercises, routineSummary, type RoutineState } from "../exercises/routines";
 import { bestRun, type RunResult, type SequenceState, type SequenceStep, type WrongStep } from "../exercises/sequence";
 import { analyze, buildKey, FLAT, pcName, prettyAcc, SHARP, templateById, type KeyContext } from "../theory";
 import { chordSymbolHtml } from "./chordName";
@@ -160,7 +161,8 @@ export function progressionDisplay(s: ProgressionState, style: PromptStyle): Pra
 /* ---------------------------------------------------------------
    Rows of steps, shared by progressions and sequence exercises
    --------------------------------------------------------------- */
-type StepState = "done" | "current" | "upcoming";
+/** done: played (or clean, in a routine); flawed: finished with mistakes; skipped: passed over */
+type StepState = "done" | "current" | "upcoming" | "flawed" | "skipped";
 
 /** One step in a row: green when done, underlined when current; an optional second line underneath. */
 function stepHtml(state: StepState, mainHtml: string, otherHtml?: string): string {
@@ -228,6 +230,75 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
       : "",
     skipLabel: "Restart",
   };
+}
+
+/** A routine: the overview of its items, then the item in progress (shown as on its own), or a summary at the end. */
+export function routineDisplay(r: RoutineState, style: PromptStyle): PracticeDisplay {
+  // One entry per key: a routine that plays several exercises in a key groups them
+  const groups: { key: string; items: number[] }[] = [];
+  r.items.forEach((_, i) => {
+    const { key } = itemLabel(r, i);
+    if (groups.length && groups[groups.length - 1].key === key) groups[groups.length - 1].items.push(i);
+    else groups.push({ key, items: [i] });
+  });
+  const mixed = mixesExercises(r);
+  const overview = groups.map(g => {
+    const outcomes = g.items.map(i => r.outcomes[i]);
+    const inProgress = r.status !== "done" && g.items.includes(r.index);
+    const state: StepState = inProgress ? "current"
+      : outcomes.some(o => o === undefined) ? "upcoming"
+      : outcomes.every(o => o === "skipped") ? "skipped"
+      : outcomes.some(o => o !== "skipped" && o!.mistakes) ? "flawed" : "done";
+    // In a mixed routine, the key in progress says which of its exercises is up
+    const part = mixed ? (inProgress ? esc(itemLabel(r, r.index).exercise) : "") : undefined;
+    return stepHtml(state, esc(prettyAcc(g.key)), part);
+  }).join("");
+  const row = `<div class="routineRow">${overview}</div>`;
+  const total = r.items.length;
+
+  if (r.status === "done") {
+    const sum = routineSummary(r);
+    const weakest = sum.weakest.map(w => {
+      const what = w.result.mistakes ? `${w.result.mistakes} mistake${w.result.mistakes > 1 ? "s" : ""}` : `${Math.round(w.result.evenness * 100)}% even`;
+      return `${prettyAcc(itemExercise(r.items[w.index], r.base).title)} (${what})`;
+    });
+    return {
+      label: r.routine.name,
+      promptHtml: row + `<div class="seqTitle">Routine complete</div>`,
+      size: "sequence",
+      sub: weakest.length ? `Weakest: ${weakest.join(", ")}` : sum.finished ? "Every item clean and even" : "",
+      status: sum.clean === sum.finished && sum.finished > 0 ? "correct" : "waiting",
+      feedback: `${sum.finished} of ${total} played · ${sum.clean} clean · ${sum.totalMistakes} mistake${sum.totalMistakes === 1 ? "" : "s"}` +
+        (sum.durationMs ? ` · ${formatDuration(sum.durationMs)}` : "") + (sum.skipped ? ` · ${sum.skipped} skipped` : ""),
+      score: "",
+      skipLabel: "Start again",
+    };
+  }
+
+  const inner = sequenceDisplay(r.current, style);
+  let { feedback, status } = inner;
+  // Until the next item starts, show how the previous one went
+  if (r.previous && r.current.status !== "playing" && !r.current.startHint) {
+    const title = prettyNames(itemExercise(r.items[r.previous.index], r.base).title);
+    feedback = (r.previous.result.mistakes ? `${title}: ${r.previous.result.mistakes} mistake${r.previous.result.mistakes > 1 ? "s" : ""}`
+      : `✓ ${title}: clean`) + " · " + runText(r.previous.result);
+    status = r.previous.result.mistakes ? "waiting" : "correct";
+  }
+  const clean = r.outcomes.filter(o => o !== "skipped" && !o.mistakes).length;
+  return {
+    ...inner,
+    promptHtml: row + inner.promptHtml,
+    sub: `${r.index + 1} / ${total}` + (inner.sub && r.current.status === "playing" ? ` · ${inner.sub}` : ""),
+    feedback, status,
+    score: r.outcomes.length ? `${r.outcomes.length} / ${total} done · ${clean} clean` : "",
+    skipLabel: "Skip",
+  };
+}
+
+/** "3m 05s" or "42 s" */
+function formatDuration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  return s < 60 ? `${s} s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
 }
 
 /** What went wrong at a step: a wrong note (or the right note in the wrong octave), or a chord's corrections. */

@@ -39,6 +39,10 @@ export function sanitizeExerciseOptions(raw: unknown): ExerciseOptions {
 }
 
 export interface PrescriptiveExercise {
+  /** Short name, e.g. "scale", to label the exercise among others (in routines) */
+  short: string;
+  /** Has chord steps, so the chord names / Roman numerals setting applies */
+  chords: boolean;
   /** Builds the exercise for the current options */
   build(options: ExerciseOptions): SequenceExercise;
   /** The options this exercise uses, to show in its settings */
@@ -48,10 +52,14 @@ export interface PrescriptiveExercise {
 /** Every prescriptive exercise, by mode id. Adding one: a builder, an entry here, and a mode in MODES. */
 export const PRESCRIPTIVE = {
   scales: {
+    short: "scale",
+    chords: false,
     build: o => scaleExercise(buildKey(o.key)!, o.minorForm, o.octaves),
     options: ["key", "octaves", "minorForm"],
   },
   diatonic: {
+    short: "chords",
+    chords: true,
     build: o => diatonicChordsExercise(buildKey(o.key)!, { sevenths: o.sevenths, rootPosition: o.rootPosition }),
     options: ["key", "sevenths", "rootPosition"],
   },

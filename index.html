@@ -19,6 +19,7 @@
       <option value="progressions">Progression practice</option>
       <option value="scales">Scale practice</option>
       <option value="diatonic">Diatonic chords</option>
+      <option value="routines">Routines</option>
     </select>
   </label>
   <label class="pick" id="keyPick" title="Key for free play">Key
@@ -57,6 +58,18 @@
           <summary id="chordFilterSummary"></summary>
           <div id="chordFilterBody"></div>
         </details>
+      </div>
+      <div id="routineOptions" hidden>
+        <label class="pick">Routine
+          <select id="routineSel"></select>
+        </label>
+        <label class="pick">Circle of fifths
+          <select id="routineDir">
+            <option value="sharps">Sharps first (C G D …)</option>
+            <option value="flats">Flats first (C F B♭ …)</option>
+          </select>
+        </label>
+        <button id="routineRestart" title="Start the routine over">Restart routine</button>
       </div>
       <div id="exerciseOptions" hidden>
         <label class="pick" data-option="key">Key

@@ -103,6 +103,10 @@ main {
 #practicePrompt .seqTitle { font-size: 1.6em; line-height: 1.1; margin-bottom: .35em; }
 #practicePrompt .seqRow { display: flex; flex-wrap: wrap; gap: .15em .45em; }
 #practicePrompt .seqRow .step .other { font-size: .5em; }
+#practicePrompt .routineRow { display: flex; flex-wrap: wrap; gap: .1em .5em; font-size: .75em; margin-bottom: .7em; }
+#practicePrompt .routineRow .step .other { font-size: .55em; }
+#practicePrompt .step.flawed .main { color: var(--accent); }
+#practicePrompt .step.skipped .main { color: var(--muted); text-decoration: line-through; }
 #practicePrompt .step { display: inline-flex; flex-direction: column; align-items: center; }
 #practicePrompt .step .main { padding: 0 .08em .06em; border-bottom: 3px solid transparent; }
 #practicePrompt .step .other { font-family: system-ui, sans-serif; font-size: .3em; color: var(--muted); margin-top: .35em; }
@@ -113,7 +117,7 @@ main {
 #practicePrompt .acc { font-size: .8em; }
 #practicePrompt .ext { font-size: .55em; vertical-align: .55em; }
 #practiceSub { margin-top: 10px; color: var(--muted); font-size: 16px; min-height: 1.4em; }
-#chordOptions, #exerciseOptions { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+#chordOptions, #exerciseOptions, #routineOptions { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font-size: 13px; color: var(--muted); }
 #chordOptions details { flex-basis: 100%; }
 #practicePrompt .fig {
   display: inline-flex; flex-direction: column; font-size: .4em; line-height: .95;

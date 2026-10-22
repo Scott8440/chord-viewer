@@ -2,6 +2,7 @@
 import "./style.css";
 import { CHORD_PRACTICE_GROUPS, type PromptStyle } from "./exercises/chordPractice";
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "./exercises/prescriptive";
+import { ROUTINES, routineById, type CircleDirection } from "./exercises/routines";
 import type { MinorForm, ScaleOctaves } from "./exercises/scales";
 import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
@@ -11,6 +12,7 @@ import { startFreePlay } from "./modes/freePlay";
 import { startNotePractice } from "./modes/notePractice";
 import type { Mode } from "./modes/performance";
 import { startProgressionPractice } from "./modes/progressionPractice";
+import { startRoutinePractice } from "./modes/routinePractice";
 import { startSequencePractice } from "./modes/sequencePractice";
 import { createAppState, reduceApp, type AppAction, type ModeId, type Settings } from "./state/app";
 import { pedalDown } from "./state/performance";
@@ -31,6 +33,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 const STORAGE = {
   key: "chordDisplay.key", mode: "chordDisplay.mode", chordTypes: "chordDisplay.chordTypes",
   promptStyle: "chordDisplay.promptStyle", inversions: "chordDisplay.inversions", exercise: "chordDisplay.exercise",
+  routine: "chordDisplay.routine",
   /** Scale options saved by an earlier version ({key, minorForm, octaves}), read if there are no exercise options */
   legacyScale: "chordDisplay.scale",
 };
@@ -46,6 +49,7 @@ const store = createStore(reduceApp, createAppState({
   promptStyle: load(STORAGE.promptStyle),
   inversions: load(STORAGE.inversions) === "1",
   exercise: loadJson(STORAGE.exercise) ?? loadJson(STORAGE.legacyScale),
+  routine: loadJson(STORAGE.routine),
 }));
 store.subscribe((s, prev) => {
   if (s.settings === prev.settings) return;
@@ -56,6 +60,7 @@ store.subscribe((s, prev) => {
   save(STORAGE.promptStyle, t.promptStyle);
   save(STORAGE.inversions, t.inversions ? "1" : "0");
   save(STORAGE.exercise, JSON.stringify(t.exercise));
+  save(STORAGE.routine, JSON.stringify(t.routine));
 });
 const input = (event: InputEvent) => store.dispatch({ type: "input", event });
 
@@ -93,6 +98,10 @@ bindSelect($("exOctaves"), s => String(s.exercise.octaves), v => setExercise({ o
 bindSelect($("exMinorForm"), s => s.exercise.minorForm, v => setExercise({ minorForm: v as MinorForm }));
 bindSelect($("exChords"), s => s.exercise.sevenths ? "sevenths" : "triads", v => setExercise({ sevenths: v === "sevenths" }));
 bindCheckbox($("exRootPosition"), s => s.exercise.rootPosition, rootPosition => setExercise({ rootPosition }));
+for (const r of ROUTINES) $("routineSel").append(new Option(r.name, r.id));
+bindSelect($("routineSel"), s => s.routine.id, id => ({ type: "setRoutineOptions", options: { id } }));
+bindSelect($("routineDir"), s => s.routine.direction,
+  direction => ({ type: "setRoutineOptions", options: { direction: direction as CircleDirection } }));
 
 /* ---------------------------------------------------------------
    Views
@@ -126,7 +135,19 @@ const startMode = (id: ModeId): Mode =>
   : id === "notes" ? startNotePractice(store, practiceViews)
   : id === "chords" ? startChordPractice(store, practiceViews)
   : id === "progressions" ? startProgressionPractice(store, practiceViews)
+  : id === "routines" ? startRoutinePractice(store, practiceViews)
   : startSequencePractice(store, practiceViews, id);
+
+/**
+ * The exercises a mode runs (one, or a routine's), and the keys they are in: these decide which exercise options
+ * apply. A routine sets each item's key itself, so its Key selector is hidden.
+ */
+function exercisesOf(s: Settings): { ids: PrescriptiveId[]; keys: string[]; ownKey: boolean } {
+  if (isPrescriptive(s.mode)) return { ids: [s.mode], keys: [s.exercise.key], ownKey: true };
+  if (s.mode !== "routines") return { ids: [], keys: [], ownKey: false };
+  const items = routineById(s.routine.id)!.items(s.routine.direction);
+  return { ids: [...new Set(items.map(i => i.exercise))], keys: items.map(i => i.options.key ?? s.exercise.key), ownKey: false };
+}
 
 /** Shows the controls the mode uses: each exercise lists its options; the minor form only matters in minor keys. */
 function showControls(s: Settings) {
@@ -135,14 +156,17 @@ function showControls(s: Settings) {
   $("keyPick").hidden = id !== "free";
   $("freeView").hidden = id !== "free";
   $("practice").hidden = id === "free";
+  const ex = exercisesOf(s);
   // Chord names vs Roman numerals matters wherever chords are prompted
-  $("chordOptions").hidden = !(id === "chords" || id === "progressions" || id === "diatonic");
+  $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));
   $("inversionsOpt").hidden = $("chordFilters").hidden = id !== "chords";
-  const used: readonly ExerciseOption[] = isPrescriptive(id) ? PRESCRIPTIVE[id].options : [];
-  $("exerciseOptions").hidden = !used.length;
+  $("routineOptions").hidden = id !== "routines";
+  const used = new Set<ExerciseOption>(ex.ids.flatMap(e => PRESCRIPTIVE[e].options));
+  if (!ex.ownKey) used.delete("key");
+  $("exerciseOptions").hidden = !used.size;
   for (const el of document.querySelectorAll<HTMLElement>("#exerciseOptions [data-option]")) {
     const option = el.dataset.option as ExerciseOption;
-    el.hidden = !used.includes(option) || (option === "minorForm" && !s.exercise.key.endsWith(":minor"));
+    el.hidden = !used.has(option) || (option === "minorForm" && !ex.keys.some(k => k.endsWith(":minor")));
   }
 }
 
@@ -171,6 +195,10 @@ function panic() {
 $("practiceSkip").onclick = () => {
   $("practiceSkip").blur();   // so Space (pedal) doesn't press it again
   mode.skip?.();
+};
+$("routineRestart").onclick = () => {
+  $("routineRestart").blur();
+  mode.restart?.();
 };
 $("panic").onclick = panic;
 $("retry").onclick = () => { $("retry").hidden = true; header.showMidiStatus({ kind: "requesting" }); midi.start(); };

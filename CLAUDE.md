@@ -25,7 +25,8 @@ mode and views subscribe to the store.
     `soundingNotes` and `pedalOnlyNotes`. Returns the same object when nothing changed.
   - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (the header key, which
     is for free play only; pedal-notes-count option; active mode; chord types, prompt style and inversions for chord
-    practice; and `exercise`, the `ExerciseOptions` shared by the prescriptive exercises). `createAppState(saved)`
+    practice; `exercise`, the `ExerciseOptions` shared by the prescriptive exercises; and `routine`, which routine
+    and which way round the circle of fifths). `createAppState(saved)`
     takes saved settings and validates each one; `reduceApp` over `AppAction`s.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed. A subscriber
     that unsubscribes during a dispatch is not called for the rest of it (the old mode on a mode switch).
@@ -64,7 +65,9 @@ mode and views subscribe to the store.
   **Prescriptive exercises** (see "Prescriptive exercises" below): `sequence.ts` is the generic sequence matcher
   (note steps and chord steps; `reduceSequence`, `runResult`, `bestRun`); `scales.ts` builds `scaleExercise`;
   `diatonicChords.ts` builds `diatonicChordsExercise`; `prescriptive.ts` is the registry (`PRESCRIPTIVE`: how each
-  exercise builds its sequence from the shared `ExerciseOptions`, and which options it uses).
+  exercise builds its sequence from the shared `ExerciseOptions`, which options it uses, a short name and whether it
+  has chord steps). `routines.ts`: routines (see "Routines" below): `CIRCLE_OF_FIFTHS_MAJOR`, `circleOfFifths`,
+  `eachKey`, the curated `ROUTINES`, and the runner `reduceRoutine` (wraps `reduceSequence`) with `routineSummary`.
 - `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts` (also `chordSymbolHtml`), `noteList.ts`,
   `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
   into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
@@ -73,7 +76,9 @@ mode and views subscribe to the store.
   `chordStepHtml` (green when done, current underlined, a chord in the prompt's notation with the other one
   revealed underneath once played); `progressionDisplay` and `sequenceDisplay` both use them; `sequenceDisplay`
   covers note and chord steps: wrong note vs wrong octave, chord corrections, start hints, run results and a session
-  summary, and relabels Skip as Restart), `filter.ts`
+  summary, and relabels Skip as Restart; `routineDisplay` adds the routine's overview row, one entry per key, amber
+  when a key had mistakes, struck through when skipped, and the progress, previous item's result and final
+  summary), `filter.ts`
   (grouped checkboxes, used for the chord-type filter; the last one can't be unchecked), `header.ts` (MIDI
   status and input chips, pedal light, octave, key selector).
 - `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
@@ -92,7 +97,9 @@ mode and views subscribe to the store.
   by chord and progression practice) and the "Specific inversions" option are saved in localStorage.
   `sequencePractice.ts` runs any exercise in `PRESCRIPTIVE` (modes "scales" and "diatonic"): builds it from the
   shared exercise options, feeds note-ons and held keys with their times to the sequence reducer, and swaps in a
-  fresh exercise when the options change.
+  fresh exercise when the options change. `routinePractice.ts` runs a routine (mode "routines"): restarts when the
+  routine or direction changes, applies other exercise settings from the item in progress on; Skip skips an item
+  (and starts again at the end), Restart routine starts over.
 - `src/main.ts`: wiring only. Loads saved settings into `createAppState` and saves them on every change
   (localStorage), binds each control to its setting (`bindSelect`/`bindCheckbox`, which also blur so the computer
   keys keep working), shows the controls the mode uses (exercise options are tagged `data-option` and shown when the
@@ -106,7 +113,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 192 tests (54 voicings) should pass
+npm test           # Vitest: 204 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -197,6 +204,21 @@ the exercise and runs it again and again; each run is measured.
   hints; a target tempo with the metronome (step 4) and timing windows; keeping best runs (step 5); drawing the
   target notes on the staff.
 
+## Routines
+A set of prescriptive exercises played one after another, e.g. every major scale round the circle of fifths.
+- **Data, not code:** a `Routine` is a list of `RoutineItem`s `{exercise, options}` pointing into `PRESCRIPTIVE`.
+  Items set only what defines them (the key); every other option comes from the player's exercise settings, so
+  "2 octaves" applies to the whole routine. `eachKey(keys, exercises)` builds the usual "for each key, these
+  exercises" shape. Routines are a curated list (`ROUTINES`), not a user builder.
+- **Order:** `circleOfFifths("sharps")` = C G D A E B F♯ D♭ A♭ E♭ B♭ F; `"flats"` = C F B♭ E♭ A♭ D♭ F♯ B E A D G
+  (a setting). F♯ stands in for G♭, as in the key lists. Major keys only, for now.
+- **Running:** `reduceRoutine` forwards input to the item's `reduceSequence`; when the item's run finishes (mistakes
+  allowed, and recorded) it moves on, carrying held keys over so a scale's last note doesn't count against the
+  next item's chord. The previous item's result shows until the next one starts. Skip records "skipped".
+- **End:** `routineSummary`: played, clean, mistakes, total time, skipped, and the weakest items (most mistakes,
+  then least even; at most three, never clean ones).
+- **Built:** major scales; diatonic chords; scale then diatonic chords; each round the circle.
+
 ## Planned architecture (agreed direction; do this first)
 1. ✅ **Done.** **Port to Vite + TypeScript** in this repo with identical behavior. Keep single-file offline output
    (`vite-plugin-singlefile`), and possibly a PWA later. Move the voicing corpus to Vitest and run it against the
@@ -213,7 +235,7 @@ the exercise and runs it again and again; each run is measured.
 3. **Started:** note practice (name a note, play it in any octave) and chord practice (a chord name or a Roman
    numeral in a key, from a filtered set of types, played in any voicing or a required inversion) and progression
    practice (a popular progression in a key, chord by chord), all with right/wrong feedback and a first-try score.
-   Prescriptive exercises (above): scales and diatonic chords.
+   Prescriptive exercises (above): scales and diatonic chords, and routines of them round the circle of fifths.
    **Exercises as data:** a prompt generator, a matcher with configurable tolerances (any voicing or a specific
    inversion, octave sensitivity, timing window) and feedback.
 4. **Audio** for ear training and a metronome: Web Audio with a look-ahead scheduler and a small sampled piano.

@@ -10,6 +10,8 @@ export interface Mode {
   stop(): void;
   /** Move on to the next prompt (or restart, for repeatable exercises) */
   skip?(): void;
+  /** Start over from the beginning (routines) */
+  restart?(): void;
 }
 
 export type AppStore = Store<AppState, AppAction>;

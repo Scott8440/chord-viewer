@@ -3,7 +3,7 @@
 import { Note } from "tonal";
 import { chordCorrections, isChord, type ChordPracticeState } from "../exercises/chordPractice";
 import type { NotePracticeState } from "../exercises/notePractice";
-import { analyze, FLAT, pcName, prettyAcc, SHARP, templateById, type KeyContext } from "../theory";
+import { analyze, buildKey, FLAT, pcName, prettyAcc, SHARP, templateById, type KeyContext } from "../theory";
 import { chordSymbolHtml } from "./chordName";
 import { esc } from "./html";
 
@@ -59,16 +59,27 @@ export function notePracticeDisplay(s: NotePracticeState, key: KeyContext | null
 
 export function chordPracticeDisplay(s: ChordPracticeState, key: KeyContext | null): PracticeDisplay {
   const t = templateById(s.prompt.type)!;
+  const roman = s.prompt.roman;
+  // A Roman numeral prompt carries its own key (a random one when none is selected)
+  const promptKey = roman ? buildKey(roman.keyValue) : key;
   let feedback = "";
-  if (s.status === "correct") feedback = "✓ Correct";
-  else if (s.status === "wrong" && s.attempt) feedback = "✗ " + describeMiss(s, key);
+  if (s.status === "correct") feedback = roman ? `✓ ${prettyAcc(s.prompt.root + t.symbol)}` : "✓ Correct";
+  else if (s.status === "wrong" && s.attempt) feedback = "✗ " + describeMiss(s, promptKey);
   return {
     label: "Play this chord, any voicing or inversion",
-    promptHtml: chordSymbolHtml(s.prompt.root, t.symbol),
+    promptHtml: roman ? romanHtml(roman.numeral) : chordSymbolHtml(s.prompt.root, t.symbol),
     compact: true,
-    sub: prettyAcc(`${s.prompt.root} ${t.name}`),
+    sub: roman
+      ? `in ${prettyAcc(promptKey!.label)}` + (roman.filterIgnored ? " · no selected chord type is in this key, so any triad" : "")
+      : prettyAcc(`${s.prompt.root} ${t.name}`),
     status: s.status, feedback, score: scoreText(s),
   };
+}
+
+/** Roman numeral as HTML, with the figure raised: "V<sup>7</sup>", "Imaj7" -> I + raised maj7. */
+function romanHtml(numeral: string): string {
+  const m = numeral.match(/^([b#♭♯]?[IViv]+[°ø+]?)(.*)$/)!;
+  return esc(m[1]) + (m[2] ? `<span class="ext">${esc(m[2])}</span>` : "");
 }
 
 /** "That was C. Replace E with E♭": what was played, and what to change. */
@@ -85,10 +96,11 @@ function describeMiss(s: ChordPracticeState, key: KeyContext | null): string {
     ...(fix.remove.length ? [`remove ${and(fix.remove.map(wrong))}`] : []),
   ];
   const todo = capitalize(and(actions)) || "Not quite";
-  // Name what was played, unless it already is the chord with a tone left out
+  // Name what was played, unless it already is the chord with a tone left out; with Roman prompts add its numeral
   const played = analyze(notes, key);
+  const numeral = s.prompt.roman && played?.roman ? ` (${played.roman})` : "";
   const that = played && played.kind !== "unknown" && !isChord(notes, s.prompt, { allowOmissions: true })
-    ? `That was ${prettyAcc(played.text)}. ` : "";
+    ? `That was ${prettyAcc(played.text)}${numeral}. ` : "";
   return that + todo;
 }
 

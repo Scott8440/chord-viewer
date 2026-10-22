@@ -24,7 +24,7 @@ mode and views subscribe to the store.
   - `performance.ts`: pure reducer for held notes (per `source:channel`), pedal-sustained notes and pedals, plus
     `soundingNotes` and `pedalOnlyNotes`. Returns the same object when nothing changed.
   - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (key, pedal-notes-count
-    option, active mode, chord types for chord practice); `reduceApp` over `AppAction`s.
+    option, active mode, chord types and prompt style for chord practice); `reduceApp` over `AppAction`s.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed.
 - `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
   `spelling.ts` (note names, `spellNote`, `prettyAcc`), `key.ts` (`buildKey`, `KeyContext`), `chordTemplates.ts`
@@ -38,17 +38,23 @@ mode and views subscribe to the store.
   spelled from the key, else conventionally), `isChord` (every tone present in any voicing/inversion/octave,
   nothing extra; a left-out 5th fails unless `allowOmissions`) and `reduceChordPractice` (fed the held keys: correct
   as soon as they form the chord, so rolled chords work; a wrong attempt is judged when every key is released, from
-  the fullest set held; after a new prompt it waits for all keys up).
+  the fullest set held; after a new prompt it waits for all keys up). `chordCorrections` turns a wrong attempt into
+  replace/add/remove steps (a wrong note within a whole step of a missing tone is a "replace"). Roman numeral prompts:
+  `DIATONIC` lists each key's triads and sevenths (minor uses harmonic minor for V, V7, vii°, vii°7);
+  `makeRomanPrompt` picks one in the header key, or a random key per prompt when none is set, limited to the
+  selected chord types (if none occur in the key, any diatonic triad, flagged `filterIgnored`). A test checks that
+  `analyze` + `romanFor` give back the same numeral for every diatonic chord in all 24 keys.
 - `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts` (also `chordSymbolHtml`), `noteList.ts`,
   `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
-  into it, including "That was A · missing G♯" feedback), `chordFilter.ts` (grouped type checkboxes; the last one
+  into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
+  answered and add the played chord's numeral), `chordFilter.ts` (grouped type checkboxes; the last one
   can't be unchecked), `header.ts` (MIDI status and input chips, pedal light, octave, key selector).
 - `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
   card; each returns `{stop, skip?}`. `performance.ts` is the shared once-per-frame staff and note-list redraw.
   `freePlay.ts` adds the chord name with the 40 ms debounce. `notePractice.ts` feeds each new note-on from the
   history to the exercise reducer and moves to the next prompt 700 ms after a correct answer. `chordPractice.ts`
   feeds the held keys to its reducer (900 ms before the next prompt) and asks again if the filter rules out the
-  current chord. The chord filter is saved in localStorage.
+  current chord. The chord filter and the prompt style (chord names or Roman numerals) are saved in localStorage.
 - `src/main.ts`: wiring only. Creates the store, views, mode and input sources; owns localStorage for the key.
 - `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
 - `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
@@ -59,7 +65,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 109 tests (54 voicings) should pass
+npm test           # Vitest: 125 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -137,8 +143,9 @@ Our own template matcher; tonal is only used for primitives (intervals, transpos
      template-plus-scoring recognizer** whose weights live in a data table, so it can handle omissions, voicing
      matching and explaining why a reading won. Keep tonal for primitives.
    - **Views and modes:** subscribe to state. Free play is just one mode.
-3. **Started:** note practice (name a note, play it in any octave) and chord practice (name a chord from a
-   filtered set of types, play it in any voicing), both with right/wrong feedback and a first-try score.
+3. **Started:** note practice (name a note, play it in any octave) and chord practice (a chord name or a Roman
+   numeral in a key, from a filtered set of types, played in any voicing), both with right/wrong feedback and a
+   first-try score.
    **Exercises as data:** a prompt generator, a matcher with configurable tolerances (any voicing or a specific
    inversion, octave sensitivity, timing window) and feedback.
 4. **Audio** for ear training and a metronome: Web Audio with a look-ahead scheduler and a small sampled piano.

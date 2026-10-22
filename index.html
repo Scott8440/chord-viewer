@@ -42,10 +42,18 @@
       <div id="practiceSub"></div>
       <div id="practiceFeedback"></div>
       <div id="practiceFooter"><span id="practiceScore"></span><button id="practiceSkip" title="Skip this one">Skip</button></div>
-      <details id="chordFilters" hidden>
-        <summary id="chordFilterSummary"></summary>
-        <div id="chordFilterBody"></div>
-      </details>
+      <div id="chordOptions" hidden>
+        <label class="pick">Prompts
+          <select id="promptStyle">
+            <option value="names">Chord names</option>
+            <option value="roman">Roman numerals</option>
+          </select>
+        </label>
+        <details id="chordFilters">
+          <summary id="chordFilterSummary"></summary>
+          <div id="chordFilterBody"></div>
+        </details>
+      </div>
     </div>
     <div id="notes"></div>
   </section>

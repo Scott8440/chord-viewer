@@ -1,5 +1,5 @@
 // Whole-app state: the performance, a history of recent input events, and user settings.
-import { DEFAULT_CHORD_TYPES, sanitizeChordTypes } from "../exercises/chordPractice";
+import { DEFAULT_CHORD_TYPES, sanitizeChordTypes, type PromptStyle } from "../exercises/chordPractice";
 import type { InputEvent } from "../input/events";
 import { buildKey, type KeyContext } from "../theory";
 import { initialPerformance, reducePerformance, type PerformanceState } from "./performance";
@@ -19,6 +19,8 @@ export interface Settings {
   readonly mode: ModeId;
   /** Chord template ids that chord practice may ask for */
   readonly chordTypes: readonly string[];
+  /** Chord practice prompts: chord names or Roman numerals */
+  readonly promptStyle: PromptStyle;
 }
 
 export interface AppState {
@@ -33,14 +35,15 @@ export type AppAction =
   | { type: "setKey"; value: string }
   | { type: "setIncludeSustained"; on: boolean }
   | { type: "setMode"; mode: ModeId }
-  | { type: "setChordTypes"; types: readonly string[] };
+  | { type: "setChordTypes"; types: readonly string[] }
+  | { type: "setPromptStyle"; style: PromptStyle };
 
 export function createAppState(keyValue = "", includeSustained = true, mode: ModeId = "free",
-                               chordTypes: readonly string[] = DEFAULT_CHORD_TYPES): AppState {
+                               chordTypes: readonly string[] = DEFAULT_CHORD_TYPES, promptStyle: PromptStyle = "names"): AppState {
   return {
     perf: initialPerformance,
     history: [],
-    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes) },
+    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes), promptStyle },
   };
 }
 
@@ -60,5 +63,7 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return a.mode === s.settings.mode ? s : { ...s, settings: { ...s.settings, mode: a.mode } };
     case "setChordTypes":
       return { ...s, settings: { ...s.settings, chordTypes: sanitizeChordTypes(a.types) } };
+    case "setPromptStyle":
+      return a.style === s.settings.promptStyle ? s : { ...s, settings: { ...s.settings, promptStyle: a.style } };
   }
 }

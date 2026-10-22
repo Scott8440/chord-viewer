@@ -3,7 +3,7 @@ import "./style.css";
 import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
 import { createMidiSource } from "./input/midi";
-import { sanitizeChordTypes } from "./exercises/chordPractice";
+import { PROMPT_STYLES, sanitizeChordTypes, type PromptStyle } from "./exercises/chordPractice";
 import { startChordPractice } from "./modes/chordPractice";
 import { startFreePlay } from "./modes/freePlay";
 import { startNotePractice } from "./modes/notePractice";
@@ -23,6 +23,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 const KEY_STORAGE = "chordDisplay.key";
 const MODE_STORAGE = "chordDisplay.mode";
 const CHORD_TYPES_STORAGE = "chordDisplay.chordTypes";
+const PROMPT_STYLE_STORAGE = "chordDisplay.promptStyle";
 
 // Settings
 const keySel = $<HTMLSelectElement>("keySel");
@@ -36,9 +37,15 @@ const initialMode: ModeId = (MODES as readonly string[]).includes(savedMode) ? s
 modeSel.value = initialMode;
 let savedChordTypes: string[] = [];
 try { savedChordTypes = JSON.parse(localStorage.getItem(CHORD_TYPES_STORAGE) || "[]"); } catch {}
+const promptStyleSel = $<HTMLSelectElement>("promptStyle");
+let savedPromptStyle = "";
+try { savedPromptStyle = localStorage.getItem(PROMPT_STYLE_STORAGE) || ""; } catch {}
+const initialPromptStyle: PromptStyle = (PROMPT_STYLES as readonly string[]).includes(savedPromptStyle) ? savedPromptStyle as PromptStyle : "names";
+promptStyleSel.value = initialPromptStyle;
 
 const store = createStore(reduceApp, createAppState(initKeySelect(keySel, savedKey), optPedal.checked, initialMode,
-                                                    sanitizeChordTypes(Array.isArray(savedChordTypes) ? savedChordTypes : [])));
+                                                    sanitizeChordTypes(Array.isArray(savedChordTypes) ? savedChordTypes : []),
+                                                    initialPromptStyle));
 const input = (event: InputEvent) => store.dispatch({ type: "input", event });
 
 // Views
@@ -72,7 +79,7 @@ let mode: Mode;
 function showMode(id: ModeId) {
   $("freeView").hidden = id !== "free";
   $("practice").hidden = id === "free";
-  $("chordFilters").hidden = id !== "chords";
+  $("chordOptions").hidden = id !== "chords";
   mode = startMode[id]();
 }
 showMode(initialMode);
@@ -100,6 +107,11 @@ function onKeyChange() {
 // Controls
 keySel.onchange = onKeyChange;
 optPedal.onchange = () => store.dispatch({ type: "setIncludeSustained", on: optPedal.checked });
+promptStyleSel.onchange = () => {
+  store.dispatch({ type: "setPromptStyle", style: promptStyleSel.value as PromptStyle });
+  try { localStorage.setItem(PROMPT_STYLE_STORAGE, promptStyleSel.value); } catch {}
+  promptStyleSel.blur();   // so computer-key note input keeps working
+};
 modeSel.onchange = () => {
   store.dispatch({ type: "setMode", mode: modeSel.value as ModeId });
   try { localStorage.setItem(MODE_STORAGE, modeSel.value); } catch {}

@@ -71,3 +71,22 @@ export function onPlayerInput(store: AppStore, handlers: {
     }
   });
 }
+
+/**
+ * Idleness, until the returned function is called: `idle` once there has been no input for `ms` with nothing
+ * sounding, `active` on every input. Notes still sounding hold idleness off; letting go is input and starts the wait.
+ */
+export function onIdle(store: AppStore, ms: number, handlers: { idle(): void; active(): void }): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  function wait() {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (!sounding(store.getState()).length) handlers.idle(); }, ms);
+  }
+  const unsubscribe = store.subscribe((s, prev) => {
+    if (s.history === prev.history) return;
+    handlers.active();
+    wait();
+  });
+  wait();
+  return () => { unsubscribe(); clearTimeout(timer); };
+}

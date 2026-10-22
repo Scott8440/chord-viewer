@@ -10,7 +10,8 @@ import { createMidiSource } from "./input/midi";
 import { startChordPractice } from "./modes/chordPractice";
 import { startFreePlay } from "./modes/freePlay";
 import { startNotePractice } from "./modes/notePractice";
-import type { Mode } from "./modes/performance";
+import { IDLE_MS, PAGE_SETUP } from "./modes/page";
+import { onIdle, type Mode } from "./modes/performance";
 import { startProgressionPractice } from "./modes/progressionPractice";
 import { startRoutinePractice } from "./modes/routinePractice";
 import { startSequencePractice } from "./modes/sequencePractice";
@@ -114,7 +115,7 @@ store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 
 const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
-const chordName = createChordNameView({ name: $("chordName"), sub: $("chordSub"), roman: $("roman"), alts: $("alts") });
+const chordName = createChordNameView({ root: $("freeView"), name: $("chordName"), sub: $("chordSub"), roman: $("roman"), alts: $("alts") });
 const practice = createPracticeView({
   label: $("practiceLabel"), prompt: $("practicePrompt"), sub: $("practiceSub"), feedback: $("practiceFeedback"), score: $("practiceScore"),
   skip: $("practiceSkip"),
@@ -130,11 +131,25 @@ store.subscribe((s, prev) => { if (s.settings.chordTypes !== prev.settings.chord
    --------------------------------------------------------------- */
 const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRESCRIPTIVE;
 const practiceViews = { staff, practice, circle };
-/** Starts a mode. The circle of fifths starts hidden; modes where it is relevant draw it. */
-const startMode = (id: ModeId): Mode => {
+/**
+ * Starts a mode and the page behaviours its `PAGE_SETUP` turns on. The circle of fifths starts hidden; modes where
+ * it is relevant draw it.
+ */
+function startMode(id: ModeId): Mode {
   circle.render(null);
-  return startModeView(id);
-};
+  const mode = startModeView(id);
+  const offIdle = PAGE_SETUP[id].fadeChordWhenIdle
+    ? onIdle(store, IDLE_MS, { idle: () => chordName.setIdle(true), active: () => chordName.setIdle(false) })
+    : null;
+  return {
+    ...mode,
+    stop() {
+      offIdle?.();
+      chordName.setIdle(false);
+      mode.stop();
+    },
+  };
+}
 const startModeView = (id: ModeId): Mode =>
   id === "free" ? startFreePlay(store, { staff, chordName, circle })
   : id === "notes" ? startNotePractice(store, practiceViews)
@@ -156,11 +171,10 @@ function exercisesOf(s: Settings): { ids: PrescriptiveId[]; keys: string[]; ownK
 
 /** Shows the controls the mode uses: each exercise lists its options; the minor form only matters in minor keys. */
 function showControls(s: Settings) {
-  const id = s.mode;
-  // The header key is for free play only; exercises name their key or have their own selector
-  $("keyPick").hidden = id !== "free";
-  $("freeView").hidden = id !== "free";
-  $("practice").hidden = id === "free";
+  const id = s.mode, page = PAGE_SETUP[id];
+  $("keyPick").hidden = !page.headerKey;
+  $("freeView").hidden = page.panel !== "chordName";
+  $("practice").hidden = page.panel !== "practice";
   const ex = exercisesOf(s);
   // Chord names vs Roman numerals matters wherever chords are prompted
   $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));

@@ -2,7 +2,7 @@
 import { DEFAULT_CHORD_TYPES, sanitizeChordTypes, type PromptStyle } from "../exercises/chordPractice";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
 import type { InputEvent } from "../input/events";
-import { buildKey, type KeyContext } from "../theory";
+import { buildKey, isKeyValue, type KeyContext } from "../theory";
 import { initialPerformance, reducePerformance, type PerformanceState } from "./performance";
 
 export const HISTORY_LIMIT = 512;
@@ -11,7 +11,7 @@ export const MODES = ["free", "notes", "chords", "progressions", "scales"] as co
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
-  /** Key selector value, e.g. "C:major", or "" for none */
+  /** Header key selector value, e.g. "C:major", or "" for none. Free play only; exercises never use it. */
   readonly keyValue: string;
   readonly key: KeyContext | null;
   /** Whether pedal-held notes count toward the chord */
@@ -24,7 +24,8 @@ export interface Settings {
   readonly promptStyle: PromptStyle;
   /** Chord practice asks for a specific inversion */
   readonly inversions: boolean;
-  /** Scale practice: which minor scale to use in minor keys, and how many octaves */
+  /** Scale practice: the scale's key (e.g. "A:minor"), which minor scale to use in minor keys, and how many octaves */
+  readonly scaleKey: string;
   readonly minorForm: MinorForm;
   readonly scaleOctaves: ScaleOctaves;
 }
@@ -44,16 +45,17 @@ export type AppAction =
   | { type: "setChordTypes"; types: readonly string[] }
   | { type: "setPromptStyle"; style: PromptStyle }
   | { type: "setInversions"; on: boolean }
-  | { type: "setScaleOptions"; minorForm?: MinorForm; octaves?: ScaleOctaves };
+  | { type: "setScaleOptions"; key?: string; minorForm?: MinorForm; octaves?: ScaleOctaves };
 
 export function createAppState(keyValue = "", includeSustained = true, mode: ModeId = "free",
                                chordTypes: readonly string[] = DEFAULT_CHORD_TYPES, promptStyle: PromptStyle = "names",
-                               inversions = false, minorForm: MinorForm = "natural", scaleOctaves: ScaleOctaves = 1): AppState {
+                               inversions = false, minorForm: MinorForm = "natural", scaleOctaves: ScaleOctaves = 1,
+                               scaleKey = "C:major"): AppState {
   return {
     perf: initialPerformance,
     history: [],
     settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes), promptStyle, inversions,
-                minorForm, scaleOctaves },
+                scaleKey: isKeyValue(scaleKey) ? scaleKey : "C:major", minorForm, scaleOctaves },
   };
 }
 
@@ -78,9 +80,10 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
     case "setInversions":
       return a.on === s.settings.inversions ? s : { ...s, settings: { ...s.settings, inversions: a.on } };
     case "setScaleOptions": {
+      const scaleKey = a.key && isKeyValue(a.key) ? a.key : s.settings.scaleKey;
       const minorForm = a.minorForm ?? s.settings.minorForm, scaleOctaves = a.octaves ?? s.settings.scaleOctaves;
-      return minorForm === s.settings.minorForm && scaleOctaves === s.settings.scaleOctaves ? s
-        : { ...s, settings: { ...s.settings, minorForm, scaleOctaves } };
+      return scaleKey === s.settings.scaleKey && minorForm === s.settings.minorForm && scaleOctaves === s.settings.scaleOctaves ? s
+        : { ...s, settings: { ...s.settings, scaleKey, minorForm, scaleOctaves } };
     }
   }
 }

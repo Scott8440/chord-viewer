@@ -10,6 +10,7 @@ import type { Store } from "../state/store";
 import type { NoteListView } from "../views/noteList";
 import { progressionDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
+import { buildKey } from "../theory";
 import { createPerformanceDrawer, type Mode } from "./performance";
 
 /** How long "✓ Progression complete" stays up before the next progression */
@@ -20,10 +21,12 @@ const heldNotes = (s: AppState) => [...s.perf.held.keys()].sort((a, b) => a - b)
 export function startProgressionPractice(store: Store<AppState, AppAction>, views: {
   staff: StaffView; noteList: NoteListView; practice: PracticeView;
 }, rng: Rng = Math.random): Mode {
-  const drawer = createPerformanceDrawer(store, views);
   const settings = () => store.getState().settings;
-  const newPrompt = (previous?: ProgressionState["prompt"]) => makeProgressionPrompt(rng, settings().key, previous);
+  // Exercises don't use the header key: each progression names its own (random) key
+  const newPrompt = (previous?: ProgressionState["prompt"]) => makeProgressionPrompt(rng, null, previous);
   let state: ProgressionState = initialProgression(newPrompt(), heldNotes(store.getState()));
+  // The staff follows the progression's key
+  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.prompt.keyValue));
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
 
   const render = () => views.practice.render(progressionDisplay(state, settings().promptStyle));
@@ -33,6 +36,7 @@ export function startProgressionPractice(store: Store<AppState, AppAction>, view
     state = reduceProgression(state, action);
     if (state === prev) return;
     render();
+    if (state.prompt !== prev.prompt) drawer.schedule();
     if (state.status === "done" && prev.status !== "done") {
       clearTimeout(nextTimer);
       nextTimer = setTimeout(() => apply({ type: "next", prompt: newPrompt(state.prompt) }), NEXT_PROGRESSION_MS);
@@ -49,12 +53,8 @@ export function startProgressionPractice(store: Store<AppState, AppAction>, view
       const now = heldNotes(s);
       if (now.join() !== heldNotes(prev).join()) apply({ type: "held", notes: now });
     }
-    // A new key needs a new progression; the prompt style only changes how it is shown
-    if (s.settings.key !== prev.settings.key) {
-      restart();
-    } else if (s.settings.promptStyle !== prev.settings.promptStyle) {
-      render();
-    }
+    // The prompt style only changes how the progression is shown
+    if (s.settings.promptStyle !== prev.settings.promptStyle) render();
     if (s.perf !== prev.perf || s.settings !== prev.settings) drawer.schedule();
   });
 

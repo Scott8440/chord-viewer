@@ -17,7 +17,9 @@ export function createStore<S, A>(reducer: (state: S, action: A) => S, initial: 
     dispatch(action) {
       const prev = state;
       state = reducer(state, action);
-      if (state !== prev) for (const l of [...listeners]) l(state, prev);
+      // Iterate a copy so listeners can (un)subscribe while being notified, but skip any that unsubscribed
+      // during this dispatch (e.g. the old mode when the mode switches), so they never see a state after leaving
+      if (state !== prev) for (const l of [...listeners]) if (listeners.has(l)) l(state, prev);
     },
     subscribe(listener) {
       listeners.add(listener);

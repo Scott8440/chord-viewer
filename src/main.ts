@@ -50,16 +50,19 @@ promptStyleSel.value = initialPromptStyle;
 const optInversions = $<HTMLInputElement>("optInversions");
 try { optInversions.checked = localStorage.getItem(INVERSIONS_STORAGE) === "1"; } catch {}
 const minorFormSel = $<HTMLSelectElement>("minorForm"), scaleOctavesSel = $<HTMLSelectElement>("scaleOctaves");
-let savedScale: { minorForm?: unknown; octaves?: unknown } = {};
+let savedScale: { key?: unknown; minorForm?: unknown; octaves?: unknown } = {};
 try { savedScale = JSON.parse(localStorage.getItem(SCALE_STORAGE) || "{}") ?? {}; } catch {}
 const initialMinorForm: MinorForm = (MINOR_FORMS as readonly unknown[]).includes(savedScale.minorForm) ? savedScale.minorForm as MinorForm : "natural";
 const initialOctaves: ScaleOctaves = (SCALE_OCTAVES as readonly unknown[]).includes(savedScale.octaves) ? savedScale.octaves as ScaleOctaves : 1;
 minorFormSel.value = initialMinorForm;
+const scaleKeySel = $<HTMLSelectElement>("scaleKeySel");
+const initialScaleKey = initKeySelect(scaleKeySel, typeof savedScale.key === "string" ? savedScale.key : "C:major", false);
 scaleOctavesSel.value = String(initialOctaves);
 
 const store = createStore(reduceApp, createAppState(initKeySelect(keySel, savedKey), optPedal.checked, initialMode,
                                                     sanitizeChordTypes(Array.isArray(savedChordTypes) ? savedChordTypes : []),
-                                                    initialPromptStyle, optInversions.checked, initialMinorForm, initialOctaves));
+                                                    initialPromptStyle, optInversions.checked, initialMinorForm, initialOctaves,
+                                                    initialScaleKey));
 const input = (event: InputEvent) => store.dispatch({ type: "input", event });
 
 // Views
@@ -95,6 +98,8 @@ const startMode: Record<ModeId, () => Mode> = {
 };
 let mode: Mode;
 function showMode(id: ModeId) {
+  // The header key is for free play only; exercises name their key or have their own selector
+  $("keyPick").hidden = id !== "free";
   $("freeView").hidden = id !== "free";
   $("practice").hidden = id === "free";
   // Chord and progression practice share the prompt style; inversions and the type filter are chord practice only
@@ -105,13 +110,10 @@ function showMode(id: ModeId) {
   mode = startMode[id]();
 }
 showMode(initialMode);
-// Scale options: the minor form only matters in a minor key; with no key the scale is C major
-const showScaleKeyOptions = (s = store.getState()) => {
-  $("minorFormPick").hidden = s.settings.key?.mode !== "minor";
-  $("scaleKeyHint").hidden = !!s.settings.key;
-};
-showScaleKeyOptions();
-store.subscribe((s, prev) => { if (s.settings.key !== prev.settings.key) showScaleKeyOptions(s); });
+// Scale options: the minor form only matters for a minor scale
+const showMinorForm = (s = store.getState()) => { $("minorFormPick").hidden = !s.settings.scaleKey.endsWith(":minor"); };
+showMinorForm();
+store.subscribe((s, prev) => { if (s.settings.scaleKey !== prev.settings.scaleKey) showMinorForm(s); });
 store.subscribe((s, prev) => {
   if (s.settings.mode === prev.settings.mode) return;
   mode.stop();
@@ -142,8 +144,13 @@ optInversions.onchange = () => {
   optInversions.blur();   // so computer-key note input keeps working
 };
 const saveScaleOptions = () => {
-  const { minorForm, scaleOctaves } = store.getState().settings;
-  try { localStorage.setItem(SCALE_STORAGE, JSON.stringify({ minorForm, octaves: scaleOctaves })); } catch {}
+  const { scaleKey, minorForm, scaleOctaves } = store.getState().settings;
+  try { localStorage.setItem(SCALE_STORAGE, JSON.stringify({ key: scaleKey, minorForm, octaves: scaleOctaves })); } catch {}
+};
+scaleKeySel.onchange = () => {
+  store.dispatch({ type: "setScaleOptions", key: scaleKeySel.value });
+  saveScaleOptions();
+  scaleKeySel.blur();   // so computer-key note input keeps working
 };
 minorFormSel.onchange = () => {
   store.dispatch({ type: "setScaleOptions", minorForm: minorFormSel.value as MinorForm });

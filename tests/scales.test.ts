@@ -113,7 +113,7 @@ describe("sequenceDisplay", () => {
   it("shows the scale, progress and feedback", () => {
     let s = run(initialSequence(Cmajor), ...play([60, 62]));
     let d = sequenceDisplay(s, C);
-    expect(d.label).toBe("Play the scale up and back down, one octave, starting on any C");
+    expect(d.label).toBe("Play C major up and back down, one octave, starting on any C");
     expect(d.promptHtml).toMatch(/^<div class="seqTitle">C major<\/div><div class="seqRow"><span class="step done">/);
     expect(d.skipLabel).toBe("Restart");
     s = run(s, { type: "noteOn", note: 63, time: 600 });
@@ -130,17 +130,31 @@ describe("sequenceDisplay", () => {
                               sub: "Play C to go again", score: "1 run · 1 clean · best: 100% even" });
   });
 
+  it("writes accidentals as symbols in the title and instruction, without touching other words", () => {
+    const d = sequenceDisplay(initialSequence(scaleExercise(buildKey("Bb:minor")!, "melodic", 2)), null);
+    expect(d.label).toBe("Play B♭ melodic minor up and back down, two octaves, starting on any B♭");
+    expect(d.promptHtml).toMatch(/^<div class="seqTitle">B♭ melodic minor<\/div>/);
+  });
+
   it("asks for the starting note", () => {
     expect(sequenceDisplay(run(initialSequence(Cmajor), { type: "noteOn", note: 61, time: 0 }), C).feedback).toBe("Start on C");
   });
 });
 
 describe("scale settings", () => {
-  it("default to natural minor and one octave, and change independently", () => {
+  it("default to C major, natural minor and one octave, and change independently", () => {
     const s = createAppState();
-    expect(s.settings).toMatchObject({ minorForm: "natural", scaleOctaves: 1 });
+    expect(s.settings).toMatchObject({ scaleKey: "C:major", minorForm: "natural", scaleOctaves: 1 });
+    expect(reduceApp(s, { type: "setScaleOptions", key: "F#:minor" }).settings.scaleKey).toBe("F#:minor");
+    expect(reduceApp(s, { type: "setScaleOptions", key: "nonsense" })).toBe(s);
+    expect(createAppState("", true, "free", undefined, "names", false, "natural", 1, "bogus").settings.scaleKey).toBe("C:major");
     const t = reduceApp(s, { type: "setScaleOptions", octaves: 2 });
     expect(t.settings).toMatchObject({ minorForm: "natural", scaleOctaves: 2 });
     expect(reduceApp(t, { type: "setScaleOptions", octaves: 2 })).toBe(t);
+  });
+
+  it("are separate from the header key, which exercises never use", () => {
+    const s = reduceApp(createAppState(), { type: "setKey", value: "G:major" });
+    expect(s.settings).toMatchObject({ keyValue: "G:major", scaleKey: "C:major" });
   });
 });

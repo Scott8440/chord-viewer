@@ -192,8 +192,8 @@ export function sequenceDisplay(s: SequenceState, key: KeyContext | null): Pract
   const best = bestRun(s.runs);
   const clean = s.runs.filter(r => !r.mistakes).length;
   return {
-    label: ex.instruction,
-    promptHtml: `<div class="seqTitle">${esc(prettyAcc(ex.title))}</div><div class="seqRow">${steps.join("")}</div>`,
+    label: prettyNames(ex.instruction),
+    promptHtml: `<div class="seqTitle">${esc(prettyNames(ex.title))}</div><div class="seqRow">${steps.join("")}</div>`,
     size: "sequence", sub, status, feedback,
     score: s.runs.length
       ? `${s.runs.length} run${s.runs.length > 1 ? "s" : ""} · ${clean} clean · best: ${best!.mistakes ? best!.mistakes + " mistakes, " : ""}${Math.round(best!.evenness * 100)}% even`
@@ -201,6 +201,9 @@ export function sequenceDisplay(s: SequenceState, key: KeyContext | null): Pract
     skipLabel: "Restart",
   };
 }
+
+/** Pretty accidentals on note names inside prose ("Eb major" -> "E♭ major"), leaving words like "back" alone. */
+const prettyNames = (text: string) => text.replace(/\b([A-G])(#{1,2}|b{1,2})(?![a-z])/g, (_, l, acc) => l + prettyAcc(acc));
 
 /** "4.2 s · 132 BPM · 91% even" */
 function runText(r: RunResult): string {

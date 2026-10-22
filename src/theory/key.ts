@@ -5,6 +5,12 @@ import { alterOf, chromaOf, FLAT, ROOT_MAJOR, SHARP } from "./spelling";
 export const KEY_MAJORS = ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
 export const KEY_MINORS = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "G#", "A", "Bb", "B"];
 
+/** Whether a value is one of the 24 keys offered, e.g. "C:major", "F#:minor" */
+export function isKeyValue(value: string): boolean {
+  const [tonic, mode] = value.split(":");
+  return (mode === "major" && KEY_MAJORS.includes(tonic)) || (mode === "minor" && KEY_MINORS.includes(tonic));
+}
+
 export interface KeyContext {
   tonic: string;
   mode: "major" | "minor";

@@ -23,11 +23,12 @@ mode and views subscribe to the store.
 - `src/state/`: state, no DOM.
   - `performance.ts`: pure reducer for held notes (per `source:channel`), pedal-sustained notes and pedals, plus
     `soundingNotes` and `pedalOnlyNotes`. Returns the same object when nothing changed.
-  - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (key, pedal-notes-count
-    option, active mode, and for the practice modes the chord types, prompt style, whether inversions are
-    required, and the scale exercise's minor form and octaves);
+  - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (the header key, which
+    is for free play only; pedal-notes-count option; active mode; and for the practice modes the chord types,
+    prompt style, whether inversions are required, and the scale exercise's own key, minor form and octaves);
     `reduceApp` over `AppAction`s.
-  - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed.
+  - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed. A subscriber
+    that unsubscribes during a dispatch is not called for the rest of it (the old mode on a mode switch).
 - `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
   `spelling.ts` (note names, `spellNote`, `prettyAcc`), `key.ts` (`buildKey`, `KeyContext`), `chordTemplates.ts`
   (chord types and scoring weights: data only), `chords.ts` (`matchTemplate`, `chordReadings`, `analyze`),
@@ -43,7 +44,7 @@ mode and views subscribe to the store.
   the fullest set held; after a new prompt it waits for all keys up). `chordCorrections` turns a wrong attempt into
   replace/add/remove steps (a wrong note within a whole step of a missing tone is a "replace"). Roman numeral prompts:
   `DIATONIC` lists each key's triads and sevenths (minor uses harmonic minor for V, V7, vii°, vii°7);
-  `makeRomanPrompt` picks one in the header key, or a random key per prompt when none is set, limited to the
+  `makeRomanPrompt` picks one in the given key, or a random key per prompt when none (the mode always passes none), limited to the
   selected chord types (if none occur in the key, any diatonic triad, flagged `filterIgnored`). A test checks that
   `analyze` + `romanFor` give back the same numeral for every diatonic chord in all 24 keys. Inversions:
   `withInversion` adds a random required inversion (root position included; the bass is a chord tone up to the
@@ -52,8 +53,8 @@ mode and views subscribe to the store.
   numeral + scale degree + chord type, a `weight` for how common it is, and style `tags`: basic, pop, jazz,
   classical; minor uses the natural scale, so VII not vii°). There is deliberately no user selector: other features
   should pick from this list (`progressionById`, `progressionsWhere({mode, tag})`). `progressionChords`,
-  `makeProgressionPrompt` (weighted random pick, optionally from a smaller pool; the header key and only
-  progressions in its mode, or a random key of the progression's mode) and `reduceProgression` (fed the held keys; a chord counts as soon as the held keys form
+  `makeProgressionPrompt` (weighted random pick, optionally from a smaller pool; a given key and only
+  progressions in its mode, or a random key of the progression's mode, which is what the mode uses) and `reduceProgression` (fed the held keys; a chord counts as soon as the held keys form
   it, so legato with held common tones works; releasing the previous chord is not an attempt, only new presses
   followed by all keys up). A test checks every progression in every key analyzes back to its chords and numerals.
   **Prescriptive exercises** (see "Prescriptive exercises" below): `sequence.ts` is the generic exact-sequence
@@ -69,15 +70,20 @@ mode and views subscribe to the store.
   (grouped checkboxes, used for the chord-type filter; the last one can't be unchecked), `header.ts` (MIDI
   status and input chips, pedal light, octave, key selector).
 - `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
-  card; each returns `{stop, skip?}`. `performance.ts` is the shared once-per-frame staff and note-list redraw.
+  card; each returns `{stop, skip?}`. `performance.ts` is the shared once-per-frame staff and note-list redraw; it
+  draws and spells in the key the mode gives it (free play: the header key; note and chord-name practice: none;
+  Roman numeral and progression prompts: the prompt's key; scales: the scale's key).
+  **Exercises never use the header key**, and the header Key picker is hidden outside free play: a key is either
+  part of the prompt ("V7 in G major") or chosen inside the exercise (the scale selector).
   `freePlay.ts` adds the chord name with the 40 ms debounce. `notePractice.ts` feeds each new note-on from the
   history to the exercise reducer and moves to the next prompt 700 ms after a correct answer. `chordPractice.ts`
   feeds the held keys to its reducer (900 ms before the next prompt) and asks again if the filter rules out the
   current chord. `progressionPractice.ts` feeds the held keys to the progression reducer and starts a new
   progression 1.2 s after the last chord. The chord filter, the prompt style (chord names or Roman numerals, shared
   by chord and progression practice) and the "Specific inversions" option are saved in localStorage.
-  `scalePractice.ts` builds the scale from the header key (C major when none), feeds each note-on with its time to
-  the sequence reducer, and swaps the exercise when the key, minor form or octaves change.
+  `scalePractice.ts` builds the scale from the exercise's own Scale selector (24 keys, default C major), feeds each
+  note-on with its time to the sequence reducer, and swaps the exercise when the scale, minor form or octaves
+  change. The scale options are saved in localStorage.
 - `src/main.ts`: wiring only. Creates the store, views, mode and input sources; owns localStorage for the key.
 - `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
 - `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
@@ -88,7 +94,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 168 tests (54 voicings) should pass
+npm test           # Vitest: 171 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -113,8 +119,9 @@ Both are bundled into the single output file so the app never touches the networ
 - **Staff layout is fixed:** room is always reserved for the full A0–C8 range so the staff never moves. Both chords
   share one VexFlow `TickContext` pinned at a fixed x, so noteheads never shift sideways and accidentals extend
   left. Treble/bass split is at middle C (≥ 60 goes on the treble staff).
-- **Key selector:** None plus 12 major and 12 minor keys, saved in localStorage. A key adds a key signature,
-  accidentals relative to it (including naturals), key-based spelling, scoring bias and Roman numerals.
+- **Key selector (header, free play only):** None plus 12 major and 12 minor keys, saved in localStorage. A key adds
+  a key signature, accidentals relative to it (including naturals), key-based spelling, scoring bias and Roman
+  numerals. Hidden in practice modes, which name their key in the prompt or have their own selector.
 - **Errors:** a MIDI-denied error shows a Retry button, and a separate message when the page is stuck in an iframe or
   preview.
 
@@ -164,8 +171,9 @@ the exercise and runs it again and again; each run is measured.
   1 − coefficient of variation of the gaps between notes, using the MIDI event timestamps). Playing the first note
   again starts the next run; Restart abandons one. The session keeps every run and shows the best (fewest
   mistakes, then most even).
-- **Scales (built):** the header key's scale, up and back down, 1 or 2 octaves; minor keys offer natural,
-  harmonic or melodic (melodic comes down natural). No key means C major.
+- **Scales (built):** chosen in the exercise (Scale: any of the 24 keys), up and back down, 1 or 2 octaves; minor
+  scales offer natural, harmonic or melodic (melodic comes down natural). The prompt names it ("Play E♭ harmonic
+  minor up and back down…").
 - **Next, on the same matcher:** arpeggios and broken chords; hands together (steps with two notes); fingering
   hints; a target tempo with the metronome (step 4) and timing windows; keeping best runs (step 5); drawing the
   target notes on the staff.

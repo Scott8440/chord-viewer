@@ -34,7 +34,7 @@ export function scaleExercise(key: KeyContext, minorForm: MinorForm, octaves: Sc
   return {
     id: `scale:${tonic}:${key.mode}:${key.mode === "minor" ? minorForm : ""}:${octaves}`,
     title: `${tonic} ${form}`,
-    instruction: `Play the scale up and back down, ${octaves === 1 ? "one octave" : "two octaves"}, starting on any ${tonic}`,
+    instruction: `Play ${tonic} ${form} up and back down, ${octaves === 1 ? "one octave" : "two octaves"}, starting on any ${tonic}`,
     startPc: t,
     steps,
   };

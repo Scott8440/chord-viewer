@@ -26,3 +26,18 @@ describe("app reducer", () => {
     expect(s.perf).toBe(createAppState().perf);
   });
 });
+
+describe("store", () => {
+  it("does not notify a listener that unsubscribed earlier in the same dispatch", async () => {
+    const { createStore } = await import("../src/state/store");
+    const store = createStore((s: number, a: number) => s + a, 0);
+    const calls: string[] = [];
+    let offB = () => {};
+    store.subscribe(() => { calls.push("a"); offB(); });   // like the mode switcher stopping the old mode
+    offB = store.subscribe(() => calls.push("b"));
+    store.dispatch(1);
+    expect(calls).toEqual(["a"]);
+    store.dispatch(1);
+    expect(calls).toEqual(["a", "a"]);
+  });
+});

@@ -20,7 +20,7 @@
       <option value="scales">Scale practice</option>
     </select>
   </label>
-  <label class="pick">Key
+  <label class="pick" id="keyPick" title="Key for free play">Key
     <select id="keySel"></select>
   </label>
   <div class="spacer"></div>
@@ -58,6 +58,9 @@
         </details>
       </div>
       <div id="scaleOptions" hidden>
+        <label class="pick">Scale
+          <select id="scaleKeySel"></select>
+        </label>
         <label class="pick">Octaves
           <select id="scaleOctaves"><option value="1">1</option><option value="2">2</option></select>
         </label>
@@ -68,7 +71,6 @@
             <option value="melodic">Melodic</option>
           </select>
         </label>
-        <span id="scaleKeyHint">Choose a key above to practice another scale</span>
       </div>
     </div>
     <div id="notes"></div>

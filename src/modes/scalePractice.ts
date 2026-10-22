@@ -9,14 +9,15 @@ import { sequenceDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, type Mode } from "./performance";
 
-/** The scale to play: the header key's, or C major when no key is selected */
-const scaleKey = (s: AppState) => s.settings.key ?? buildKey("C:major")!;
+/** The scale to play, chosen in the exercise itself (exercises never use the header key) */
+const scaleKey = (s: AppState) => buildKey(s.settings.scaleKey)!;
 const exerciseFor = (s: AppState) => scaleExercise(scaleKey(s), s.settings.minorForm, s.settings.scaleOctaves);
 
 export function startScalePractice(store: Store<AppState, AppAction>, views: {
   staff: StaffView; noteList: NoteListView; practice: PracticeView;
 }): Mode {
-  const drawer = createPerformanceDrawer(store, views);
+  // The staff follows the scale's key
+  const drawer = createPerformanceDrawer(store, views, () => scaleKey(store.getState()));
   let state: SequenceState = initialSequence(exerciseFor(store.getState()));
 
   const render = () => views.practice.render(sequenceDisplay(state, scaleKey(store.getState())));

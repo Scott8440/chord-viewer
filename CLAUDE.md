@@ -226,8 +226,8 @@ room to sync with Ableton later.
   reads it:** the click, the beat light and the timing judgement never assume who drives. Today the driver is the
   built-in clock (`src/modes/metronome.ts`, a `PAGE_SETUP` behaviour); an external clock (MIDI clock from Ableton
   via loopMIDI, say) would be another driver updating the same transport, and nothing downstream changes.
-- **Click** (`src/audio/click.ts`): a look-ahead scheduler (every 25 ms, schedule clicks due in the next 120 ms on
-  the audio clock), accented on beat 1 of the 4/4 bar, mapped from performance time with `getOutputTimestamp()` so
+- **Click** (`src/audio/click.ts`): a look-ahead scheduler (every 25 ms, schedule clicks that must start within the
+  next 120 ms of the audio clock, so the horizon covers any output latency: Bluetooth can add 300 ms), accented on beat 1 of the 4/4 bar, mapped from performance time with `getOutputTimestamp()` so
   output latency is included (falling back to an estimate if a browser's timestamp disagrees by >250 ms, so clicks
   are never silently scheduled in the past). It tracks the last click by time, so a tempo change never doubles a
   click. Audio starts on the first click, tap or key press (browser autoplay rules; unlocked in the capture phase on

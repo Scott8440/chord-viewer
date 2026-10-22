@@ -1,6 +1,6 @@
 // The metronome click: follows the transport (it never decides where the beats are, so an external clock can drive
-// it the same way). A look-ahead scheduler: every 25 ms, clicks due in the next 120 ms are scheduled on the audio
-// clock, so timer jitter never makes a click late.
+// it the same way). A look-ahead scheduler: every 25 ms, clicks that must start within the next 120 ms of the audio
+// clock are scheduled on it, so timer jitter never makes a click late, however much output latency there is.
 import { beatAt, beatMs, timeOfBeat, type Transport } from "../timing/transport";
 
 const TICK_MS = 25;
@@ -65,12 +65,16 @@ export function createClickPlayer(blocked: (on: boolean) => void = () => {}): Cl
 
   function schedule() {
     if (!ctx || !transport || ctx.state !== "running") return;
-    const now = performance.now();
-    for (let beat = Math.ceil(beatAt(transport, now)); timeOfBeat(transport, beat) < now + AHEAD_MS; beat++) {
+    // Look ahead on the audio clock: a click heard at a beat must start output latency earlier (Bluetooth headphones
+    // can add 300 ms), so the beats to schedule reach that much further than AHEAD_MS of performance time
+    const horizon = ctx.currentTime + AHEAD_MS / 1000;
+    for (let beat = Math.ceil(beatAt(transport, performance.now())); ; beat++) {
       const time = timeOfBeat(transport, beat);
-      if (time < lastClick + beatMs(transport) / 2) continue;
       const at = audioTimeOf(ctx, time);
-      if (at >= ctx.currentTime) click(ctx, at, beat % transport.beatsPerBar === 0);
+      if (at > horizon) break;
+      // Too late to be heard on the beat (the first one after starting, say), or scheduled already
+      if (at < ctx.currentTime || time < lastClick + beatMs(transport) / 2) continue;
+      click(ctx, at, beat % transport.beatsPerBar === 0);
       lastClick = time;
     }
   }

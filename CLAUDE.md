@@ -205,7 +205,8 @@ the exercise and runs it again and again; each run is measured.
 - **Runs:** finishing gives a `RunResult` (mistakes, duration, tempo in BPM with one step per beat, evenness =
   1 − coefficient of variation of the gaps between steps, using the MIDI event timestamps; and `timing` when played
   to the metronome). Playing the first step again starts the next run; Restart abandons one. The session keeps
-  every run and shows the best (fewest mistakes, then most on time if timed, else most even).
+  every run and shows the best (fewest mistakes, then most on time if timed, else most even). Results show tempo and
+  evenness (or timing), not how long the run took.
 - **Options and registry:** the exercises share `ExerciseOptions` (key, minor form, octaves, sevenths, root
   position, and the metronome: on/off, BPM, notes per beat, strictness), with one Key selector inside the exercise. `PRESCRIPTIVE` lists each exercise's builder and the options
   it uses; the UI shows just those. Adding an exercise is a builder, a registry entry, a mode id and a menu item.

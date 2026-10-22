@@ -126,7 +126,7 @@ describe("sequenceDisplay", () => {
   it("reports a run when it ends", () => {
     const s = run(initialSequence(Cmajor), ...play(absolute(Cmajor, 60)));
     const d = sequenceDisplay(s, "names");
-    expect(d).toMatchObject({ status: "correct", feedback: "✓ Clean run · 3.5 s · 240 BPM · 100% even",
+    expect(d).toMatchObject({ status: "correct", feedback: "✓ Clean run · 240 BPM · 100% even",
                               sub: "Play C to go again", score: "1 run · 1 clean · best: 100% even" });
   });
 

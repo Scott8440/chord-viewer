@@ -309,10 +309,10 @@ function describeWrongStep(step: SequenceStep, wrong: WrongStep, key: KeyContext
 /** Pretty accidentals on note names inside prose ("Eb major" -> "E♭ major"), leaving words like "back" alone. */
 const prettyNames = (text: string) => text.replace(/\b([A-G])(#{1,2}|b{1,2})(?![a-z])/g, (_, l, acc) => l + prettyAcc(acc));
 
-/** "4.2 s · 132 BPM · 91% even" */
+/** How a run went: "132 BPM · 91% even", or against the metronome "92% on time · rushing 18 ms" (no duration) */
 function runText(r: RunResult): string {
-  if (r.timing) return `${timingText(r.timing)} · ${(r.durationMs / 1000).toFixed(1)} s`;
-  return `${(r.durationMs / 1000).toFixed(1)} s · ${Math.round(r.bpm)} BPM · ${Math.round(r.evenness * 100)}% even`;
+  if (r.timing) return timingText(r.timing);
+  return `${Math.round(r.bpm)} BPM · ${Math.round(r.evenness * 100)}% even`;
 }
 
 /** How steady a run was, briefly: "92% on time" against the metronome, else "95% even" */

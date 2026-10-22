@@ -4,7 +4,6 @@ import { CHORD_PRACTICE_GROUPS, type PromptStyle } from "./exercises/chordPracti
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "./exercises/prescriptive";
 import { ROUTINES, routineById, type CircleDirection } from "./exercises/routines";
 import type { MinorForm, ScaleOctaves } from "./exercises/scales";
-import { CALIBRATION_TAPS } from "./timing/calibration";
 import type { Strictness, Subdivision } from "./timing/grid";
 import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
@@ -13,18 +12,19 @@ import { startChordPractice } from "./modes/chordPractice";
 import { startFreePlay } from "./modes/freePlay";
 import { startNotePractice } from "./modes/notePractice";
 import { IDLE_MS, PAGE_SETUP } from "./modes/page";
-import { startCalibrating, type CalibrationProgress } from "./modes/calibrate";
+import { startCalibrating } from "./modes/calibrate";
 import { startMetronome } from "./modes/metronome";
 import { onIdle, type Mode } from "./modes/performance";
 import { startProgressionPractice } from "./modes/progressionPractice";
 import { startRoutinePractice } from "./modes/routinePractice";
 import { startSequencePractice } from "./modes/sequencePractice";
-import { createAppState, reduceApp, type AppAction, type ModeId, type Settings } from "./state/app";
+import { createAppState, reduceApp, type AppAction, type AppState, type ModeId, type Settings } from "./state/app";
 import { pedalDown } from "./state/performance";
 import { createStore } from "./state/store";
 import { analyze } from "./theory";
 import { createClickPlayer } from "./audio/click";
 import { createBeatView } from "./views/beat";
+import { createCalibrationDialog } from "./views/calibrationDialog";
 import { createChordNameView } from "./views/chordName";
 import { createCircleView } from "./views/circleOfFifths";
 import { createFilterView } from "./views/filter";
@@ -40,7 +40,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 const STORAGE = {
   key: "chordDisplay.key", mode: "chordDisplay.mode", chordTypes: "chordDisplay.chordTypes",
   promptStyle: "chordDisplay.promptStyle", inversions: "chordDisplay.inversions", exercise: "chordDisplay.exercise",
-  routine: "chordDisplay.routine", latency: "chordDisplay.latency",
+  routine: "chordDisplay.routine", latency: "chordDisplay.latency", latencyCalibrated: "chordDisplay.latencyCalibrated",
   /** Scale options saved by an earlier version ({key, minorForm, octaves}), read if there are no exercise options */
   legacyScale: "chordDisplay.scale",
 };
@@ -58,6 +58,7 @@ const store = createStore(reduceApp, createAppState({
   exercise: loadJson(STORAGE.exercise) ?? loadJson(STORAGE.legacyScale),
   routine: loadJson(STORAGE.routine),
   latencyMs: loadJson(STORAGE.latency),
+  latencyCalibrated: loadJson(STORAGE.latencyCalibrated),
 }));
 store.subscribe((s, prev) => {
   if (s.settings === prev.settings) return;
@@ -70,6 +71,7 @@ store.subscribe((s, prev) => {
   save(STORAGE.exercise, JSON.stringify(t.exercise));
   save(STORAGE.routine, JSON.stringify(t.routine));
   save(STORAGE.latency, JSON.stringify(t.latencyMs));
+  save(STORAGE.latencyCalibrated, JSON.stringify(t.latencyCalibrated));
 });
 const input = (event: InputEvent) => store.dispatch({ type: "input", event });
 
@@ -140,11 +142,22 @@ store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
 const beat = createBeatView($("beat"));
+const calibrationDialog = createCalibrationDialog($<HTMLDialogElement>("calibration"), {
+  // Declined: it won't open by itself again
+  cancel() {
+    stopCalibrating?.();
+    stopCalibrating = null;
+    store.dispatch({ type: "setLatencyCalibrated" });
+    calibrationDialog.close();
+  },
+  retry: () => calibrate(),
+});
 /** Output latency above this gets a note: likely Bluetooth headphones or speakers */
 const HIGH_OUTPUT_LATENCY_MS = 60;
 const metronomeViews = {
   click: createClickPlayer(({ blocked, outputLatencyMs }) => {
     beat.setSoundBlocked(blocked);
+    calibrationDialog.setSoundBlocked(blocked);
     const high = outputLatencyMs != null && outputLatencyMs > HIGH_OUTPUT_LATENCY_MS;
     $("outputLatencyNote").hidden = !high;
     if (high) $("outputLatencyNote").textContent =
@@ -260,35 +273,31 @@ $("routineRestart").onclick = () => {
   $("routineRestart").blur();
   mode.restart?.();
 };
-/* Latency calibration: Calibrate starts listening (or cancels); the note under the options shows progress */
+/* Latency calibration, in a dialog: from the Calibrate button, or by itself when the metronome starts and the
+   latency hasn't been dealt with yet (calibrated, typed in, or declined) */
 let stopCalibrating: (() => void) | null = null;
-function showCalibration(p: CalibrationProgress) {
-  const note = $("calibrationNote");
-  note.hidden = p.kind === "cancelled";
-  if (p.kind !== "listening") { stopCalibrating = null; $("calibrate").textContent = "Calibrate"; }
-  note.textContent =
-    p.kind === "listening"
-      ? p.warmupLeft ? `Play any note on each click. Warming up: ${p.warmupLeft} more…`
-        : `Play any note on each click: ${p.measured} / ${CALIBRATION_TAPS}`
-    : p.kind === "done"
-      ? p.result.steady
-        ? `Latency set to ${p.result.latencyMs} ms (your notes were ${Math.abs(p.result.latencyMs)} ms ${p.result.latencyMs < 0 ? "ahead of" : "behind"} the click, ±${p.result.spreadMs} ms).`
-        : `Those taps were too uneven to measure (±${p.result.spreadMs} ms). Latency unchanged; try again.`
-    : "";
+function calibrate() {
+  const transport = store.getState().transport;
+  if (!transport) return;
+  stopCalibrating?.();
+  calibrationDialog.open(transport);
+  stopCalibrating = startCalibrating(store, p => {
+    if (p.kind !== "listening") stopCalibrating = null;
+    calibrationDialog.show(p);
+  });
 }
 $("calibrate").onclick = () => {
   $("calibrate").blur();
-  if (stopCalibrating) {
-    stopCalibrating();
-    stopCalibrating = null;
-    $("calibrate").textContent = "Calibrate";
-    $("calibrationNote").hidden = true;
-    return;
-  }
-  if (!store.getState().transport) return;
-  $("calibrate").textContent = "Cancel";
-  stopCalibrating = startCalibrating(store, showCalibration);
+  calibrate();
 };
+const needsCalibrating = (s: AppState) => !!s.transport && !s.settings.latencyCalibrated && !stopCalibrating;
+store.subscribe((s, prev) => {
+  if (s.transport && !prev.transport && needsCalibrating(s)) calibrate();
+  // A new tempo while calibrating: the dialog's beat light follows it
+  else if (stopCalibrating && s.transport && s.transport !== prev.transport) calibrationDialog.open(s.transport);
+});
+// The metronome may already be running from the saved settings
+if (needsCalibrating(store.getState())) calibrate();
 $("panic").onclick = panic;
 $("retry").onclick = () => { $("retry").hidden = true; header.showMidiStatus({ kind: "requesting" }); midi.start(); };
 

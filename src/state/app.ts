@@ -32,6 +32,9 @@ export interface Settings {
   readonly routine: RoutineOptions;
   /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
   readonly latencyMs: number;
+  /** The latency has been dealt with: calibrated, set by hand, or calibration declined. Until it is, starting the
+   *  metronome opens the calibration. */
+  readonly latencyCalibrated: boolean;
 }
 
 /** Settings as saved between sessions; anything missing or invalid falls back to its default. */
@@ -45,6 +48,7 @@ export interface SavedSettings {
   exercise?: unknown;
   routine?: unknown;
   latencyMs?: unknown;
+  latencyCalibrated?: unknown;
 }
 
 export const LATENCY_RANGE = { min: -200, max: 300 } as const;
@@ -72,7 +76,10 @@ export type AppAction =
   | { type: "setInversions"; on: boolean }
   | { type: "setExerciseOptions"; options: Partial<ExerciseOptions> }
   | { type: "setRoutineOptions"; options: Partial<RoutineOptions> }
+  /** Calibrated or typed in: either way, the latency counts as dealt with */
   | { type: "setLatency"; ms: number }
+  /** Calibration declined */
+  | { type: "setLatencyCalibrated" }
   /** From whatever drives the clock */
   | { type: "setTransport"; transport: Transport | null }
   | { type: "setCalibrating"; on: boolean };
@@ -97,6 +104,8 @@ export function createAppState(saved: SavedSettings = {}): AppState {
       exercise: sanitizeExerciseOptions(saved.exercise),
       routine: sanitizeRoutineOptions(saved.routine),
       latencyMs: sanitizeLatency(saved.latencyMs),
+      // A latency saved before this flag existed was calibrated or typed in, unless it's the default 0
+      latencyCalibrated: saved.latencyCalibrated === true || sanitizeLatency(saved.latencyMs) !== 0,
     },
   };
 }
@@ -133,8 +142,11 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
     }
     case "setLatency": {
       const latencyMs = sanitizeLatency(a.ms);
-      return latencyMs === s.settings.latencyMs ? s : { ...s, settings: { ...s.settings, latencyMs } };
+      return latencyMs === s.settings.latencyMs && s.settings.latencyCalibrated ? s
+        : { ...s, settings: { ...s.settings, latencyMs, latencyCalibrated: true } };
     }
+    case "setLatencyCalibrated":
+      return s.settings.latencyCalibrated ? s : { ...s, settings: { ...s.settings, latencyCalibrated: true } };
     case "setTransport":
       return a.transport === s.transport ? s : { ...s, transport: a.transport };
     case "setCalibrating":

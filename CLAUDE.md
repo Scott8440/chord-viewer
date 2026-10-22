@@ -26,7 +26,7 @@ mode and views subscribe to the store.
   - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (the header key, which
     is for free play only; pedal-notes-count option; active mode; chord types, prompt style and inversions for chord
     practice; `exercise`, the `ExerciseOptions` shared by the prescriptive exercises; `routine`, which routine
-    and which way round the circle of fifths; and `latencyMs`) + `transport` (where the beats are, while a clock
+    and which way round the circle of fifths; `latencyMs`; and `latencyCalibrated`) + `transport` (where the beats are, while a clock
     runs; see "Metronome"). `createAppState(saved)`
     takes saved settings and validates each one; `reduceApp` over `AppAction`s.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed. A subscriber
@@ -126,7 +126,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 245 tests (54 voicings) should pass
+npm test           # Vitest: 246 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -248,7 +248,9 @@ room to sync with Ableton later.
   click flows through a whole routine; the weakest items are the least on time.
 - **Display:** the beat light above the prompt, the tempo in the instruction, late steps red and early ones blue,
   and "93% on time · dragging 6 ms" in results.
-- **Latency calibration** (Calibrate, next to Latency): play any note on each click; 4 warm-up taps, then 12
+- **Latency calibration**, in a dialog (`src/views/calibrationDialog.ts`; Calibrate, next to Latency, or by itself
+  the first time the metronome starts while `latencyCalibrated` is false: set by calibrating, typing a latency, or
+  Cancel, and saved; a latency saved before the flag existed counts unless it's 0): play any note on each click; 4 warm-up taps, then 12
   measured; taps over 150 ms from the beat are strays; the median offset becomes the latency (− = the player is
   ahead, e.g. rushing), applied only if steady (median absolute deviation ≤ 25 ms). It covers the click's real
   arrival, MIDI delay and playing ahead of a click in one number. `AppState.calibrating` makes `onPlayerInput`

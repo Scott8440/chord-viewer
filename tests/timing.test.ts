@@ -162,7 +162,21 @@ describe("metronome settings", () => {
     expect(createAppState({ latencyMs: "x" }).settings.latencyMs).toBe(0);
     const s = createAppState();
     expect(reduceApp(s, { type: "setLatency", ms: 999 }).settings.latencyMs).toBe(300);
-    expect(reduceApp(s, { type: "setLatency", ms: 0 })).toBe(s);
+    const set = reduceApp(s, { type: "setLatency", ms: 0 });
+    expect(reduceApp(set, { type: "setLatency", ms: 0 })).toBe(set);
+  });
+
+  it("the latency counts as dealt with once calibrated, typed in or declined", () => {
+    const fresh = createAppState();
+    expect(fresh.settings.latencyCalibrated).toBe(false);
+    expect(reduceApp(fresh, { type: "setLatency", ms: -30 }).settings).toMatchObject({ latencyMs: -30, latencyCalibrated: true });
+    // Typing in the same value still counts
+    expect(reduceApp(fresh, { type: "setLatency", ms: 0 }).settings.latencyCalibrated).toBe(true);
+    expect(reduceApp(fresh, { type: "setLatencyCalibrated" }).settings).toMatchObject({ latencyMs: 0, latencyCalibrated: true });
+    // Saved: the flag, or a latency saved before the flag existed
+    expect(createAppState({ latencyCalibrated: true }).settings.latencyCalibrated).toBe(true);
+    expect(createAppState({ latencyMs: -31 }).settings.latencyCalibrated).toBe(true);
+    expect(createAppState({ latencyMs: 0 }).settings.latencyCalibrated).toBe(false);
   });
 
   it("the transport is set by whatever drives the clock", () => {

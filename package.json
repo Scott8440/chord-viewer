@@ -1,0 +1,17 @@
+{
+  "name": "chord-display",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Offline MIDI chord display: grand staff + chord name + key-aware analysis",
+  "scripts": {
+    "build": "node src/build.js",
+    "test": "node tests/run-voicings.js"
+  },
+  "dependencies": {
+    "tonal": "6.5.1",
+    "vexflow": "4.2.5"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  }
+}

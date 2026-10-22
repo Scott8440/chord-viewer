@@ -9,16 +9,23 @@ v1 is feature complete. **The next goal is to turn it into a broader music theor
 Do the architecture refactor (below) before adding features.
 
 ## Current layout
-- `src/app.html`: the whole app (HTML, CSS, JS). The `/*__TONAL__*/` and `/*__VEXFLOW__*/` placeholders get the
-  libraries inlined at build time.
-- `src/build.js`: inlines the libraries and writes `dist/chord-display.html`, one self-contained offline file.
+Vite + TypeScript, built to one self-contained offline file with `vite-plugin-singlefile`.
+- `index.html`: page markup (Vite entry).
+- `src/style.css`: all styles.
+- `src/theory.ts`: pure theory module with no DOM and no globals. It holds `buildKey`, `analyze(notes, key)`,
+  `romanFor`, `spellNote(midi, result, key)` and `prettyAcc`. The key is always passed in explicitly.
+- `src/main.ts`: app shell with note state, Web MIDI, QWERTY input, VexFlow staff, chord name rendering and the key
+  selector. It owns `currentKey` and passes it to the theory functions.
+- `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
 - `tests/voicings.json`: regression corpus of notes, key and expected chord name / Roman numeral.
-- `tests/run-voicings.js`: runs the corpus against the built page in headless Chromium.
+- `tests/voicings.test.ts`: Vitest runs the corpus directly against `src/theory.ts`, with no browser.
 
 ```
 npm install
-npx playwright install chromium   # once
-npm run build && npm test         # 42/42 should pass
+npm run dev        # Vite dev server
+npm run build      # typecheck, then write dist/chord-display.html
+npm test           # Vitest: 42/42 should pass
+npm run typecheck
 ```
 In the browser console, `__chord.analyze([60,64,67])`, `__chord.setKey("C:major")`, `__chord.noteOn(n, src)` and
 `__chord.noteOff(n, src)` are exposed for testing.
@@ -27,7 +34,7 @@ In the browser console, `__chord.analyze([60,64,67])`, `__chord.setKey("C:major"
 - **tonal 6.5.1**: note, interval, key and scale primitives, plus `Chord.detect` as the candidate generator.
 - **VexFlow 4.2.5** (Bravura build): staff rendering.
 
-Both are inlined so the app never touches the network. Keep that property: no server, no telemetry, works offline.
+Both are bundled into the single output file so the app never touches the network. Keep that property: no server, no telemetry, works offline.
 
 ## Behavior and decisions so far
 - **MIDI:** Web MIDI, all inputs on by default, with a per-input toggle chip in the header. Note-on with velocity 0
@@ -46,7 +53,7 @@ Both are inlined so the app never touches the network. Keep that property: no se
 - **Errors:** a MIDI-denied error shows a Retry button, and a separate message when the page is stuck in an iframe or
   preview.
 
-## Chord recognizer (in `analyze` / `interpret`)
+## Chord recognizer (`analyze` / `interpret` in `src/theory.ts`)
 1. Reduce the notes to unique pitch classes, ordered from the bass up.
 2. Get candidates from `Chord.detect(names)`, plus `{assumePerfectFifth:true}` (penalty +0.5) to allow an omitted 5th.
 3. Score each candidate (lower is better):
@@ -75,7 +82,7 @@ Both are inlined so the app never touches the network. Keep that property: no se
 - Rootless and quartal voicings are only as good as the candidate list.
 
 ## Planned architecture (agreed direction; do this first)
-1. **Port to Vite + TypeScript** in this repo with identical behavior. Keep single-file offline output
+1. ✅ **Done.** **Port to Vite + TypeScript** in this repo with identical behavior. Keep single-file offline output
    (`vite-plugin-singlefile`), and possibly a PWA later. Move the voicing corpus to Vitest and run it against the
    pure theory module, not through a browser.
 2. **Split into layers that only talk through data:**

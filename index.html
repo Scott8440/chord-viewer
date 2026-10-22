@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chord Display</title>
+<script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+<header>
+  <h1>Chord Display</h1>
+  <div id="status"><span class="dot" id="statusDot"></span><span id="statusText">Starting…</span></div>
+  <div id="inputs"></div>
+  <label id="keyPick">Key
+    <select id="keySel"></select>
+  </label>
+  <div class="spacer"></div>
+  <span id="pedal" title="Sustain pedal (CC64)">Ped.</span>
+  <button id="retry" hidden title="Ask for MIDI access again">Retry MIDI</button>
+  <button id="panic" title="Clear all notes (Esc)">Clear</button>
+</header>
+
+<main>
+  <section class="card" id="staffCard"><div id="staff"></div></section>
+  <section class="card" id="chordCard">
+    <div id="chordName"></div>
+    <div id="chordSub">Play something</div>
+    <div id="roman"></div>
+    <div id="alts"></div>
+    <div id="notes"></div>
+  </section>
+</main>
+
+<footer>
+  <label class="opt"><input type="checkbox" id="optPedal" checked> Pedal-held notes count toward chord</label>
+  <span>Computer keys: <kbd>A</kbd>–<kbd>K</kbd> white, <kbd>W</kbd><kbd>E</kbd><kbd>T</kbd><kbd>Y</kbd><kbd>U</kbd> black, <kbd>Z</kbd>/<kbd>X</kbd> octave, <kbd>Space</kbd> pedal, <kbd>Esc</kbd> clear</span>
+  <span id="kbdOct"></span>
+</footer>
+</body>
+</html>

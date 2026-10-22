@@ -1,0 +1,111 @@
+:root {
+  --bg: #14161a;
+  --panel: #1d2026;
+  --line: #2c3038;
+  --text: #e9e6df;
+  --muted: #8d919b;
+  --accent: #e8b44c;
+  --paper: #f7f4ec;
+  --ink: #1a1a1a;
+  --sustain-ink: #9a968c;
+  --ok: #6cc28a;
+  --warn: #e07a5f;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex; flex-direction: column;
+}
+header {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 12px 20px; border-bottom: 1px solid var(--line);
+}
+header h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em; }
+#status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.ok { background: var(--ok); }
+.dot.err { background: var(--warn); }
+#inputs { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px 3px 8px;
+  font-size: 12px; color: var(--text); cursor: pointer; user-select: none;
+}
+.chip input { margin: 0; accent-color: var(--accent); }
+.chip.off { color: var(--muted); }
+.spacer { flex: 1; }
+#keyPick { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+#keySel {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 13px;
+}
+#roman {
+  margin-top: 10px; font-family: Georgia, "Times New Roman", serif; font-size: 30px;
+  color: var(--accent); min-height: 1.2em;
+}
+#pedal {
+  font-size: 12px; color: var(--muted); border: 1px solid var(--line);
+  border-radius: 4px; padding: 2px 8px;
+}
+#pedal.down { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+button {
+  background: transparent; color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+
+main {
+  flex: 1; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 20px; padding: 20px; align-items: stretch; min-height: 0;
+}
+.card { border-radius: 10px; min-height: 0; }
+#staffCard {
+  background: var(--paper); display: flex; align-items: center; justify-content: center;
+  padding: 12px; min-height: 340px;
+}
+#staff { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+#staff svg { max-width: 100%; max-height: 72vh; height: auto; }
+#chordCard {
+  background: var(--panel); border: 1px solid var(--line);
+  display: flex; flex-direction: column; justify-content: center; padding: 28px 32px;
+}
+#chordName {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(56px, 9vw, 128px); line-height: 1; font-weight: 400;
+  color: var(--text); word-break: break-word; min-height: 1em;
+  transition: opacity .25s;
+}
+#chordName.stale { opacity: .3; }
+#chordName .acc { font-size: .8em; }
+#chordName .ext { font-size: .55em; vertical-align: .55em; }
+#chordName .bass { color: var(--muted); }
+#chordSub { margin-top: 14px; color: var(--muted); font-size: 16px; min-height: 1.4em; }
+#alts { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; min-height: 30px; }
+#alts span {
+  font-family: Georgia, serif; font-size: 17px; padding: 3px 10px;
+  border: 1px solid var(--line); border-radius: 6px; color: var(--muted);
+}
+#notes { margin-top: 22px; font-size: 13px; color: var(--muted); letter-spacing: .04em; min-height: 1.4em; }
+#notes b { color: var(--text); font-weight: 500; }
+#notes .sus { color: var(--muted); }
+
+footer {
+  padding: 10px 20px 14px; color: var(--muted); font-size: 12px;
+  display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+}
+kbd {
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px;
+  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px;
+  color: var(--text);
+}
+label.opt { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+label.opt input { accent-color: var(--accent); }
+
+@media (max-width: 760px) {
+  main { grid-template-columns: 1fr; padding: 16px; }
+  header, footer { padding-left: 16px; padding-right: 16px; }
+  #staffCard { min-height: 260px; }
+}

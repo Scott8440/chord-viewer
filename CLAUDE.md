@@ -237,7 +237,7 @@ room to sync with Ableton later.
   the output latency the browser gives (`outputLatency + baseLatency`); above 60 ms the metronome options show a
   note (likely Bluetooth). Browsers can't say what kind of device it is (names need microphone permission), and
   can under-report Bluetooth delay.
-- **Judging** (`src/timing/grid.ts`): a grid = transport + notes per beat (1, 2 or 4) + strictness (±40 ms strict,
+- **Judging** (`src/timing/grid.ts`): a grid = transport + notes per beat (1, 2 or 4) + strictness (±50 ms strict,
   ±80 ms loose, never more than 40% of a slot) + `latencyMs` (taken off note times: set it if you're judged
   consistently late). One step per slot. A run may start on any slot; each step is due on the slot after the
   previous one; a step a whole slot away has *slipped*, and the run carries on from there, so one stumble doesn't

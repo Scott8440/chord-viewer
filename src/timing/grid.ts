@@ -9,7 +9,7 @@ export type Subdivision = typeof SUBDIVISIONS[number];
 export const STRICTNESS = ["strict", "loose"] as const;
 export type Strictness = typeof STRICTNESS[number];
 /** How far from the slot still counts as on time (capped by slot length, see `windowMs`) */
-export const WINDOW_MS: Record<Strictness, number> = { strict: 40, loose: 80 };
+export const WINDOW_MS: Record<Strictness, number> = { strict: 50, loose: 80 };
 
 export interface TimingGrid {
   transport: Transport;

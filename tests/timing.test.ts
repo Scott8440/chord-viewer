@@ -33,10 +33,10 @@ describe("judging a step against the grid", () => {
   it("on time within the window, else early or late", () => {
     const g = grid();
     expect(judgeTime(g, 1510, null)).toEqual({ slot: 1, offsetMs: 10, slipped: 0 });
-    expect(timingVerdict(g, judgeTime(g, 1460, null))).toBe("onTime");
-    expect(timingVerdict(g, judgeTime(g, 1455, null))).toBe("early");
-    expect(timingVerdict(g, judgeTime(g, 1550, null))).toBe("late");
-    expect(timingVerdict(grid({ strictness: "loose" }), judgeTime(g, 1550, null))).toBe("onTime");
+    expect(timingVerdict(g, judgeTime(g, 1450, null))).toBe("onTime");
+    expect(timingVerdict(g, judgeTime(g, 1445, null))).toBe("early");
+    expect(timingVerdict(g, judgeTime(g, 1560, null))).toBe("late");
+    expect(timingVerdict(grid({ strictness: "loose" }), judgeTime(g, 1560, null))).toBe("onTime");
   });
 
   it("takes the latency off note times", () => {
@@ -57,7 +57,7 @@ describe("judging a step against the grid", () => {
   });
 
   it("the window never covers more than 40% of a slot", () => {
-    expect(windowMs(grid())).toBe(40);
+    expect(windowMs(grid())).toBe(50);
     // 16ths at 240 BPM: 62.5 ms slots
     expect(windowMs(grid({ transport: startTransport(240, 4, 0), subdivision: 4 }))).toBe(25);
   });

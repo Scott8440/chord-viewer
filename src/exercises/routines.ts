@@ -1,12 +1,9 @@
 // Routines: a set of prescriptive exercises played one after another, e.g. every major scale round the circle of
 // fifths. A routine is data pointing at exercises in PRESCRIPTIVE; the runner wraps the sequence reducer and moves on
 // to the next item each time an item's run finishes (mistakes allowed; they are recorded).
-import { buildKey } from "../theory";
+import { buildKey, CIRCLE_OF_FIFTHS_MAJOR } from "../theory";
 import { sanitizeExerciseOptions, PRESCRIPTIVE, type ExerciseOptions, type PrescriptiveId } from "./prescriptive";
 import { initialSequence, reduceSequence, type RunResult, type SequenceAction, type SequenceExercise, type SequenceState } from "./sequence";
-
-/** Major keys round the circle of fifths, sharps first. (F# stands in for Gb, as in the key lists.) */
-export const CIRCLE_OF_FIFTHS_MAJOR = ["C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F"];
 
 export const CIRCLE_DIRECTIONS = ["sharps", "flats"] as const;
 /** sharps: C G D … (up by fifths); flats: C F B♭ … (down by fifths, i.e. up by fourths) */
@@ -149,6 +146,38 @@ export function itemLabel(s: RoutineState, index: number): { key: string; exerci
   const item = s.items[index];
   const key = buildKey(item.options.key ?? s.base.key)!;
   return { key: key.tonic + (key.mode === "minor" ? "m" : ""), exercise: PRESCRIPTIVE[item.exercise].short };
+}
+
+export type KeyProgressState = "done" | "flawed" | "skipped" | "current" | "upcoming";
+
+export interface KeyProgress {
+  /** Key value, e.g. "G:major" */
+  keyValue: string;
+  /** Short label, e.g. "G" */
+  label: string;
+  /** done: every item clean; flawed: any had mistakes; skipped: all skipped; current: an item is in progress */
+  state: KeyProgressState;
+  /** The routine's items in this key */
+  items: number[];
+}
+
+/** Progress by key: a routine's consecutive items in the same key form one entry. */
+export function keyProgress(r: RoutineState): KeyProgress[] {
+  const groups: KeyProgress[] = [];
+  r.items.forEach((item, i) => {
+    const keyValue = item.options.key ?? r.base.key;
+    const last = groups[groups.length - 1];
+    if (last && last.keyValue === keyValue) last.items.push(i);
+    else groups.push({ keyValue, label: itemLabel(r, i).key, state: "upcoming", items: [i] });
+  });
+  for (const g of groups) {
+    const outcomes = g.items.map(i => r.outcomes[i]);
+    g.state = r.status !== "done" && g.items.includes(r.index) ? "current"
+      : outcomes.some(o => o === undefined) ? "upcoming"
+      : outcomes.every(o => o === "skipped") ? "skipped"
+      : outcomes.some(o => o !== "skipped" && o!.mistakes) ? "flawed" : "done";
+  }
+  return groups;
 }
 
 /** Whether the routine mixes different exercises (then each item's exercise is worth labelling). */

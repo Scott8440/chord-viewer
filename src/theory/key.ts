@@ -5,6 +5,29 @@ import { alterOf, chromaOf, FLAT, ROOT_MAJOR, SHARP } from "./spelling";
 export const KEY_MAJORS = ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
 export const KEY_MINORS = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "G#", "A", "Bb", "B"];
 
+/**
+ * The circle of fifths, clockwise from C (one more sharp, or one fewer flat, each step), spelled as in the key lists
+ * (F# stands in for Gb). The minor ring holds each major key's relative minor.
+ */
+export const CIRCLE_OF_FIFTHS_MAJOR = ["C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F"];
+export const CIRCLE_OF_FIFTHS_MINOR = ["A", "E", "B", "F#", "C#", "G#", "Eb", "Bb", "F", "C", "G", "D"];
+
+/** Position of a key on the circle of fifths (0 = C major / A minor), or -1 if it isn't one of the 24 keys. */
+export function circlePosition(keyValue: string): number {
+  const [tonic, mode] = keyValue.split(":");
+  return (mode === "minor" ? CIRCLE_OF_FIFTHS_MINOR : CIRCLE_OF_FIFTHS_MAJOR).indexOf(tonic);
+}
+
+/**
+ * A key's signature, counted from its own scale (natural minor for minor keys), so enharmonic keys come out as
+ * spelled: F# major has 6 sharps, its relative Eb minor 6 flats.
+ */
+export function keySignature(key: KeyContext): { count: number; accidental: "#" | "b" | "" } {
+  const sharps = key.scale.filter(n => n.includes("#")).length;
+  const flats = key.scale.filter(n => n.includes("b")).length;
+  return sharps ? { count: sharps, accidental: "#" } : flats ? { count: flats, accidental: "b" } : { count: 0, accidental: "" };
+}
+
 /** Whether a value is one of the 24 keys offered, e.g. "C:major", "F#:minor" */
 export function isKeyValue(value: string): boolean {
   const [tonic, mode] = value.split(":");

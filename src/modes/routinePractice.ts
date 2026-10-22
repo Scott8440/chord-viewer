@@ -1,13 +1,14 @@
 // Routine mode: plays a routine's exercises one after another, moving on whenever an item's run finishes.
-import { initialRoutine, reduceRoutine, routineById, type RoutineAction, type RoutineState } from "../exercises/routines";
+import { initialRoutine, keyProgress, reduceRoutine, routineById, type RoutineAction, type RoutineState } from "../exercises/routines";
 import { buildKey } from "../theory";
 import type { NoteListView } from "../views/noteList";
+import type { CircleView } from "../views/circleOfFifths";
 import { routineDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type Mode } from "./performance";
 
 export function startRoutinePractice(store: AppStore, views: {
-  staff: StaffView; noteList: NoteListView; practice: PracticeView;
+  staff: StaffView; noteList: NoteListView; practice: PracticeView; circle: CircleView;
 }): Mode {
   const fresh = (): RoutineState => {
     const s = store.getState();
@@ -17,7 +18,19 @@ export function startRoutinePractice(store: AppStore, views: {
   // The staff follows the key of the item in progress
   const drawer = createPerformanceDrawer(store, views, () => buildKey(state.current.exercise.keyValue));
 
-  const render = () => views.practice.render(routineDisplay(state, store.getState().settings.promptStyle));
+  const render = () => {
+    views.practice.render(routineDisplay(state, store.getState().settings.promptStyle));
+    // The circle shows progress round it, with the key in progress highlighted
+    const progress = keyProgress(state);
+    const at = progress.findIndex(g => g.state === "current");
+    views.circle.render({
+      keyValue: state.status === "done" ? null : state.current.exercise.keyValue,
+      neighbours: false,
+      progress: Object.fromEntries(progress.map(g => [g.keyValue, g.state])),
+      center: { text: state.status === "done" ? "Done" : `${at + 1} / ${progress.length}`,
+                direction: store.getState().settings.routine.direction },
+    });
+  };
   function apply(action: RoutineAction) {
     const prev = state;
     state = reduceRoutine(state, action);

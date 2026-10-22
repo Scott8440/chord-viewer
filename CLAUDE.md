@@ -31,7 +31,9 @@ mode and views subscribe to the store.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed. A subscriber
     that unsubscribes during a dispatch is not called for the rest of it (the old mode on a mode switch).
 - `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
-  `spelling.ts` (note names, `spellNote`, `prettyAcc`), `key.ts` (`buildKey`, `KeyContext`), `chordTemplates.ts`
+  `spelling.ts` (note names, `spellNote`, `prettyAcc`), `key.ts` (`buildKey`, `KeyContext`, the circle of fifths
+  `CIRCLE_OF_FIFTHS_MAJOR`/`_MINOR` and `circlePosition`, `keySignature` counted from the key's scale so F♯ major
+  is 6♯ and its relative E♭ minor 6♭), `chordTemplates.ts`
   (chord types and scoring weights: data only), `chords.ts` (`matchTemplate`, `chordReadings`, `analyze`),
   `roman.ts` (`romanFor`), re-exported from `index.ts`.
 - `src/exercises/`: exercises as pure data and functions. `notePractice.ts`: `makeNotePrompt` (random pitch class,
@@ -66,8 +68,9 @@ mode and views subscribe to the store.
   (note steps and chord steps; `reduceSequence`, `runResult`, `bestRun`); `scales.ts` builds `scaleExercise`;
   `diatonicChords.ts` builds `diatonicChordsExercise`; `prescriptive.ts` is the registry (`PRESCRIPTIVE`: how each
   exercise builds its sequence from the shared `ExerciseOptions`, which options it uses, a short name and whether it
-  has chord steps). `routines.ts`: routines (see "Routines" below): `CIRCLE_OF_FIFTHS_MAJOR`, `circleOfFifths`,
-  `eachKey`, the curated `ROUTINES`, and the runner `reduceRoutine` (wraps `reduceSequence`) with `routineSummary`.
+  has chord steps). `routines.ts`: routines (see "Routines" below): `circleOfFifths(direction)`, `eachKey`, the
+  curated `ROUTINES`, the runner `reduceRoutine` (wraps `reduceSequence`), `routineSummary`, and `keyProgress`
+  (state per key, shared by the routine row and the circle).
 - `src/views/`: DOM rendering only: `staff.ts` (VexFlow), `chordName.ts` (also `chordSymbolHtml`), `noteList.ts`,
   `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
   into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
@@ -78,7 +81,7 @@ mode and views subscribe to the store.
   covers note and chord steps: wrong note vs wrong octave, chord corrections, start hints, run results and a session
   summary, and relabels Skip as Restart; `routineDisplay` adds the routine's overview row, one entry per key, amber
   when a key had mistakes, struck through when skipped, and the progress, previous item's result and final
-  summary), `filter.ts`
+  summary), `circleOfFifths.ts` (see "Circle of fifths" below), `filter.ts`
   (grouped checkboxes, used for the chord-type filter; the last one can't be unchecked), `header.ts` (MIDI
   status and input chips, pedal light, octave, key selector).
 - `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
@@ -113,7 +116,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 204 tests (54 voicings) should pass
+npm test           # Vitest: 217 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -203,6 +206,19 @@ the exercise and runs it again and again; each run is measured.
 - **Next, on the same matcher:** arpeggios and broken chords (note steps, optionally ending on a chord step); hands together (steps with two notes); fingering
   hints; a target tempo with the metronome (step 4) and timing windows; keeping best runs (step 5); drawing the
   target notes on the staff.
+
+## Circle of fifths (`src/views/circleOfFifths.ts`)
+A visual shown in the top-right corner of the staff card (space the fixed staff layout always leaves empty) when
+relevant, hidden otherwise; main hides it on every mode switch and modes that use it draw it.
+- **Drawing:** `circleSvg(model)` is pure: majors on the outer ring, relative minors inside, C at the top, clockwise
+  by fifths. The model can focus a key (amber, its name and signature in the middle), shade and number its
+  neighbourhood (IV I V outside and ii vi iii inside for major; VI III VII and iv i v for minor; `neighbours: false`
+  turns this off), mark a chord (`chordOnCircle(result)`: major-family chords outside, minor-family inside;
+  diminished, augmented and sus chords aren't on the circle), and colour routine progress by key with a centre
+  text and direction arrow. Labels use the circle's fixed spelling (F♯, E♭m), so E♭ minor's VI shows as B.
+- **Where:** free play with a header key (the key, its neighbourhood and the chord being played); scale and
+  diatonic chord exercises (the exercise's key); routines (progress, current key, "4 / 12" and ↻/↺). Not in note,
+  chord or progression practice: the numerals would give answers away.
 
 ## Routines
 A set of prescriptive exercises played one after another, e.g. every major scale round the circle of fifths.

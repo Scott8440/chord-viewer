@@ -4,7 +4,7 @@ import { Note } from "tonal";
 import { chordCorrections, hasBass, hasChordTones, type ChordPracticeState, type ChordPrompt, type PromptStyle } from "../exercises/chordPractice";
 import type { NotePracticeState } from "../exercises/notePractice";
 import type { ProgressionState } from "../exercises/progressions";
-import { itemExercise, itemLabel, mixesExercises, routineSummary, type RoutineState } from "../exercises/routines";
+import { itemExercise, itemLabel, keyProgress, mixesExercises, routineSummary, type RoutineState } from "../exercises/routines";
 import { bestRun, type RunResult, type SequenceState, type SequenceStep, type WrongStep } from "../exercises/sequence";
 import { analyze, buildKey, FLAT, pcName, prettyAcc, SHARP, templateById, type KeyContext } from "../theory";
 import { chordSymbolHtml } from "./chordName";
@@ -235,23 +235,11 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
 /** A routine: the overview of its items, then the item in progress (shown as on its own), or a summary at the end. */
 export function routineDisplay(r: RoutineState, style: PromptStyle): PracticeDisplay {
   // One entry per key: a routine that plays several exercises in a key groups them
-  const groups: { key: string; items: number[] }[] = [];
-  r.items.forEach((_, i) => {
-    const { key } = itemLabel(r, i);
-    if (groups.length && groups[groups.length - 1].key === key) groups[groups.length - 1].items.push(i);
-    else groups.push({ key, items: [i] });
-  });
   const mixed = mixesExercises(r);
-  const overview = groups.map(g => {
-    const outcomes = g.items.map(i => r.outcomes[i]);
-    const inProgress = r.status !== "done" && g.items.includes(r.index);
-    const state: StepState = inProgress ? "current"
-      : outcomes.some(o => o === undefined) ? "upcoming"
-      : outcomes.every(o => o === "skipped") ? "skipped"
-      : outcomes.some(o => o !== "skipped" && o!.mistakes) ? "flawed" : "done";
+  const overview = keyProgress(r).map(g => {
     // In a mixed routine, the key in progress says which of its exercises is up
-    const part = mixed ? (inProgress ? esc(itemLabel(r, r.index).exercise) : "") : undefined;
-    return stepHtml(state, esc(prettyAcc(g.key)), part);
+    const part = mixed ? (g.state === "current" ? esc(itemLabel(r, r.index).exercise) : "") : undefined;
+    return stepHtml(g.state, esc(prettyAcc(g.label)), part);
   }).join("");
   const row = `<div class="routineRow">${overview}</div>`;
   const total = r.items.length;

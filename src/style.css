@@ -64,7 +64,27 @@ main {
   gap: 20px; padding: 20px; align-items: stretch; min-height: 0;
 }
 .card { border-radius: 10px; min-height: 0; }
+/* Circle of fifths: top-right corner of the staff card, which the fixed staff layout always leaves empty */
+#circle { position: absolute; top: 12px; right: 12px; width: min(200px, 34%); }
+#circle svg { display: block; width: 100%; height: auto; }
+.cof .seg path { fill: #ebe5d6; stroke: var(--paper); stroke-width: 1.2; }
+.cof .seg.inner path { fill: #e3dccb; }
+.cof .seg.inkey path { fill: #e7d3a3; }
+.cof .seg.focus path { fill: var(--accent); }
+.cof .seg.done path { fill: #b9dcc4; }
+.cof .seg.flawed path { fill: #f0cf8e; }
+.cof .seg.skipped path { fill: #ddd8cd; }
+.cof .seg.skipped .name { text-decoration: line-through; fill: #9a968c; }
+.cof .seg.current path { fill: var(--accent); }
+.cof .seg.mark path { stroke: var(--ink); stroke-width: 3; }
+.cof text { text-anchor: middle; dominant-baseline: middle; fill: var(--ink); font-family: Georgia, "Times New Roman", serif; }
+.cof .name { font-size: 11px; }
+.cof .inner .name { font-size: 9px; }
+.cof .num { font-size: 7px; font-family: system-ui, sans-serif; fill: #6b5a33; }
+.cof .c1 { font-size: 15px; }
+.cof .c2 { font-size: 9px; font-family: system-ui, sans-serif; fill: #6f6a60; }
 #staffCard {
+  position: relative;
   background: var(--paper); display: flex; align-items: center; justify-content: center;
   padding: 12px; min-height: 340px;
 }

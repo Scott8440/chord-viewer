@@ -19,6 +19,7 @@ import { pedalDown } from "./state/performance";
 import { createStore } from "./state/store";
 import { analyze } from "./theory";
 import { createChordNameView } from "./views/chordName";
+import { createCircleView } from "./views/circleOfFifths";
 import { createFilterView } from "./views/filter";
 import { createHeaderView, fillKeySelect } from "./views/header";
 import { createNoteListView } from "./views/noteList";
@@ -114,6 +115,7 @@ store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 
 const staff = createStaffView($("staff"));
 const noteList = createNoteListView($("notes"));
+const circle = createCircleView($("circle"));
 const chordName = createChordNameView({ name: $("chordName"), sub: $("chordSub"), roman: $("roman"), alts: $("alts") });
 const practice = createPracticeView({
   label: $("practiceLabel"), prompt: $("practicePrompt"), sub: $("practiceSub"), feedback: $("practiceFeedback"), score: $("practiceScore"),
@@ -129,9 +131,14 @@ store.subscribe((s, prev) => { if (s.settings.chordTypes !== prev.settings.chord
    Modes: exactly one runs at a time and owns the right-hand card
    --------------------------------------------------------------- */
 const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRESCRIPTIVE;
-const practiceViews = { staff, noteList, practice };
-const startMode = (id: ModeId): Mode =>
-  id === "free" ? startFreePlay(store, { staff, chordName, noteList })
+const practiceViews = { staff, noteList, practice, circle };
+/** Starts a mode. The circle of fifths starts hidden; modes where it is relevant draw it. */
+const startMode = (id: ModeId): Mode => {
+  circle.render(null);
+  return startModeView(id);
+};
+const startModeView = (id: ModeId): Mode =>
+  id === "free" ? startFreePlay(store, { staff, chordName, noteList, circle })
   : id === "notes" ? startNotePractice(store, practiceViews)
   : id === "chords" ? startChordPractice(store, practiceViews)
   : id === "progressions" ? startProgressionPractice(store, practiceViews)

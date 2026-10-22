@@ -104,9 +104,11 @@
             <label class="pick" title="How close to the beat counts as on time">Timing
               <select id="exStrictness"><option value="strict">Strict (±40 ms)</option><option value="loose">Loose (±80 ms)</option></select>
             </label>
-            <label class="pick" title="If you're judged consistently late (or early), set this to how late (ms). Negative if early.">Latency (ms)
+            <label class="pick" title="Taken off your note times. Positive if you're judged consistently late, negative if early (rushing). Calibrate measures it.">Latency (ms)
               <input type="number" id="latency" min="-200" max="300" step="5">
             </label>
+            <button id="calibrate" title="Play a note on each click to measure your latency">Calibrate</button>
+            <span id="calibrationNote" hidden></span>
             <span id="outputLatencyNote" hidden></span>
           </span>
         </div>

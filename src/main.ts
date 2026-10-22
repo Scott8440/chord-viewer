@@ -4,6 +4,7 @@ import { CHORD_PRACTICE_GROUPS, type PromptStyle } from "./exercises/chordPracti
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "./exercises/prescriptive";
 import { ROUTINES, routineById, type CircleDirection } from "./exercises/routines";
 import type { MinorForm, ScaleOctaves } from "./exercises/scales";
+import { CALIBRATION_TAPS } from "./timing/calibration";
 import type { Strictness, Subdivision } from "./timing/grid";
 import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
@@ -12,6 +13,7 @@ import { startChordPractice } from "./modes/chordPractice";
 import { startFreePlay } from "./modes/freePlay";
 import { startNotePractice } from "./modes/notePractice";
 import { IDLE_MS, PAGE_SETUP } from "./modes/page";
+import { startCalibrating, type CalibrationProgress } from "./modes/calibrate";
 import { startMetronome } from "./modes/metronome";
 import { onIdle, type Mode } from "./modes/performance";
 import { startProgressionPractice } from "./modes/progressionPractice";
@@ -257,6 +259,35 @@ $("practiceSkip").onclick = () => {
 $("routineRestart").onclick = () => {
   $("routineRestart").blur();
   mode.restart?.();
+};
+/* Latency calibration: Calibrate starts listening (or cancels); the note under the options shows progress */
+let stopCalibrating: (() => void) | null = null;
+function showCalibration(p: CalibrationProgress) {
+  const note = $("calibrationNote");
+  note.hidden = p.kind === "cancelled";
+  if (p.kind !== "listening") { stopCalibrating = null; $("calibrate").textContent = "Calibrate"; }
+  note.textContent =
+    p.kind === "listening"
+      ? p.warmupLeft ? `Play any note on each click. Warming up: ${p.warmupLeft} more…`
+        : `Play any note on each click: ${p.measured} / ${CALIBRATION_TAPS}`
+    : p.kind === "done"
+      ? p.result.steady
+        ? `Latency set to ${p.result.latencyMs} ms (your notes were ${Math.abs(p.result.latencyMs)} ms ${p.result.latencyMs < 0 ? "ahead of" : "behind"} the click, ±${p.result.spreadMs} ms).`
+        : `Those taps were too uneven to measure (±${p.result.spreadMs} ms). Latency unchanged; try again.`
+    : "";
+}
+$("calibrate").onclick = () => {
+  $("calibrate").blur();
+  if (stopCalibrating) {
+    stopCalibrating();
+    stopCalibrating = null;
+    $("calibrate").textContent = "Calibrate";
+    $("calibrationNote").hidden = true;
+    return;
+  }
+  if (!store.getState().transport) return;
+  $("calibrate").textContent = "Cancel";
+  stopCalibrating = startCalibrating(store, showCalibration);
 };
 $("panic").onclick = panic;
 $("retry").onclick = () => { $("retry").hidden = true; header.showMidiStatus({ kind: "requesting" }); midi.start(); };

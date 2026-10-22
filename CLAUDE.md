@@ -72,8 +72,8 @@ mode and views subscribe to the store.
   has chord steps). `routines.ts`: routines (see "Routines" below): `circleOfFifths(direction)`, `eachKey`, the
   curated `ROUTINES`, the runner `reduceRoutine` (wraps `reduceSequence`), `routineSummary`, and `keyProgress`
   (state per key, shared by the routine row and the circle).
-- `src/timing/`: pure. `transport.ts` (`Transport`, `beatAt`, `timeOfBeat`, `retempo`) and `grid.ts` (judging a
-  step against the metronome: `judgeTime`, `timingVerdict`, `timingSummary`). See "Metronome" below.
+- `src/timing/`: pure. `transport.ts` (`Transport`, `beatAt`, `timeOfBeat`, `retempo`), `grid.ts` (judging a
+  step against the metronome: `judgeTime`, `timingVerdict`, `timingSummary`) and `calibration.ts` (tap-along latency). See "Metronome" below.
 - `src/audio/click.ts`: the metronome click (Web Audio look-ahead scheduler that follows the transport).
 - `src/views/`: DOM rendering only: `beat.ts` (the beat light), `staff.ts` (VexFlow), `chordName.ts` (also `chordSymbolHtml`),
   `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
@@ -126,7 +126,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 241 tests (54 voicings) should pass
+npm test           # Vitest: 245 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -247,7 +247,13 @@ room to sync with Ableton later.
   click flows through a whole routine; the weakest items are the least on time.
 - **Display:** the beat light above the prompt, the tempo in the instruction, late steps red and early ones blue,
   and "93% on time · dragging 6 ms" in results.
-- **Next:** a tap-along latency calibration; a tempo-ladder routine (raise the tempo after a clean run); an external
+- **Latency calibration** (Calibrate, next to Latency): play any note on each click; 4 warm-up taps, then 12
+  measured; taps over 150 ms from the beat are strays; the median offset becomes the latency (− = the player is
+  ahead, e.g. rushing), applied only if steady (median absolute deviation ≤ 25 ms). It covers the click's real
+  arrival, MIDI delay and playing ahead of a click in one number. `AppState.calibrating` makes `onPlayerInput`
+  report nothing meanwhile, so exercises ignore the taps; the metronome stopping cancels it
+  (`src/modes/calibrate.ts`).
+- **Next:** a tempo-ladder routine (raise the tempo after a clean run); an external
   clock driver (Ableton).
 
 ## Circle of fifths (`src/views/circleOfFifths.ts`)

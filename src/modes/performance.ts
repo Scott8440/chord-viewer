@@ -70,6 +70,7 @@ export function createPerformanceDrawer(store: AppStore, views: { staff: StaffVi
 /**
  * Player input for exercises, until the returned function is called: each note-on with its time, and each change
  * of the held keys with the time of the event that caused it. Note-ons are reported before the held keys.
+ * Nothing is reported while a latency calibration is listening.
  */
 export function onPlayerInput(store: AppStore, handlers: {
   noteOn?(note: number, time: number): void;
@@ -78,6 +79,8 @@ export function onPlayerInput(store: AppStore, handlers: {
   return store.subscribe((s, prev) => {
     // The history gains exactly one event per input dispatch
     if (s.history === prev.history) return;
+    // Notes played to calibrate the latency aren't meant for the exercise
+    if (s.calibrating) return;
     const event = s.history[s.history.length - 1];
     if (event.type === "noteOn") handlers.noteOn?.(event.note, event.time);
     if (handlers.held && s.perf.held !== prev.perf.held) {

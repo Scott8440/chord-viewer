@@ -58,6 +58,8 @@ export interface AppState {
   readonly settings: Settings;
   /** Where the beats are, while a metronome (or, later, an external clock) runs; null otherwise */
   readonly transport: Transport | null;
+  /** A latency calibration is listening: exercises ignore the player's notes meanwhile */
+  readonly calibrating: boolean;
 }
 
 export type AppAction =
@@ -72,7 +74,8 @@ export type AppAction =
   | { type: "setRoutineOptions"; options: Partial<RoutineOptions> }
   | { type: "setLatency"; ms: number }
   /** From whatever drives the clock */
-  | { type: "setTransport"; transport: Transport | null };
+  | { type: "setTransport"; transport: Transport | null }
+  | { type: "setCalibrating"; on: boolean };
 
 const oneOf = <T>(values: readonly T[], v: unknown, fallback: T): T => values.includes(v as T) ? v as T : fallback;
 
@@ -83,6 +86,7 @@ export function createAppState(saved: SavedSettings = {}): AppState {
     perf: initialPerformance,
     history: [],
     transport: null,
+    calibrating: false,
     settings: {
       keyValue, key: buildKey(keyValue),
       includeSustained: typeof saved.includeSustained === "boolean" ? saved.includeSustained : true,
@@ -133,5 +137,7 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
     }
     case "setTransport":
       return a.transport === s.transport ? s : { ...s, transport: a.transport };
+    case "setCalibrating":
+      return a.on === s.calibrating ? s : { ...s, calibrating: a.on };
   }
 }

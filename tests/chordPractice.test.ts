@@ -1,10 +1,11 @@
 // Chord practice exercise: prompts, the type filter and judging held chords.
 import { describe, expect, it } from "vitest";
 import {
-  CHORD_PRACTICE_TYPES, initialChordPractice, isChord, makeChordPrompt, reduceChordPractice, sanitizeChordTypes,
+  CHORD_PRACTICE_TYPES, chordCorrections, initialChordPractice, isChord, makeChordPrompt, reduceChordPractice, sanitizeChordTypes,
   type ChordPracticeAction, type ChordPracticeState, type ChordPrompt,
 } from "../src/exercises/chordPractice";
 import { createAppState, reduceApp } from "../src/state/app";
+import { chordPracticeDisplay } from "../src/views/practice";
 import { buildKey, templateById } from "../src/theory";
 
 const seq = (...values: number[]) => { let i = 0; return () => values[i++ % values.length]; };
@@ -103,5 +104,54 @@ describe("reduceChordPractice", () => {
   it("counts a skip as answered but not right first time", () => {
     const s = run(start, { type: "skip", prompt: { rootPc: 2, root: "D", type: "M" }, held: [] });
     expect(s).toMatchObject({ prompt: { rootPc: 2 }, status: "waiting", answered: 1, firstTry: 0 });
+  });
+});
+
+describe("chordCorrections", () => {
+  const Cm: ChordPrompt = { rootPc: 0, root: "C", type: "m" };
+  const pcs = (fix: ReturnType<typeof chordCorrections>) => ({
+    replace: fix.replace.map(r => [r.from, r.to.degree]), add: fix.add.map(t => t.degree), remove: fix.remove,
+  });
+
+  it("pairs a wrong note with the missing tone a half step away", () => {
+    expect(pcs(chordCorrections([48, 52, 55], Cm))).toEqual({ replace: [[4, 3]], add: [], remove: [] });
+  });
+
+  it("pairs within a whole step, closest first, and leaves the rest as add/remove", () => {
+    const Csus4: ChordPrompt = { rootPc: 0, root: "C", type: "sus4" };
+    expect(pcs(chordCorrections([48, 52, 55], Csus4))).toEqual({ replace: [[4, 4]], add: [], remove: [] });
+    // Cmaj7 from C Eb A: Eb -> E (half step); A is a whole step from both G and B, so the lower tone wins
+    expect(pcs(chordCorrections([48, 51, 57], Cmaj7))).toEqual({ replace: [[3, 3], [9, 5]], add: [7], remove: [] });
+    // far-away wrong note is removed, not "replaced"
+    expect(pcs(chordCorrections([48, 52, 55, 61], Cmaj7))).toEqual({ replace: [[1, 7]], add: [], remove: [] });
+    expect(pcs(chordCorrections([48, 52, 55, 66], Cmaj7))).toEqual({ replace: [], add: [7], remove: [6] });
+  });
+
+  it("uses each wrong note and each missing tone at most once", () => {
+    // C Db D Eb G for C major: E is a half step from Eb and a whole step from D; only one may move
+    expect(pcs(chordCorrections([48, 49, 50, 51, 55], { rootPc: 0, root: "C", type: "M" })))
+      .toEqual({ replace: [[3, 3]], add: [], remove: [1, 2] });
+  });
+});
+
+describe("chord feedback", () => {
+  const wrongAfter = (prompt: ChordPrompt, notes: number[], key: string | null = null) =>
+    chordPracticeDisplay(run(initialChordPractice(prompt), held(...notes), held()), key ? buildKey(key) : null).feedback;
+
+  it("says what to replace", () => {
+    expect(wrongAfter({ rootPc: 0, root: "C", type: "m" }, [48, 52, 55])).toBe("✗ That was C. Replace E with E♭");
+  });
+
+  it("combines replace, add and remove", () => {
+    expect(wrongAfter(Cmaj7, [48, 51, 57])).toBe("✗ That was Adim/C. Replace E♭ with E, replace A with G and add B");
+    expect(wrongAfter(Cmaj7, [48, 52, 55, 59, 66])).toBe("✗ That was Cmaj7♯11. Remove F♯");
+  });
+
+  it("does not name the played chord when it is the prompt with a tone left out", () => {
+    expect(wrongAfter(Cmaj7, [48, 52, 59])).toBe("✗ Add G");
+  });
+
+  it("spells chord tones from the prompt and wrong notes from the key", () => {
+    expect(wrongAfter({ rootPc: 1, root: "Db", type: "maj7" }, [49, 53, 56, 59])).toBe("✗ That was D♭7. Replace B with C");
   });
 });

@@ -1,6 +1,6 @@
 // Chord practice: the app names a chord, the player plays it in any voicing, inversion or octave.
 // Pure data and functions; the mode in src/modes/chordPractice.ts drives it.
-import { matchTemplate, ROOT_MAJOR, ROOT_MINOR, templateById, type KeyContext } from "../theory";
+import { matchTemplate, ROOT_MAJOR, ROOT_MINOR, templateById, type KeyContext, type TemplateTone } from "../theory";
 import type { Rng } from "./notePractice";
 
 /** Chord types offered in the filter, grouped as shown. Ids are chord template ids. */
@@ -64,6 +64,45 @@ export function isChord(notes: readonly number[], prompt: ChordPrompt, opts: Cho
   if (!notes.length) return false;
   const m = matchTemplate(notes.map(n => n % 12), prompt.rootPc, prompt.type);
   return !m.missing.length && !m.extra.length && (opts.allowOmissions || !m.omitted.length);
+}
+
+/** Largest move, in semitones, that counts as "replace X with Y" rather than "remove X, add Y" */
+const REPLACE_MAX_SEMITONES = 2;
+
+export interface ChordCorrections {
+  /** A played wrong note close to a missing chord tone: move it there */
+  replace: { from: number; to: TemplateTone }[];
+  /** Chord tones still missing */
+  add: TemplateTone[];
+  /** Played pitch classes to take away */
+  remove: number[];
+}
+
+/**
+ * What to change so the played notes become the prompted chord. Each missing tone is paired with the
+ * nearest wrong note within a whole step (closest pairs first), so C E G for Cm reads "replace E with Eb".
+ */
+export function chordCorrections(notes: readonly number[], prompt: ChordPrompt): ChordCorrections {
+  const m = matchTemplate(notes.map(n => n % 12), prompt.rootPc, prompt.type);
+  const missing = [...m.missing, ...m.omitted].sort((a, b) => a.degree - b.degree);
+  const pcOf = (t: TemplateTone) => (prompt.rootPc + t.pc) % 12;
+  const dist = (a: number, b: number) => { const d = Math.abs(a - b) % 12; return Math.min(d, 12 - d); };
+  const pairs = missing.flatMap((to, ti) => m.extra.map(from => ({ from, to, ti, d: dist(from, pcOf(to)) })))
+    .filter(p => p.d <= REPLACE_MAX_SEMITONES)
+    .sort((a, b) => a.d - b.d || a.ti - b.ti);
+  const usedFrom = new Set<number>(), usedTo = new Set<TemplateTone>();
+  const replace: ChordCorrections["replace"] = [];
+  for (const p of pairs) {
+    if (usedFrom.has(p.from) || usedTo.has(p.to)) continue;
+    usedFrom.add(p.from); usedTo.add(p.to);
+    replace.push({ from: p.from, to: p.to });
+  }
+  replace.sort((a, b) => a.to.degree - b.to.degree);
+  return {
+    replace,
+    add: missing.filter(t => !usedTo.has(t)),
+    remove: m.extra.filter(pc => !usedFrom.has(pc)),
+  };
 }
 
 export interface ChordPracticeState {

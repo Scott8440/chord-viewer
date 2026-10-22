@@ -21,6 +21,8 @@ export interface Settings {
   readonly chordTypes: readonly string[];
   /** Chord practice prompts: chord names or Roman numerals */
   readonly promptStyle: PromptStyle;
+  /** Chord practice asks for a specific inversion */
+  readonly inversions: boolean;
 }
 
 export interface AppState {
@@ -36,14 +38,16 @@ export type AppAction =
   | { type: "setIncludeSustained"; on: boolean }
   | { type: "setMode"; mode: ModeId }
   | { type: "setChordTypes"; types: readonly string[] }
-  | { type: "setPromptStyle"; style: PromptStyle };
+  | { type: "setPromptStyle"; style: PromptStyle }
+  | { type: "setInversions"; on: boolean };
 
 export function createAppState(keyValue = "", includeSustained = true, mode: ModeId = "free",
-                               chordTypes: readonly string[] = DEFAULT_CHORD_TYPES, promptStyle: PromptStyle = "names"): AppState {
+                               chordTypes: readonly string[] = DEFAULT_CHORD_TYPES, promptStyle: PromptStyle = "names",
+                               inversions = false): AppState {
   return {
     perf: initialPerformance,
     history: [],
-    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes), promptStyle },
+    settings: { keyValue, key: buildKey(keyValue), includeSustained, mode, chordTypes: sanitizeChordTypes(chordTypes), promptStyle, inversions },
   };
 }
 
@@ -65,5 +69,7 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return { ...s, settings: { ...s.settings, chordTypes: sanitizeChordTypes(a.types) } };
     case "setPromptStyle":
       return a.style === s.settings.promptStyle ? s : { ...s, settings: { ...s.settings, promptStyle: a.style } };
+    case "setInversions":
+      return a.on === s.settings.inversions ? s : { ...s, settings: { ...s.settings, inversions: a.on } };
   }
 }

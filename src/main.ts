@@ -24,6 +24,7 @@ const KEY_STORAGE = "chordDisplay.key";
 const MODE_STORAGE = "chordDisplay.mode";
 const CHORD_TYPES_STORAGE = "chordDisplay.chordTypes";
 const PROMPT_STYLE_STORAGE = "chordDisplay.promptStyle";
+const INVERSIONS_STORAGE = "chordDisplay.inversions";
 
 // Settings
 const keySel = $<HTMLSelectElement>("keySel");
@@ -42,10 +43,12 @@ let savedPromptStyle = "";
 try { savedPromptStyle = localStorage.getItem(PROMPT_STYLE_STORAGE) || ""; } catch {}
 const initialPromptStyle: PromptStyle = (PROMPT_STYLES as readonly string[]).includes(savedPromptStyle) ? savedPromptStyle as PromptStyle : "names";
 promptStyleSel.value = initialPromptStyle;
+const optInversions = $<HTMLInputElement>("optInversions");
+try { optInversions.checked = localStorage.getItem(INVERSIONS_STORAGE) === "1"; } catch {}
 
 const store = createStore(reduceApp, createAppState(initKeySelect(keySel, savedKey), optPedal.checked, initialMode,
                                                     sanitizeChordTypes(Array.isArray(savedChordTypes) ? savedChordTypes : []),
-                                                    initialPromptStyle));
+                                                    initialPromptStyle, optInversions.checked));
 const input = (event: InputEvent) => store.dispatch({ type: "input", event });
 
 // Views
@@ -107,6 +110,11 @@ function onKeyChange() {
 // Controls
 keySel.onchange = onKeyChange;
 optPedal.onchange = () => store.dispatch({ type: "setIncludeSustained", on: optPedal.checked });
+optInversions.onchange = () => {
+  store.dispatch({ type: "setInversions", on: optInversions.checked });
+  try { localStorage.setItem(INVERSIONS_STORAGE, optInversions.checked ? "1" : "0"); } catch {}
+  optInversions.blur();   // so computer-key note input keeps working
+};
 promptStyleSel.onchange = () => {
   store.dispatch({ type: "setPromptStyle", style: promptStyleSel.value as PromptStyle });
   try { localStorage.setItem(PROMPT_STYLE_STORAGE, promptStyleSel.value); } catch {}

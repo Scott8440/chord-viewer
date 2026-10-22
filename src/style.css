@@ -97,8 +97,13 @@ main {
 #practicePrompt .acc { font-size: .8em; }
 #practicePrompt .ext { font-size: .55em; vertical-align: .55em; }
 #practiceSub { margin-top: 10px; color: var(--muted); font-size: 16px; min-height: 1.4em; }
-#chordOptions { margin-top: 22px; }
-#chordFilters { margin-top: 12px; font-size: 13px; color: var(--muted); }
+#chordOptions { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+#chordOptions details { flex-basis: 100%; }
+#practicePrompt .fig {
+  display: inline-flex; flex-direction: column; font-size: .4em; line-height: .95;
+  vertical-align: .55em; margin-left: .04em; text-align: center;
+}
+#chordFilters { margin-top: 4px; }
 #chordFilters summary { cursor: pointer; user-select: none; }
 #chordFilterBody { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .filterGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

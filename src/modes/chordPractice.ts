@@ -1,6 +1,6 @@
 // Chord practice mode: asks for a chord, judges the held keys, and moves on after a correct answer.
 import {
-  initialChordPractice, makeChordPrompt, makeRomanPrompt, reduceChordPractice,
+  initialChordPractice, makeChordPrompt, makeRomanPrompt, reduceChordPractice, withInversion,
   type ChordPracticeAction, type ChordPracticeState,
 } from "../exercises/chordPractice";
 import type { Rng } from "../exercises/notePractice";
@@ -21,8 +21,11 @@ export function startChordPractice(store: Store<AppState, AppAction>, views: {
 }, rng: Rng = Math.random): Mode {
   const drawer = createPerformanceDrawer(store, views);
   const settings = () => store.getState().settings;
-  const newPrompt = (previous?: ChordPracticeState["prompt"]) =>
-    (settings().promptStyle === "roman" ? makeRomanPrompt : makeChordPrompt)(rng, settings().chordTypes, settings().key, previous);
+  const newPrompt = (previous?: ChordPracticeState["prompt"]) => {
+    const { promptStyle, chordTypes, key, inversions } = settings();
+    const prompt = (promptStyle === "roman" ? makeRomanPrompt : makeChordPrompt)(rng, chordTypes, key, previous);
+    return inversions ? withInversion(rng, prompt) : prompt;
+  };
   let state: ChordPracticeState = initialChordPractice(newPrompt(), heldNotes(store.getState()));
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -44,6 +47,7 @@ export function startChordPractice(store: Store<AppState, AppAction>, views: {
     }
     // A new key or prompt style needs a new prompt; a narrower filter may rule out the current chord
     if (s.settings.key !== prev.settings.key || s.settings.promptStyle !== prev.settings.promptStyle ||
+        s.settings.inversions !== prev.settings.inversions ||
         (s.settings.chordTypes !== prev.settings.chordTypes && !s.settings.chordTypes.includes(state.prompt.type))) {
       apply({ type: "next", prompt: newPrompt(state.prompt), held: heldNotes(s) });
     }

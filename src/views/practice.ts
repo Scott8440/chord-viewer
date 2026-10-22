@@ -1,7 +1,7 @@
 // Practice panel: label, prompt, feedback and score. Each exercise has a presenter that turns its
 // state into a PracticeDisplay; the view only renders that.
 import { Note } from "tonal";
-import { chordCorrections, isChord, type ChordPracticeState } from "../exercises/chordPractice";
+import { chordCorrections, hasBass, hasChordTones, type ChordPracticeState } from "../exercises/chordPractice";
 import type { NotePracticeState } from "../exercises/notePractice";
 import { analyze, buildKey, FLAT, pcName, prettyAcc, SHARP, templateById, type KeyContext } from "../theory";
 import { chordSymbolHtml } from "./chordName";
@@ -62,24 +62,48 @@ export function chordPracticeDisplay(s: ChordPracticeState, key: KeyContext | nu
   const roman = s.prompt.roman;
   // A Roman numeral prompt carries its own key (a random one when none is selected)
   const promptKey = roman ? buildKey(roman.keyValue) : key;
+  const inv = s.prompt.inversion;
+  // Slash bass for inversions; root position has none
+  const slash = inv && inv.number > 0 ? inv.bass : "";
   let feedback = "";
-  if (s.status === "correct") feedback = roman ? `✓ ${prettyAcc(s.prompt.root + t.symbol)}` : "✓ Correct";
+  if (s.status === "correct") feedback = roman ? `✓ ${prettyAcc(s.prompt.root + t.symbol + (slash ? "/" + slash : ""))}` : "✓ Correct";
   else if (s.status === "wrong" && s.attempt) feedback = "✗ " + describeMiss(s, promptKey);
+  const invText = inv ? " · " + inversionName(inv.number) : "";
   return {
-    label: "Play this chord, any voicing or inversion",
-    promptHtml: roman ? romanHtml(roman.numeral) : chordSymbolHtml(s.prompt.root, t.symbol),
+    label: inv ? "Play this chord, with this note in the bass" : "Play this chord, any voicing or inversion",
+    promptHtml: roman ? romanHtml(roman.numeral, inv?.number) : chordSymbolHtml(s.prompt.root, t.symbol, slash),
     compact: true,
     sub: roman
-      ? `in ${prettyAcc(promptKey!.label)}` + (roman.filterIgnored ? " · no selected chord type is in this key, so any triad" : "")
-      : prettyAcc(`${s.prompt.root} ${t.name}`),
+      ? `in ${prettyAcc(promptKey!.label)}${invText}` + (roman.filterIgnored ? " · no selected chord type is in this key, so any triad" : "")
+      : prettyAcc(`${s.prompt.root} ${t.name}`) + invText,
     status: s.status, feedback, score: scoreText(s),
   };
 }
 
-/** Roman numeral as HTML, with the figure raised: "V<sup>7</sup>", "Imaj7" -> I + raised maj7. */
-function romanHtml(numeral: string): string {
-  const m = numeral.match(/^([b#♭♯]?[IViv]+[°ø+]?)(.*)$/)!;
-  return esc(m[1]) + (m[2] ? `<span class="ext">${esc(m[2])}</span>` : "");
+export const inversionName = (n: number) => n === 0 ? "root position" : `${["1st", "2nd", "3rd"][n - 1]} inversion`;
+
+/**
+ * Figured-bass figures for an inversion: triads "", 6, 6/4; sevenths 7, 6/5, 4/3, 4/2.
+ * Returns the stacked numbers, top first.
+ */
+export function inversionFigures(seventh: boolean, n: number): string[] {
+  return (seventh ? [["7"], ["6", "5"], ["4", "3"], ["4", "2"]] : [[], ["6"], ["6", "4"]])[n] ?? [];
+}
+
+function splitNumeral(numeral: string) {
+  const m = numeral.match(/^([b#♭♯]?[IViv]+[°ø+]?)(maj)?(7)?$/)!;
+  return { base: m[1], quality: m[2] ?? "", seventh: !!m[3] };
+}
+
+/** Roman numeral as HTML: figures raised, and stacked when there are two (V⁶₅). */
+function romanHtml(numeral: string, inversion?: number): string {
+  const { base, quality, seventh } = splitNumeral(numeral);
+  const figures = inversion == null ? (seventh ? ["7"] : []) : inversionFigures(seventh, inversion);
+  const raised = quality + (figures.length === 1 ? figures[0] : "");
+  let html = esc(base);
+  if (raised) html += `<span class="ext">${esc(raised)}</span>`;
+  if (figures.length === 2) html += `<span class="fig"><span>${figures[0]}</span><span>${figures[1]}</span></span>`;
+  return html;
 }
 
 /** "That was C. Replace E with E♭": what was played, and what to change. */
@@ -95,11 +119,16 @@ function describeMiss(s: ChordPracticeState, key: KeyContext | null): string {
     ...(fix.add.length ? [`add ${and(fix.add.map(t => tone(t.interval)))}`] : []),
     ...(fix.remove.length ? [`remove ${and(fix.remove.map(wrong))}`] : []),
   ];
+  // With a required inversion, the bass is one more thing to fix
+  const inv = s.prompt.inversion;
+  const bassFix = inv && !hasBass(notes, s.prompt) ? `put ${prettyAcc(inv.bass)} in the bass` : "";
+  if (bassFix && hasChordTones(notes, s.prompt)) return "Right notes, wrong bass. " + capitalize(bassFix);
+  if (bassFix) actions.push(bassFix);
   const todo = capitalize(and(actions)) || "Not quite";
   // Name what was played, unless it already is the chord with a tone left out; with Roman prompts add its numeral
   const played = analyze(notes, key);
   const numeral = s.prompt.roman && played?.roman ? ` (${played.roman})` : "";
-  const that = played && played.kind !== "unknown" && !isChord(notes, s.prompt, { allowOmissions: true })
+  const that = played && played.kind !== "unknown" && !hasChordTones(notes, s.prompt, { allowOmissions: true })
     ? `That was ${prettyAcc(played.text)}${numeral}. ` : "";
   return that + todo;
 }

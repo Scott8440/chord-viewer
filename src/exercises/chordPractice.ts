@@ -1,5 +1,6 @@
 // Chord practice: the app names a chord, the player plays it in any voicing, inversion or octave.
 // Pure data and functions; the mode in src/modes/chordPractice.ts drives it.
+import { Note } from "tonal";
 import {
   buildKey, chromaOf, KEY_MAJORS, KEY_MINORS, matchTemplate, ROOT_MAJOR, ROOT_MINOR, templateById,
   type KeyContext, type TemplateTone,
@@ -39,6 +40,30 @@ export interface ChordPrompt {
   type: string;
   /** Set when the prompt is a Roman numeral rather than a chord name */
   roman?: RomanPrompt;
+  /** Set when a specific inversion is required */
+  inversion?: InversionPrompt;
+}
+
+export interface InversionPrompt {
+  /** 0 = root position, 1 = 1st inversion (3rd in the bass), 2 = 2nd, 3 = 3rd (7th in the bass) */
+  number: number;
+  /** Spelled bass note, e.g. "E" */
+  bass: string;
+  bassPc: number;
+}
+
+/** Chord tones that can be in the bass, in inversion order: root, 3rd (or sus tone), 5th, 7th or 6th. Not 9ths. */
+export function inversionTones(type: string): TemplateTone[] {
+  const m = matchTemplate([], 0, type);
+  return [...m.missing, ...m.omitted].filter(t => t.degree <= 7).sort((a, b) => a.degree - b.degree);
+}
+
+/** Adds a random inversion (root position included) to a prompt. */
+export function withInversion(rng: Rng, prompt: ChordPrompt): ChordPrompt {
+  const tones = inversionTones(prompt.type);
+  const number = Math.floor(rng() * tones.length);
+  const bass = Note.transpose(prompt.root, tones[number].interval);
+  return { ...prompt, inversion: { number, bass, bassPc: chromaOf(bass) } };
 }
 
 export interface RomanPrompt {
@@ -136,9 +161,19 @@ export const DEFAULT_CHORD_MATCH: ChordMatchOptions = { allowOmissions: false };
 
 /** Whether the held notes are the prompted chord: every tone present (any octave or inversion), nothing extra. */
 export function isChord(notes: readonly number[], prompt: ChordPrompt, opts: ChordMatchOptions = DEFAULT_CHORD_MATCH): boolean {
+  return hasChordTones(notes, prompt, opts) && hasBass(notes, prompt);
+}
+
+/** The right notes, ignoring which one is in the bass. */
+export function hasChordTones(notes: readonly number[], prompt: ChordPrompt, opts: ChordMatchOptions = DEFAULT_CHORD_MATCH): boolean {
   if (!notes.length) return false;
   const m = matchTemplate(notes.map(n => n % 12), prompt.rootPc, prompt.type);
   return !m.missing.length && !m.extra.length && (opts.allowOmissions || !m.omitted.length);
+}
+
+/** The lowest note is the required bass, or no particular inversion was asked for. `notes` are low to high. */
+export function hasBass(notes: readonly number[], prompt: ChordPrompt): boolean {
+  return !prompt.inversion || (notes.length > 0 && notes[0] % 12 === prompt.inversion.bassPc);
 }
 
 /** Largest move, in semitones, that counts as "replace X with Y" rather than "remove X, add Y" */

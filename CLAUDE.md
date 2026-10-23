@@ -75,7 +75,8 @@ mode and views subscribe to the store.
 - `src/timing/`: pure. `transport.ts` (`Transport`, `beatAt`, `timeOfBeat`, `retempo`), `grid.ts` (judging a
   step against the metronome: `judgeTime`, `timingVerdict`, `timingSummary`) and `calibration.ts` (tap-along latency). See "Metronome" below.
 - `src/audio/click.ts`: the metronome click (Web Audio look-ahead scheduler that follows the transport).
-- `src/views/`: DOM rendering only: `beat.ts` (the beat light), `staff.ts` (VexFlow), `chordName.ts` (also `chordSymbolHtml`),
+- `src/views/`: DOM rendering only: `beat.ts` (the beat light), `staff.ts` (VexFlow; also `staffCorner`), `staffCorner.ts`
+  (`fitToStaffCorner`), `chordName.ts` (also `chordSymbolHtml`),
   `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
   into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
   answered and add the played chord's numeral; inversions show as slash chords or figured bass (V⁶₅, I⁶₄, V⁴₂), and
@@ -260,8 +261,13 @@ room to sync with Ableton later.
   clock driver (Ableton).
 
 ## Circle of fifths (`src/views/circleOfFifths.ts`)
-A visual shown in the top-right corner of the staff card (space the fixed staff layout always leaves empty) when
-relevant, hidden otherwise; main hides it on every mode switch and modes that use it draw it.
+A visual shown in the top-right corner of the staff card when relevant, hidden otherwise; main hides it on every
+mode switch and modes that use it draw it.
+- **Size:** it scales with the window. `staffCorner()` (staff.ts) gives the corner the staff leaves free, in viewBox
+  units: right of the note column (with a cluster's displaced noteheads and ledger lines; no key signature) and
+  above the treble staff. `fitToStaffCorner` (views/staffCorner.ts) converts it to pixels on every resize (allowing
+  for the drawing being letterboxed in a short window) and sizes the circle to fill it, 10 px clear, at least 110 px.
+  A key signature moves the note column right, so very high notes in keys with many accidentals can reach into it.
 - **Drawing:** `circleSvg(model)` is pure: majors on the outer ring, relative minors inside, C at the top, clockwise
   by fifths. The model can focus a key (amber, its name and signature in the middle), shade and number its
   neighbourhood (IV I V outside and ii vi iii inside for major; VI III VII and iv i v for minor; `neighbours: false`

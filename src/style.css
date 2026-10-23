@@ -96,6 +96,7 @@ main {
 }
 .card { border-radius: 10px; min-height: 0; }
 /* Circle of fifths: top-right corner of the staff card, which the fixed staff layout always leaves empty */
+/* Sized by fitToStaffCorner (views/staffCorner.ts) to the staff's free corner; this is only the starting size */
 #circle { position: absolute; top: 12px; right: 12px; width: min(200px, 34%); }
 #circle svg { display: block; width: 100%; height: auto; }
 .cof .seg path { fill: #ebe5d6; stroke: var(--paper); stroke-width: 1.2; }

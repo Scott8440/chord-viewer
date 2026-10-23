@@ -31,6 +31,7 @@ import { createFilterView } from "./views/filter";
 import { createHeaderView, fillKeySelect } from "./views/header";
 import { createPracticeView } from "./views/practice";
 import { createStaffView } from "./views/staff";
+import { fitToStaffCorner } from "./views/staffCorner";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -141,6 +142,8 @@ store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 
 const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
+// The circle fills the staff's free top-right corner, growing and shrinking with the window
+fitToStaffCorner($("circle"), $("staffCard"), $("staff"));
 const beat = createBeatView($("beat"));
 const calibrationDialog = createCalibrationDialog($<HTMLDialogElement>("calibration"), {
   // Declined: it won't open by itself again

@@ -318,8 +318,8 @@ First mode: scale degrees over a drone. A drone sounds the tonic (an octave belo
 app plays one note over it (the tonic F♯3–F4, the note in either of the two octaves above it, `EAR_OCTAVES`; never
 the same note twice running, though a degree may repeat in the other octave, so two degrees don't just alternate),
 and the player plays that note in any octave, or presses its degree on the number keys (1–7, no controller needed:
-`src/input/degreeKeys.ts`, a source the mode turns on, emitting the degree's note as source `"deg"`). Wrong notes are named as a degree ("That was ♭3"); the prompt shows "?" until answered, then the
-degree. **No staff and no note names here, only degrees:** `PAGE_SETUP.stage: "degrees"` puts the scale-degree
+`src/input/degreeKeys.ts`, a source the mode turns on, emitting the degree's note as source `"deg"`). Wrong notes are named as a degree ("That was ♭3"); there is no prompt in the practice card (an
+empty `promptHtml` hides it): the circle is the display, and the feedback names the degree once answered. **No staff and no note names here, only degrees:** `PAGE_SETUP.stage: "degrees"` puts the scale-degree
 circle (`src/views/degreeCircle.ts`: 1–7 round a circle, 1 at the top, the degrees on offer solid) in the staff's
 place. Each time the drone starts (a new key, Start, or new options) it plays the root, the degrees on offer and
 the octave, pinging each node in turn (amber), then the note to find; every note played pings its degree, green if

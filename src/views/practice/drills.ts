@@ -32,11 +32,11 @@ export function notePracticeDisplay(s: NotePracticeState, key: KeyContext | null
 /** Browsers start audio only after a click or key press on the page (a MIDI note doesn't count) */
 const SOUND_WAITING = "Click anywhere or press a computer key to start";
 
-/** Ear training: the degree stays hidden ("?") until answered; a wrong note is named as a degree too */
+/** Ear training: no prompt (the degree circle is the display), just the instruction and feedback, by degree */
 export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked: boolean, running: boolean): PracticeDisplay {
   if (!running) {
     return {
-      label: soundBlocked ? "Ready" : "Stopped", promptHtml: "?", size: "note",
+      label: soundBlocked ? "Ready" : "Stopped", promptHtml: "", size: "note",
       sub: soundBlocked ? SOUND_WAITING : "Press Start to hear the note again",
       status: "waiting", feedback: "", score: scoreText(s), stopLabel: "Start",
     };
@@ -50,7 +50,8 @@ export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked
   }
   return {
     label: "Play the degree you hear over the drone, in any octave, or press it (1–7)",
-    promptHtml: s.status === "correct" ? esc(prettyAcc(s.prompt.degree)) : "?",
+    // No prompt: the circle is the display
+    promptHtml: "",
     size: "note",
     sub: soundBlocked ? "Click anywhere or press a computer key to start the sound"
       : `Degrees ${degrees.map(prettyAcc).join(", ")}`,

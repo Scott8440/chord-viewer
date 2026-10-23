@@ -3,7 +3,7 @@
 
 export interface PracticeDisplay {
   label: string;
-  /** Prompt as HTML */
+  /** Prompt as HTML; empty hides it (ear training's degrees show on the circle instead) */
   promptHtml: string;
   /** Prompt font size: one big note, a chord symbol, a row of chords, or a titled row of notes */
   size: "note" | "chord" | "progression" | "sequence";
@@ -30,6 +30,7 @@ export function createPracticeView(els: {
     render(d) {
       els.label.textContent = d.label;
       els.prompt.innerHTML = d.promptHtml;
+      els.prompt.hidden = !d.promptHtml;
       els.prompt.className = d.size;
       els.sub.textContent = d.sub;
       els.feedback.className = d.status;

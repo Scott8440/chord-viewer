@@ -66,15 +66,19 @@ export interface EarPrompt extends NotePrompt {
 export type EarState = NotePracticeState<EarPrompt>;
 export type EarAction = NotePracticeAction<EarPrompt>;
 
+/** The prompt notes come from this many octaves up from `tonicMidi`, so the register gives nothing away */
+export const EAR_OCTAVES = 2;
+
 /**
- * Picks a degree to play over the drone, from the allowed ones, never the same twice in a row (unless only one is
- * allowed). The note is that degree above the tonic, in the octave from `tonicMidi`.
+ * Picks a degree to play over the drone, from the allowed ones, in one of EAR_OCTAVES octaves. Never the same note
+ * twice in a row, but the same degree may come again in another octave (so 1 and 5 don't simply alternate).
  */
 export function makeEarPrompt(rng: Rng, tonic: string, degrees: readonly string[], previous?: EarPrompt): EarPrompt {
   const pool = EAR_DEGREES.filter(d => degrees.includes(d.id));
-  let d: typeof pool[number];
-  do d = pool[Math.floor(rng() * pool.length)];
-  while (pool.length > 1 && previous && previous.keyValue === tonic + ":major" && d.id === previous.degree);
-  const note = tonicMidi(tonic) + d.semitones;
+  let d: typeof pool[number], note: number;
+  do {
+    d = pool[Math.floor(rng() * pool.length)];
+    note = tonicMidi(tonic) + d.semitones + 12 * Math.floor(rng() * EAR_OCTAVES);
+  } while (previous && note === previous.note);
   return { keyValue: tonic + ":major", degree: d.id, note, pc: note % 12, name: buildKey(tonic + ":major")!.spell[note % 12] };
 }

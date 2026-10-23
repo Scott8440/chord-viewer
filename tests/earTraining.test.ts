@@ -24,11 +24,19 @@ describe("tonicMidi", () => {
 });
 
 describe("makeEarPrompt", () => {
-  it("plays the chosen degree above the tonic, spelled in the key", () => {
-    // Degrees 1 and 5, the rng picks the second
-    expect(makeEarPrompt(seq(0.9), "Eb", ["1", "5"])).toEqual({ keyValue: "Eb:major", degree: "5", note: 70, pc: 10, name: "Bb" });
+  it("plays the chosen degree above the tonic, in the chosen octave, spelled in the key", () => {
+    // Each pick is two rng calls: the degree (of 1 and 5), then the octave
+    expect(makeEarPrompt(seq(0.9, 0), "Eb", ["1", "5"])).toEqual({ keyValue: "Eb:major", degree: "5", note: 70, pc: 10, name: "Bb" });
+    expect(makeEarPrompt(seq(0.9, 0.9), "Eb", ["1", "5"])).toMatchObject({ degree: "5", note: 82 });
     expect(makeEarPrompt(seq(0), "Eb", ["1", "5"])).toMatchObject({ degree: "1", note: 63, name: "Eb" });
     expect(makeEarPrompt(seq(0), "D", ["7"])).toMatchObject({ degree: "7", note: 73, name: "C#" });
+  });
+
+  it("uses two octaves for every degree", () => {
+    const notes = new Set<number>();
+    let p: EarPrompt | undefined;
+    for (let i = 0; i < 300; i++) { p = makeEarPrompt(Math.random, "C", ["1", "5"], p); notes.add(p.note); }
+    expect([...notes].sort((a, b) => a - b)).toEqual([60, 67, 72, 79]);
   });
 
   it("only asks for the allowed degrees", () => {
@@ -38,12 +46,12 @@ describe("makeEarPrompt", () => {
     expect([...seen].sort()).toEqual(["1", "3", "5"]);
   });
 
-  it("never asks for the same degree twice in a row in a key, unless it's the only one", () => {
-    const prev = makeEarPrompt(seq(0), "C", ["1", "5"]);
-    expect(makeEarPrompt(seq(0, 0.9), "C", ["1", "5"], prev).degree).toBe("5");
-    expect(makeEarPrompt(seq(0), "C", ["1"], prev).degree).toBe("1");
-    // A new key may start on the same degree
-    expect(makeEarPrompt(seq(0), "G", ["1", "5"], prev).degree).toBe("1");
+  it("never plays the same note twice in a row, but may repeat a degree in another octave", () => {
+    const prev = makeEarPrompt(seq(0), "C", ["1", "5"]);   // C4
+    expect(makeEarPrompt(seq(0, 0, 0, 0.9), "C", ["1", "5"], prev)).toMatchObject({ degree: "1", note: 72 });
+    expect(makeEarPrompt(seq(0, 0, 0.9, 0), "C", ["1", "5"], prev)).toMatchObject({ degree: "5", note: 67 });
+    // A new key may start on the same degree and octave
+    expect(makeEarPrompt(seq(0), "G", ["1", "5"], prev)).toMatchObject({ degree: "1", note: 55 });
   });
 });
 
@@ -91,7 +99,7 @@ describe("judging", () => {
 
 describe("earDrillBody", () => {
   it("records the degree as the prompt, with the key and the degrees on offer", () => {
-    const p = makeEarPrompt(seq(0.9), "A", ["1", "5"]);
+    const p = makeEarPrompt(seq(0.9, 0), "A", ["1", "5"]);
     expect(earDrillBody(p, ["1", "5"], true, false, 1234.4)).toEqual({
       kind: "drill", drill: "ear", prompt: "Degree 5",
       detail: { degree: "5", key: "A:major", note: 64, degrees: "1,5" }, outcome: "firstTry", ms: 1234,

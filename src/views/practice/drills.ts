@@ -29,11 +29,15 @@ export function notePracticeDisplay(s: NotePracticeState, key: KeyContext | null
   };
 }
 
+/** Browsers start audio only after a click or key press on the page (a MIDI note doesn't count) */
+const SOUND_WAITING = "Click anywhere or press a computer key to start";
+
 /** Ear training: the degree stays hidden ("?") until answered; a wrong note is named as a degree too */
 export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked: boolean, running: boolean): PracticeDisplay {
   if (!running) {
     return {
-      label: "Stopped", promptHtml: "?", size: "note", sub: "Press Start to hear the note again",
+      label: soundBlocked ? "Ready" : "Stopped", promptHtml: "?", size: "note",
+      sub: soundBlocked ? SOUND_WAITING : "Press Start to hear the note again",
       status: "waiting", feedback: "", score: scoreText(s), stopLabel: "Start",
     };
   }
@@ -64,7 +68,8 @@ export function earMelodyDisplay(s: MelodyState, degrees: readonly string[], sou
   const promptHtml = `<div class="seqRow">${steps.join("")}</div>`;
   if (!running) {
     return {
-      label: "Stopped", promptHtml, size: "sequence", sub: "Press Start to hear the melody again",
+      label: soundBlocked ? "Ready" : "Stopped", promptHtml, size: "sequence",
+      sub: soundBlocked ? SOUND_WAITING : "Press Start to hear the melody again",
       status: "waiting", feedback: "", score: scoreText(s), stopLabel: "Start",
     };
   }

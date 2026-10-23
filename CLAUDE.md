@@ -331,7 +331,8 @@ degrees on offer (1–7 of the major scale), starting with 1 and 5, added by the
 prompt is a drill record (`drill: "ear"`, prompt "Degree 5", key and degrees in `detail`), charted with the other
 drills (4th series colour). Sound comes from the browser
 here (unlike the user's keyboard, which they monitor through Ableton); audio waits for a click or computer key
-after a reload, and the prompt says so.
+after a reload: both ear modes then open stopped ("Ready", click anywhere or press a key) and start once audio
+unlocks, instead of queueing sound to burst out on the first click.
 The drone's low pass and detune have debug sliders (live, not saved; `DEFAULT_DRONE_TONE` in `tones.ts`).
 
 **Melodies** (mode "earMelody", `src/modes/earMelody.ts`; `makeMelodyPrompt` and `reduceMelody` in

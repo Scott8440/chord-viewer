@@ -49,7 +49,10 @@ export function startEarTraining(store: AppStore, views: {
   }
 
   /** Stopped: no drone, no notes, the player's notes are ignored. Start carries on. */
-  let running = true;
+  let running = !views.tones.blocked();
+  /** Opened before any click or key press, so the browser hasn't let audio start: wait, and begin once it can,
+   *  rather than queue the introduction to burst out on the first click */
+  let awaitingSound = !running;
   /** The key the drone is sounding in, if it is */
   let droneKey: string | null = null;
 
@@ -143,7 +146,17 @@ export function startEarTraining(store: AppStore, views: {
   const offDegreeKeys = createDegreeKeys(event => store.dispatch({ type: "input", event }),
     digit => degreeNote(tonicMidi(tonic), digit));
   const offSettings = store.subscribe((s, p) => { if (s.settings.ear !== p.settings.ear) restart(s.settings.ear, p.settings.ear); });
-  const offBlocked = views.tones.onBlockedChange(render);
+  const offBlocked = views.tones.onBlockedChange(() => {
+    if (awaitingSound && !views.tones.blocked()) {
+      awaitingSound = false;
+      if (!running) {
+        running = true;
+        shownAt = Date.now();
+        sound();
+      }
+    }
+    render();
+  });
   render();
   sound();
 
@@ -158,6 +171,7 @@ export function startEarTraining(store: AppStore, views: {
       silence();
     },
     skip() {
+      awaitingSound = false;
       running = true;   // skipping while stopped starts again, on the new note
       apply({ type: "skip", prompt: newPrompt(state.prompt) });
     },
@@ -165,6 +179,7 @@ export function startEarTraining(store: AppStore, views: {
       if (running) views.tones.play(state.prompt.note);
     },
     toggleRunning() {
+      awaitingSound = false;
       clearTimeout(nextTimer);
       clearTimeout(replayTimer);
       running = !running;

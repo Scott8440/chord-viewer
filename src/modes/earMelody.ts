@@ -35,7 +35,10 @@ export function startEarMelody(store: AppStore, views: {
   }));
   let nextTimer: ReturnType<typeof setTimeout> | undefined, replayTimer: ReturnType<typeof setTimeout> | undefined;
   let shownAt = Date.now();
-  let running = true;
+  let running = !views.tones.blocked();
+  /** Opened before any click or key press, so the browser hasn't let audio start: wait, and begin once it can,
+   *  rather than queue the melody to burst out on the first click */
+  let awaitingSound = !running;
 
   /** The next melody: in the same key, or a new one (when the tonic is random and this key has had its turn) */
   function newPrompt(previous?: MelodyPrompt): MelodyPrompt {
@@ -104,7 +107,17 @@ export function startEarMelody(store: AppStore, views: {
 
   const offInput = onPlayerInput(store, { noteOn: note => { if (running) apply({ type: "play", note }); } });
   const offSettings = store.subscribe((s, p) => { if (s.settings.ear !== p.settings.ear) restart(s.settings.ear, p.settings.ear); });
-  const offBlocked = views.tones.onBlockedChange(render);
+  const offBlocked = views.tones.onBlockedChange(() => {
+    if (awaitingSound && !views.tones.blocked()) {
+      awaitingSound = false;
+      if (!running) {
+        running = true;
+        shownAt = Date.now();
+        sound();
+      }
+    }
+    render();
+  });
   sound();
   render();
 
@@ -118,6 +131,7 @@ export function startEarMelody(store: AppStore, views: {
       views.tones.stopNotes();
     },
     skip() {
+      awaitingSound = false;
       running = true;   // skipping while stopped starts again, on the new melody
       apply({ type: "skip", prompt: newPrompt(state.prompt) });
     },
@@ -125,6 +139,7 @@ export function startEarMelody(store: AppStore, views: {
       if (running) sound();
     },
     toggleRunning() {
+      awaitingSound = false;
       clearTimers();
       running = !running;
       if (!running) {

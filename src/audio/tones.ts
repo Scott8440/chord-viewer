@@ -127,7 +127,7 @@ export function createTonePlayer(): TonePlayer {
       tone = { ...tone, ...t };
       current?.retone();
     },
-    blocked: () => !!ctx && ctx.state !== "running",
+    blocked: () => context().state !== "running",
     onBlockedChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

@@ -86,7 +86,7 @@ const metronomeViews = {
 const chordName = createChordNameView({ root: $("freeView"), name: $("chordName"), sub: $("chordSub"), roman: $("roman"), alts: $("alts") });
 const practice = createPracticeView({
   label: $("practiceLabel"), prompt: $("practicePrompt"), sub: $("practiceSub"), feedback: $("practiceFeedback"), score: $("practiceScore"),
-  skip: $("practiceSkip"),
+  skip: $("practiceSkip"), stop: $("practiceStop"),
 });
 const chordFilter = createFilterView({ summary: $("chordFilterSummary"), body: $("chordFilterBody") }, CHORD_PRACTICE_GROUPS, "Chord types",
   types => store.dispatch({ type: "setChordTypes", types }));
@@ -171,6 +171,10 @@ $("practiceSkip").onclick = () => {
 $("practiceReplay").onclick = () => {
   $("practiceReplay").blur();
   mode.replay?.();
+};
+$("practiceStop").onclick = () => {
+  $("practiceStop").blur();
+  mode.toggleRunning?.();
 };
 $("routineRestart").onclick = () => {
   $("routineRestart").blur();

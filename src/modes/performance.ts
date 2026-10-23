@@ -14,6 +14,8 @@ export interface Mode {
   restart?(): void;
   /** Play the prompt again (ear training) */
   replay?(): void;
+  /** Stop the sound and the prompts, or start them again (ear training) */
+  toggleRunning?(): void;
   /** Read its data again (the Progress view, after an import) */
   refresh?(): void;
 }

@@ -14,6 +14,8 @@ export interface PracticeDisplay {
   score: string;
   /** Text of the button under the prompt; defaults to "Skip" */
   skipLabel?: string;
+  /** Text of the Stop/Start button, for exercises that make sound (ear training); hidden when absent */
+  stopLabel?: string;
 }
 
 export interface PracticeView {
@@ -22,6 +24,7 @@ export interface PracticeView {
 
 export function createPracticeView(els: {
   label: HTMLElement; prompt: HTMLElement; sub: HTMLElement; feedback: HTMLElement; score: HTMLElement; skip: HTMLElement;
+  stop: HTMLElement;
 }): PracticeView {
   return {
     render(d) {
@@ -33,6 +36,8 @@ export function createPracticeView(els: {
       els.feedback.textContent = d.feedback;
       els.score.textContent = d.score;
       els.skip.textContent = d.skipLabel ?? "Skip";
+      els.stop.hidden = !d.stopLabel;
+      els.stop.textContent = d.stopLabel ?? "";
     },
   };
 }

@@ -16,7 +16,7 @@ export interface TonePlayer {
 const freq = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
 const DRONE_GAIN = 0.07, DRONE_FADE_IN = 1.2, DRONE_FADE_OUT = 0.6;
-const NOTE_GAIN = 0.3, NOTE_DECAY = 1.8;
+const NOTE_GAIN = 0.3, NOTE_DECAY = 3.2;
 /** Piano-ish: partials (multiple, level); higher ones die away faster */
 const NOTE_PARTIALS = [[1, 1], [2, 0.45], [3, 0.2], [4, 0.1]] as const;
 

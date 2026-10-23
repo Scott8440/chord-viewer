@@ -1,5 +1,6 @@
 // Ear training mode: a drone on the tonic, a note played over it, and the player finds that note. Moves on after a
-// correct answer; with a random tonic, the drone moves to a new key every PROMPTS_PER_KEY prompts.
+// correct answer; with a random tonic, the drone moves to a new key every PROMPTS_PER_KEY prompts. Stop silences
+// everything and ignores played notes; Start brings the drone back and plays the current note again.
 import type { TonePlayer } from "../audio/tones";
 import {
   makeEarPrompt, pickTonic, PROMPTS_PER_KEY, tonicMidi, type EarAction, type EarOptions, type EarPrompt, type EarState,
@@ -39,14 +40,28 @@ export function startEarTraining(store: AppStore, views: {
     return makeEarPrompt(rng, tonic, options().degrees, previous);
   }
 
-  /** Sounds the prompt, after a drone lead-in when the key is new */
-  function sound(prev: EarPrompt | null) {
-    const newKey = !prev || prev.keyValue !== state.prompt.keyValue;
-    if (newKey) views.tones.drone(tonicMidi(tonic) - 12);
-    views.tones.play(state.prompt.note, newKey ? DRONE_LEAD_S : 0);
+  /** Stopped: no drone, no notes, the player's notes are ignored. Start carries on. */
+  let running = true;
+  /** The key the drone is sounding in, if it is */
+  let droneKey: string | null = null;
+
+  /** Sounds the prompt, after a drone lead-in when the drone is new (a new key, or just started) */
+  function sound() {
+    if (!running) return;
+    const lead = droneKey !== state.prompt.keyValue;
+    if (lead) {
+      views.tones.drone(tonicMidi(tonic) - 12);
+      droneKey = state.prompt.keyValue;
+    }
+    views.tones.play(state.prompt.note, lead ? DRONE_LEAD_S : 0);
   }
 
-  const render = () => views.practice.render(earDisplay(state, options().degrees, views.tones.blocked()));
+  function silence() {
+    views.tones.drone(null);
+    droneKey = null;
+  }
+
+  const render = () => views.practice.render(earDisplay(state, options().degrees, views.tones.blocked(), running));
 
   function apply(action: EarAction) {
     const prev = state;
@@ -60,7 +75,7 @@ export function startEarTraining(store: AppStore, views: {
     }
     if (state.prompt !== prev.prompt) {
       shownAt = Date.now();
-      sound(prev.prompt);
+      sound();
     }
     render();
     clearTimeout(nextTimer);
@@ -77,14 +92,14 @@ export function startEarTraining(store: AppStore, views: {
     inKey++;
     state = { ...state, prompt: makeEarPrompt(rng, tonic, o.degrees, prev), status: "waiting", played: null, missed: false };
     shownAt = Date.now();
-    sound(prev);
+    sound();
     render();
   }
 
-  const offInput = onPlayerInput(store, { noteOn: note => apply({ type: "play", note }) });
+  const offInput = onPlayerInput(store, { noteOn: note => { if (running) apply({ type: "play", note }); } });
   const offSettings = store.subscribe((s, p) => { if (s.settings.ear !== p.settings.ear) restart(s.settings.ear, p.settings.ear); });
   const offBlocked = views.tones.onBlockedChange(render);
-  sound(null);
+  sound();
   render();
 
   return {
@@ -94,13 +109,29 @@ export function startEarTraining(store: AppStore, views: {
       offBlocked();
       drawer.stop();
       clearTimeout(nextTimer);
-      views.tones.drone(null);
+      silence();
     },
     skip() {
+      running = true;   // skipping while stopped starts again, on the new note
       apply({ type: "skip", prompt: newPrompt(state.prompt) });
     },
     replay() {
-      views.tones.play(state.prompt.note);
+      if (running) views.tones.play(state.prompt.note);
+    },
+    toggleRunning() {
+      clearTimeout(nextTimer);
+      running = !running;
+      if (!running) {
+        silence();
+        render();
+      } else if (state.status === "correct") {
+        // Stopped between an answer and the next note: go straight on to it
+        apply({ type: "next", prompt: newPrompt(state.prompt) });
+      } else {
+        shownAt = Date.now();
+        sound();
+        render();
+      }
     },
   };
 }

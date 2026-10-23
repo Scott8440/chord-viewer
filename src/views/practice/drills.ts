@@ -29,7 +29,13 @@ export function notePracticeDisplay(s: NotePracticeState, key: KeyContext | null
 }
 
 /** Ear training: the degree stays hidden ("?") until answered; a wrong note is named as a degree too */
-export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked: boolean): PracticeDisplay {
+export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked: boolean, running: boolean): PracticeDisplay {
+  if (!running) {
+    return {
+      label: "Stopped", promptHtml: "?", size: "note", sub: "Press Start to hear the note again",
+      status: "waiting", feedback: "", score: scoreText(s), stopLabel: "Start",
+    };
+  }
   const key = buildKey(s.prompt.keyValue)!;
   const tonicPc = chromaOf(key.tonic);
   let feedback = "";
@@ -44,7 +50,7 @@ export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked
     size: "note",
     sub: soundBlocked ? "Click anywhere or press a computer key to start the sound"
       : `Drone on ${prettyAcc(key.tonic)} · degrees ${degrees.map(prettyAcc).join(", ")}`,
-    status: s.status, feedback, score: scoreText(s),
+    status: s.status, feedback, score: scoreText(s), stopLabel: "Stop",
   };
 }
 

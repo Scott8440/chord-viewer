@@ -1,8 +1,8 @@
 // Roman numeral prompts for chord practice.
 import { describe, expect, it } from "vitest";
-import {
-  diatonicChords, initialChordPractice, makeRomanPrompt, reduceChordPractice, type ChordPrompt,
-} from "../src/exercises/chordPractice";
+import { initialChordPractice, reduceChordPractice } from "../src/exercises/chordPractice";
+import type { ChordPrompt } from "../src/exercises/chordPrompt";
+import { diatonicChords, makeRomanPrompt } from "../src/exercises/romanPrompts";
 import { createAppState, reduceApp } from "../src/state/app";
 import { analyze, buildKey, KEY_MAJORS, KEY_MINORS, matchTemplate, prettyAcc, templateById } from "../src/theory";
 import { chordPracticeDisplay } from "../src/views/practice";

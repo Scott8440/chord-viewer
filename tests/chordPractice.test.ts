@@ -1,9 +1,10 @@
 // Chord practice exercise: prompts, the type filter and judging held chords.
 import { describe, expect, it } from "vitest";
+import { chordCorrections, isChord } from "../src/exercises/chordMatch";
 import {
-  CHORD_PRACTICE_TYPES, chordCorrections, initialChordPractice, isChord, makeChordPrompt, reduceChordPractice, sanitizeChordTypes,
-  type ChordPracticeAction, type ChordPracticeState, type ChordPrompt,
+  CHORD_PRACTICE_TYPES, type ChordPracticeAction, type ChordPracticeState, initialChordPractice, makeChordPrompt, reduceChordPractice, sanitizeChordTypes,
 } from "../src/exercises/chordPractice";
+import type { ChordPrompt } from "../src/exercises/chordPrompt";
 import { createAppState, reduceApp } from "../src/state/app";
 import { chordPracticeDisplay } from "../src/views/practice";
 import { buildKey, templateById } from "../src/theory";

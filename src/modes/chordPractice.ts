@@ -1,8 +1,9 @@
 // Chord practice mode: asks for a chord, judges the held keys, and moves on after a correct answer.
 import {
-  initialChordPractice, makeChordPrompt, makeRomanPrompt, reduceChordPractice, withInversion,
-  type ChordPracticeAction, type ChordPracticeState,
+  type ChordPracticeAction, type ChordPracticeState, initialChordPractice, makeChordPrompt, reduceChordPractice,
 } from "../exercises/chordPractice";
+import { withInversion } from "../exercises/inversions";
+import { makeRomanPrompt } from "../exercises/romanPrompts";
 import type { Rng } from "../exercises/notePractice";
 import { buildKey } from "../theory";
 import { noRecorder, type Recorder } from "../progress/recorder";

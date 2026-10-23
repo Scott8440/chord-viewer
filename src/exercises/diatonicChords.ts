@@ -1,7 +1,8 @@
 // Diatonic chords exercise: every chord of a key in order, up the key (I, ii, iii … vii°) and back to I,
 // as a prescriptive chord sequence.
 import type { KeyContext } from "../theory";
-import { atInversion, diatonicChords } from "./chordPractice";
+import { atInversion } from "./inversions";
+import { diatonicChords } from "./romanPrompts";
 import type { ChordStep, SequenceExercise } from "./sequence";
 
 export interface DiatonicOptions {

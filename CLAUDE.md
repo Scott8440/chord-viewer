@@ -44,19 +44,19 @@ mode and views subscribe to the store.
   held keys form the target (rolled, or legato with common tones held); a miss only when keys were newly pressed
   and then all released; letting go of keys already held is never an attempt. Used by chord practice,
   progressions and chord steps in sequence exercises.
-  `chordPractice.ts`: `CHORD_PRACTICE_GROUPS` (the types offered in the filter: triads, sixths/sevenths, ninths;
-  ids are chord template ids), `makeChordPrompt` (random root + allowed type, never the same chord twice; root
-  spelled from the key, else conventionally), `isChord` (every tone present in any voicing/inversion/octave,
-  nothing extra; a left-out 5th fails unless `allowOmissions`) and `reduceChordPractice` (fed the held keys: correct
-  via `chordAttempt.ts`). `chordCorrections` turns a wrong attempt into
-  replace/add/remove steps (a wrong note within a whole step of a missing tone is a "replace"). Roman numeral prompts:
-  `DIATONIC` lists each key's triads and sevenths (minor uses harmonic minor for V, V7, vii°, vii°7);
-  `makeRomanPrompt` picks one in the given key, or a random key per prompt when none (the mode always passes none), limited to the
-  selected chord types (if none occur in the key, any diatonic triad, flagged `filterIgnored`). A test checks that
-  `analyze` + `romanFor` give back the same numeral for every diatonic chord in all 24 keys. Inversions:
-  `withInversion` adds a random required inversion (root position included; the bass is a chord tone up to the
-  7th, never a 9th; `atInversion` asks for a specific one) and `isChord` then also needs that note lowest
-  (`hasChordTones` + `hasBass`).
+  `chordPrompt.ts`: the shared prompt types (`ChordPrompt`, `RomanPrompt`, `InversionPrompt`, `PromptStyle`).
+  `chordMatch.ts`: `isChord` (every tone present in any voicing/inversion/octave, nothing extra; a left-out 5th
+  fails unless `allowOmissions`; with a required inversion also that note lowest: `hasChordTones` + `hasBass`) and
+  `chordCorrections` (a wrong attempt as replace/add/remove steps; a wrong note within a whole step of a missing
+  tone is a "replace"). `chordPractice.ts`: `CHORD_PRACTICE_GROUPS` (the types offered in the filter: triads,
+  sixths/sevenths, ninths; ids are chord template ids), `makeChordPrompt` (random root + allowed type, never the
+  same chord twice; root spelled from the key, else conventionally) and `reduceChordPractice` (fed the held keys:
+  correct via `chordAttempt.ts`). `romanPrompts.ts`: `DIATONIC` lists each key's triads and sevenths (minor uses
+  harmonic minor for V, V7, vii°, vii°7); `makeRomanPrompt` picks one in the given key, or a random key per prompt
+  when none (the mode always passes none), limited to the selected chord types (if none occur in the key, any
+  diatonic triad, flagged `filterIgnored`). A test checks that `analyze` + `romanFor` give back the same numeral for
+  every diatonic chord in all 24 keys. `inversions.ts`: `withInversion` adds a random required inversion (root
+  position included; the bass is a chord tone up to the 7th, never a 9th; `atInversion` asks for a specific one).
   `progressions.ts`: `PROGRESSIONS`, the app's shared list of popular progressions (id, name, major/minor, steps of
   numeral + scale degree + chord type, a `weight` for how common it is, and style `tags`: basic, pop, jazz,
   classical; minor uses the natural scale, so VII not vii°). There is deliberately no user selector: other features
@@ -82,8 +82,10 @@ mode and views subscribe to the store.
 - `src/views/`: DOM rendering only: `beat.ts` (the beat light), `staff.ts` (VexFlow; also `staffCorner`), `staffCorner.ts`
   (`fitToStaffCorner`), `charts.ts` (line and column time charts: pure SVG builders + `mountChart` with the hover
   layer), `progressView.ts` (the Progress view), `chordName.ts` (also `chordSymbolHtml`),
-  `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
-  into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
+  `practice/` (the practice panel, one file per job: `view.ts` renders a `PracticeDisplay`; `drills.ts`,
+  `sequence.ts` and `routine.ts` are the presenters that turn exercise state into one; `chords.ts` holds chord
+  notation and corrections, `steps.ts` the step rows, `text.ts` small helpers; `index.ts` re-exports the public
+  names. `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
   answered and add the played chord's numeral; inversions show as slash chords or figured bass (V⁶₅, I⁶₄, V⁴₂), and
   a wrong bass gets "Right notes, wrong bass. Put E in the bass"; rows of steps share `stepHtml` and
   `chordStepHtml` (green when done, current underlined, a chord in the prompt's notation with the other one
@@ -119,10 +121,13 @@ mode and views subscribe to the store.
   fresh exercise when the options change. `routinePractice.ts` runs a routine (mode "routines"): restarts when the
   routine or direction changes, applies other exercise settings from the item in progress on; Skip skips an item
   (and starts again at the end), Restart routine starts over.
-- `src/main.ts`: wiring only. Loads saved settings into `createAppState` and saves them on every change
-  (localStorage), binds each control to its setting (`bindSelect`/`bindCheckbox`, which also blur so the computer
-  keys keep working), shows the controls the mode uses (exercise options are tagged `data-option` and shown when the
-  exercise lists them), and starts the mode, views and input sources.
+- `src/main.ts`: wiring only: creates the store, views, modes and input sources and connects them. The larger
+  pieces of wiring live in `src/app/`: `storage.ts` (settings loaded into `createAppState` and saved on every
+  change, in localStorage; the device id), `controls.ts` (binds each control to its setting with
+  `bindSelect`/`bindCheckbox`/`bindNumber`, which blur so the computer keys keep working; `showControls` shows the
+  controls the mode uses: exercise options are tagged `data-option` and shown when the exercise lists them),
+  `history.ts` (opens practice history and runs the footer's count, Export and Import), `calibration.ts` (the
+  calibration dialog, from the button or by itself) and `dom.ts` (`$`).
 - `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
 - `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
   `chords.test.ts` covers template matching, cost explanations and transposition consistency;

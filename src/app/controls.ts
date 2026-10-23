@@ -1,0 +1,106 @@
+// The settings controls: each shows a setting and dispatches changes to it, and `showControls` shows just the ones
+// the current mode (or page) uses.
+import type { PromptStyle } from "../exercises/chordPrompt";
+import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
+import { ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
+import type { MinorForm, ScaleOctaves } from "../exercises/scales";
+import { pageSetup, viewOf } from "../modes/page";
+import type { AppStore } from "../modes/performance";
+import type { AppAction, AppState, ModeId, Settings } from "../state/app";
+import type { Strictness, Subdivision } from "../timing/grid";
+import { fillKeySelect } from "../views/header";
+import { $ } from "./dom";
+
+/** Binds every settings control in the page to its setting. */
+export function bindControls(store: AppStore) {
+  function bindSelect(el: HTMLSelectElement, get: (s: Settings) => string, set: (value: string) => AppAction) {
+    el.value = get(store.getState().settings);
+    el.onchange = () => {
+      store.dispatch(set(el.value));
+      el.blur();   // so computer-key note input keeps working
+    };
+    store.subscribe(s => { if (el.value !== get(s.settings)) el.value = get(s.settings); });
+  }
+
+  function bindCheckbox(el: HTMLInputElement, get: (s: Settings) => boolean, set: (on: boolean) => AppAction) {
+    el.checked = get(store.getState().settings);
+    el.onchange = () => {
+      store.dispatch(set(el.checked));
+      el.blur();
+    };
+    store.subscribe(s => { el.checked = get(s.settings); });
+  }
+
+  /** A number input: dispatches on change (Enter, the arrows, or leaving the field), showing the setting as clamped. */
+  function bindNumber(el: HTMLInputElement, get: (s: Settings) => number, set: (value: number) => AppAction) {
+    el.value = String(get(store.getState().settings));
+    el.onchange = () => {
+      if (el.value !== "" && Number.isFinite(el.valueAsNumber)) store.dispatch(set(el.valueAsNumber));
+      el.value = String(get(store.getState().settings));
+    };
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === "Escape") el.blur(); };
+    store.subscribe(s => { if (document.activeElement !== el) el.value = String(get(s.settings)); });
+  }
+
+  fillKeySelect($("keySel"), true);
+  fillKeySelect($("exKey"), false);
+  bindSelect($("keySel"), s => s.keyValue, value => ({ type: "setKey", value }));
+  bindSelect($("modeSel"), s => s.mode, mode => ({ type: "setMode", mode: mode as ModeId }));
+  bindCheckbox($("optPedal"), s => s.includeSustained, on => ({ type: "setIncludeSustained", on }));
+  bindSelect($("promptStyle"), s => s.promptStyle, style => ({ type: "setPromptStyle", style: style as PromptStyle }));
+  bindCheckbox($("optInversions"), s => s.inversions, on => ({ type: "setInversions", on }));
+  const setExercise = (options: Partial<ExerciseOptions>): AppAction => ({ type: "setExerciseOptions", options });
+  bindSelect($("exKey"), s => s.exercise.key, key => setExercise({ key }));
+  bindSelect($("exOctaves"), s => String(s.exercise.octaves), v => setExercise({ octaves: Number(v) as ScaleOctaves }));
+  bindSelect($("exMinorForm"), s => s.exercise.minorForm, v => setExercise({ minorForm: v as MinorForm }));
+  bindSelect($("exChords"), s => s.exercise.sevenths ? "sevenths" : "triads", v => setExercise({ sevenths: v === "sevenths" }));
+  bindCheckbox($("exRootPosition"), s => s.exercise.rootPosition, rootPosition => setExercise({ rootPosition }));
+  bindCheckbox($("exMetronome"), s => s.exercise.metronome, metronome => setExercise({ metronome }));
+  bindNumber($("exBpm"), s => s.exercise.bpm, bpm => setExercise({ bpm }));
+  bindSelect($("exSubdivision"), s => String(s.exercise.subdivision), v => setExercise({ subdivision: Number(v) as Subdivision }));
+  bindSelect($("exStrictness"), s => s.exercise.strictness, v => setExercise({ strictness: v as Strictness }));
+  bindNumber($("latency"), s => s.latencyMs, ms => ({ type: "setLatency", ms }));
+  for (const r of ROUTINES) $("routineSel").append(new Option(r.name, r.id));
+  bindSelect($("routineSel"), s => s.routine.id, id => ({ type: "setRoutineOptions", options: { id } }));
+  bindSelect($("routineDir"), s => s.routine.direction,
+    direction => ({ type: "setRoutineOptions", options: { direction: direction as CircleDirection } }));
+}
+
+const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRESCRIPTIVE;
+
+/**
+ * The exercises a mode runs (one, or a routine's), and the keys they are in: these decide which exercise options
+ * apply. A routine sets each item's key itself, so its Key selector is hidden.
+ */
+function exercisesOf(s: Settings): { ids: PrescriptiveId[]; keys: string[]; ownKey: boolean } {
+  if (isPrescriptive(s.mode)) return { ids: [s.mode], keys: [s.exercise.key], ownKey: true };
+  if (s.mode !== "routines") return { ids: [], keys: [], ownKey: false };
+  const items = routineById(s.routine.id)!.items(s.routine.direction);
+  return { ids: [...new Set(items.map(i => i.exercise))], keys: items.map(i => i.options.key ?? s.exercise.key), ownKey: false };
+}
+
+/** Shows the controls the mode uses: each exercise lists its options; the minor form only matters in minor keys. */
+export function showControls(state: AppState) {
+  const s = state.settings, id = s.mode, page = pageSetup(viewOf(state));
+  $("progressBtn").classList.toggle("on", state.page === "progress");
+  $("progressBtn").setAttribute("aria-pressed", String(state.page === "progress"));
+  $("keyPick").hidden = !page.headerKey;
+  $("freeView").hidden = page.panel !== "chordName";
+  $("practice").hidden = page.panel !== "practice";
+  // The progress charts take the whole page: no staff, no practice card
+  $("staffCard").hidden = $("chordCard").hidden = page.panel === "progress";
+  $("progressView").hidden = page.panel !== "progress";
+  const ex = exercisesOf(s);
+  // Chord names vs Roman numerals matters wherever chords are prompted
+  $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));
+  $("inversionsOpt").hidden = $("chordFilters").hidden = id !== "chords";
+  $("routineOptions").hidden = id !== "routines";
+  const used = new Set<ExerciseOption>(ex.ids.flatMap(e => PRESCRIPTIVE[e].options));
+  if (!ex.ownKey) used.delete("key");
+  $("exerciseOptions").hidden = !used.size;
+  for (const el of document.querySelectorAll<HTMLElement>("#exerciseOptions [data-option]")) {
+    const option = el.dataset.option as ExerciseOption;
+    el.hidden = !used.has(option) || (option === "minorForm" && !ex.keys.some(k => k.endsWith(":minor")));
+  }
+  $("metronomeDetails").hidden = !s.exercise.metronome;
+}

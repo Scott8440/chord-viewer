@@ -2,7 +2,8 @@
 // Pure data and functions; the mode in src/modes/progressionPractice.ts drives it.
 import { buildKey, chromaOf, KEY_MAJORS, KEY_MINORS, type KeyContext } from "../theory";
 import { freshAttempt, trackAttempt, type ChordAttempt } from "./chordAttempt";
-import { isChord, type ChordPrompt } from "./chordPractice";
+import { isChord } from "./chordMatch";
+import type { ChordPrompt } from "./chordPrompt";
 import type { Rng } from "./notePractice";
 
 export interface ProgressionStep {

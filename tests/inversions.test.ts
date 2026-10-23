@@ -1,9 +1,12 @@
 // Chord practice with a required inversion.
 import { describe, expect, it } from "vitest";
+import { isChord } from "../src/exercises/chordMatch";
 import {
-  initialChordPractice, inversionTones, isChord, makeRomanPrompt, reduceChordPractice, withInversion,
-  type ChordPracticeAction, type ChordPracticeState, type ChordPrompt,
+  type ChordPracticeAction, type ChordPracticeState, initialChordPractice, reduceChordPractice,
 } from "../src/exercises/chordPractice";
+import type { ChordPrompt } from "../src/exercises/chordPrompt";
+import { inversionTones, withInversion } from "../src/exercises/inversions";
+import { makeRomanPrompt } from "../src/exercises/romanPrompts";
 import { createAppState, reduceApp } from "../src/state/app";
 import { buildKey } from "../src/theory";
 import { chordPracticeDisplay, inversionFigures } from "../src/views/practice";

@@ -5,7 +5,8 @@
 // Pure data and functions; exercises are built from it in scales.ts and diatonicChords.ts.
 import { judgeTime, timingSummary, type StepTiming, type TimingGrid, type TimingSummary } from "../timing/grid";
 import { freshAttempt, trackAttempt, type ChordAttempt } from "./chordAttempt";
-import { isChord, type ChordPrompt } from "./chordPractice";
+import { isChord } from "./chordMatch";
+import type { ChordPrompt } from "./chordPrompt";
 
 export interface NoteStep {
   kind: "note";

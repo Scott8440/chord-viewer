@@ -3,7 +3,7 @@
 // Kept free of browser specifics so the same records can move to a server database later: random UUID ids (no
 // clashes between devices), UTC epoch-ms times, a schema version per record, and the device that made it.
 // Pure: the builders take everything they need, including the record's id, time and device (see recorder.ts).
-import type { ChordPrompt } from "../exercises/chordPractice";
+import type { ChordPrompt } from "../exercises/chordPrompt";
 import type { NotePrompt } from "../exercises/notePractice";
 import type { ExerciseOptions, PrescriptiveId } from "../exercises/prescriptive";
 import type { ProgressionPrompt } from "../exercises/progressions";

@@ -1,6 +1,6 @@
 // Latency calibration, run from the metronome options: listens to the player tapping along to the click (exercises
 // ignore those notes meanwhile) and sets the latency from the result. See src/timing/calibration.ts.
-import { addTap, CALIBRATION_TAPS, CALIBRATION_WARMUP, calibrationResult, measured, startCalibration, type CalibrationResult } from "../timing/calibration";
+import { addTap, CALIBRATION_WARMUP, calibrationResult, measured, startCalibration, type CalibrationResult } from "../timing/calibration";
 import type { AppStore } from "./performance";
 
 export type CalibrationProgress =

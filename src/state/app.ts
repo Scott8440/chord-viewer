@@ -1,5 +1,6 @@
 // Whole-app state: the performance, a history of recent input events, and user settings.
-import { DEFAULT_CHORD_TYPES, PROMPT_STYLES, sanitizeChordTypes, type PromptStyle } from "../exercises/chordPractice";
+import { DEFAULT_CHORD_TYPES, sanitizeChordTypes } from "../exercises/chordPractice";
+import { PROMPT_STYLES, type PromptStyle } from "../exercises/chordPrompt";
 import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/prescriptive";
 import { sanitizeRoutineOptions, type RoutineOptions } from "../exercises/routines";
 import type { InputEvent } from "../input/events";

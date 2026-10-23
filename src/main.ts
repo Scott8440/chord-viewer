@@ -1,194 +1,48 @@
 // Wiring: input sources dispatch events into the store; views and the active mode subscribe to it.
+// The larger pieces live in src/app/: saved settings, the controls, practice history and calibration.
 import "./style.css";
-import { CHORD_PRACTICE_GROUPS, type PromptStyle } from "./exercises/chordPractice";
-import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "./exercises/prescriptive";
-import { ROUTINES, routineById, type CircleDirection } from "./exercises/routines";
-import type { MinorForm, ScaleOctaves } from "./exercises/scales";
-import type { Strictness, Subdivision } from "./timing/grid";
+import { setUpCalibration } from "./app/calibration";
+import { bindControls, showControls } from "./app/controls";
+import { $ } from "./app/dom";
+import { openHistory } from "./app/history";
+import { deviceId, loadSettings, saveSettingsOnChange } from "./app/storage";
+import { createClickPlayer } from "./audio/click";
+import { CHORD_PRACTICE_GROUPS } from "./exercises/chordPractice";
 import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
 import { createMidiSource } from "./input/midi";
 import { startChordPractice } from "./modes/chordPractice";
 import { startFreePlay } from "./modes/freePlay";
+import { startMetronome } from "./modes/metronome";
 import { startNotePractice } from "./modes/notePractice";
 import { IDLE_MS, pageSetup, viewOf, type View } from "./modes/page";
-import { startCalibrating } from "./modes/calibrate";
-import { startMetronome } from "./modes/metronome";
-import { selectProgress, startProgress } from "./modes/progress";
-import { openIdbStore } from "./progress/idbStore";
-import { createRecorder, uuid } from "./progress/recorder";
-import { exportFile, parseExport } from "./progress/records";
-import { createMemoryStore, type ProgressStore } from "./progress/store";
 import { onIdle, type Mode } from "./modes/performance";
+import { selectProgress, startProgress } from "./modes/progress";
 import { startProgressionPractice } from "./modes/progressionPractice";
 import { startRoutinePractice } from "./modes/routinePractice";
 import { startSequencePractice } from "./modes/sequencePractice";
-import { createAppState, reduceApp, type AppAction, type AppState, type ModeId, type Settings } from "./state/app";
+import { createAppState, reduceApp } from "./state/app";
 import { pedalDown } from "./state/performance";
 import { createStore } from "./state/store";
 import { analyze } from "./theory";
-import { createClickPlayer } from "./audio/click";
 import { createBeatView } from "./views/beat";
-import { createCalibrationDialog } from "./views/calibrationDialog";
 import { createChordNameView } from "./views/chordName";
 import { createCircleView } from "./views/circleOfFifths";
 import { createFilterView } from "./views/filter";
-import { createHeaderView, fillKeySelect } from "./views/header";
+import { createHeaderView } from "./views/header";
 import { createPracticeView } from "./views/practice";
 import { createProgressView } from "./views/progressView";
 import { createStaffView } from "./views/staff";
 import { fitToStaffCorner } from "./views/staffCorner";
 
-const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-
 /* ---------------------------------------------------------------
-   Settings, saved between sessions in localStorage
+   State: saved settings in, every change saved
    --------------------------------------------------------------- */
-const STORAGE = {
-  key: "chordDisplay.key", mode: "chordDisplay.mode", chordTypes: "chordDisplay.chordTypes",
-  promptStyle: "chordDisplay.promptStyle", inversions: "chordDisplay.inversions", exercise: "chordDisplay.exercise",
-  routine: "chordDisplay.routine", latency: "chordDisplay.latency", latencyCalibrated: "chordDisplay.latencyCalibrated",
-  /** This browser's random id for practice history records */
-  device: "chordDisplay.device",
-  /** Scale options saved by an earlier version ({key, minorForm, octaves}), read if there are no exercise options */
-  legacyScale: "chordDisplay.scale",
-};
-const load = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
-const loadJson = (k: string): unknown => { try { return JSON.parse(load(k) ?? "null"); } catch { return null; } };
-const save = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
-
-const store = createStore(reduceApp, createAppState({
-  keyValue: load(STORAGE.key),
-  includeSustained: $<HTMLInputElement>("optPedal").checked,
-  mode: load(STORAGE.mode),
-  chordTypes: loadJson(STORAGE.chordTypes),
-  promptStyle: load(STORAGE.promptStyle),
-  inversions: load(STORAGE.inversions) === "1",
-  exercise: loadJson(STORAGE.exercise) ?? loadJson(STORAGE.legacyScale),
-  routine: loadJson(STORAGE.routine),
-  latencyMs: loadJson(STORAGE.latency),
-  latencyCalibrated: loadJson(STORAGE.latencyCalibrated),
-}));
-store.subscribe((s, prev) => {
-  if (s.settings === prev.settings) return;
-  const t = s.settings;
-  save(STORAGE.key, t.keyValue);
-  save(STORAGE.mode, t.mode);
-  save(STORAGE.chordTypes, JSON.stringify(t.chordTypes));
-  save(STORAGE.promptStyle, t.promptStyle);
-  save(STORAGE.inversions, t.inversions ? "1" : "0");
-  save(STORAGE.exercise, JSON.stringify(t.exercise));
-  save(STORAGE.routine, JSON.stringify(t.routine));
-  save(STORAGE.latency, JSON.stringify(t.latencyMs));
-  save(STORAGE.latencyCalibrated, JSON.stringify(t.latencyCalibrated));
-});
+const store = createStore(reduceApp, createAppState(loadSettings($<HTMLInputElement>("optPedal").checked)));
+saveSettingsOnChange(store);
 const input = (event: InputEvent) => store.dispatch({ type: "input", event });
-
-/* ---------------------------------------------------------------
-   Controls: each shows a setting and dispatches changes to it
-   --------------------------------------------------------------- */
-function bindSelect(el: HTMLSelectElement, get: (s: Settings) => string, set: (value: string) => AppAction) {
-  el.value = get(store.getState().settings);
-  el.onchange = () => {
-    store.dispatch(set(el.value));
-    el.blur();   // so computer-key note input keeps working
-  };
-  store.subscribe(s => { if (el.value !== get(s.settings)) el.value = get(s.settings); });
-}
-
-function bindCheckbox(el: HTMLInputElement, get: (s: Settings) => boolean, set: (on: boolean) => AppAction) {
-  el.checked = get(store.getState().settings);
-  el.onchange = () => {
-    store.dispatch(set(el.checked));
-    el.blur();
-  };
-  store.subscribe(s => { el.checked = get(s.settings); });
-}
-
-/** A number input: dispatches on change (Enter, the arrows, or leaving the field), showing the setting as clamped. */
-function bindNumber(el: HTMLInputElement, get: (s: Settings) => number, set: (value: number) => AppAction) {
-  el.value = String(get(store.getState().settings));
-  el.onchange = () => {
-    if (el.value !== "" && Number.isFinite(el.valueAsNumber)) store.dispatch(set(el.valueAsNumber));
-    el.value = String(get(store.getState().settings));
-  };
-  el.onkeydown = e => { if (e.key === "Enter" || e.key === "Escape") el.blur(); };
-  store.subscribe(s => { if (document.activeElement !== el) el.value = String(get(s.settings)); });
-}
-
-fillKeySelect($("keySel"), true);
-fillKeySelect($("exKey"), false);
-bindSelect($("keySel"), s => s.keyValue, value => ({ type: "setKey", value }));
-bindSelect($("modeSel"), s => s.mode, mode => ({ type: "setMode", mode: mode as ModeId }));
-bindCheckbox($("optPedal"), s => s.includeSustained, on => ({ type: "setIncludeSustained", on }));
-bindSelect($("promptStyle"), s => s.promptStyle, style => ({ type: "setPromptStyle", style: style as PromptStyle }));
-bindCheckbox($("optInversions"), s => s.inversions, on => ({ type: "setInversions", on }));
-const setExercise = (options: Partial<ExerciseOptions>): AppAction => ({ type: "setExerciseOptions", options });
-bindSelect($("exKey"), s => s.exercise.key, key => setExercise({ key }));
-bindSelect($("exOctaves"), s => String(s.exercise.octaves), v => setExercise({ octaves: Number(v) as ScaleOctaves }));
-bindSelect($("exMinorForm"), s => s.exercise.minorForm, v => setExercise({ minorForm: v as MinorForm }));
-bindSelect($("exChords"), s => s.exercise.sevenths ? "sevenths" : "triads", v => setExercise({ sevenths: v === "sevenths" }));
-bindCheckbox($("exRootPosition"), s => s.exercise.rootPosition, rootPosition => setExercise({ rootPosition }));
-bindCheckbox($("exMetronome"), s => s.exercise.metronome, metronome => setExercise({ metronome }));
-bindNumber($("exBpm"), s => s.exercise.bpm, bpm => setExercise({ bpm }));
-bindSelect($("exSubdivision"), s => String(s.exercise.subdivision), v => setExercise({ subdivision: Number(v) as Subdivision }));
-bindSelect($("exStrictness"), s => s.exercise.strictness, v => setExercise({ strictness: v as Strictness }));
-bindNumber($("latency"), s => s.latencyMs, ms => ({ type: "setLatency", ms }));
-for (const r of ROUTINES) $("routineSel").append(new Option(r.name, r.id));
-bindSelect($("routineSel"), s => s.routine.id, id => ({ type: "setRoutineOptions", options: { id } }));
-bindSelect($("routineDir"), s => s.routine.direction,
-  direction => ({ type: "setRoutineOptions", options: { direction: direction as CircleDirection } }));
-
-/* ---------------------------------------------------------------
-   Practice history: kept in IndexedDB (in memory only if the browser won't store anything), recorded by the modes
-   --------------------------------------------------------------- */
-/** This browser's id, stamped on every record so histories from several devices can be merged later */
-const device = load(STORAGE.device) ?? (() => { const id = uuid(); save(STORAGE.device, id); return id; })();
-let historySaved = true;
-const history: Promise<ProgressStore> = openIdbStore().catch(e => {
-  console.error("Practice history won't be saved:", e);
-  historySaved = false;
-  return createMemoryStore();
-});
-const recorder = createRecorder(history, device);
-
-async function showHistoryCount() {
-  const n = await (await history).count();
-  $("historyCount").textContent = `${n} record${n === 1 ? "" : "s"}` + (historySaved ? "" : " (not saved in this browser)");
-}
-void showHistoryCount();
-recorder.onRecorded(() => void showHistoryCount());
-
-let historyNoteTimer: ReturnType<typeof setTimeout> | undefined;
-function historyNote(text: string) {
-  $("historyNote").textContent = text;
-  clearTimeout(historyNoteTimer);
-  historyNoteTimer = setTimeout(() => { $("historyNote").textContent = ""; }, 6000);
-}
-$("historyExport").onclick = async () => {
-  $("historyExport").blur();
-  const records = await (await history).all();
-  const blob = new Blob([JSON.stringify(exportFile(records, Date.now()))], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `chord-display-history-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-};
-$("historyImport").onclick = () => { $("historyImport").blur(); $("historyFile").click(); };
-$<HTMLInputElement>("historyFile").onchange = async () => {
-  const input = $<HTMLInputElement>("historyFile"), file = input.files?.[0];
-  input.value = "";   // so the same file can be picked again
-  if (!file) return;
-  const parsed = parseExport(await file.text());
-  if ("error" in parsed) { historyNote(parsed.error); return; }
-  const added = await (await history).merge(parsed.records);
-  const already = parsed.records.length - added;
-  historyNote(`Imported ${added} new record${added === 1 ? "" : "s"}` + (already ? `, ${already} already here` : "") +
-              (parsed.skipped ? `, ${parsed.skipped} unreadable` : "") + ".");
-  void showHistoryCount();
-  mode.refresh?.();
-};
+bindControls(store);
+const history = openHistory(deviceId(), () => mode.refresh?.());
 
 /* ---------------------------------------------------------------
    Views
@@ -211,16 +65,7 @@ const progressView = createProgressView($("progressView"), {
 // The circle fills the staff's free top-right corner, growing and shrinking with the window
 fitToStaffCorner($("circle"), $("staffCard"), $("staff"));
 const beat = createBeatView($("beat"));
-const calibrationDialog = createCalibrationDialog($<HTMLDialogElement>("calibration"), {
-  // Declined: it won't open by itself again
-  cancel() {
-    stopCalibrating?.();
-    stopCalibrating = null;
-    store.dispatch({ type: "setLatencyCalibrated" });
-    calibrationDialog.close();
-  },
-  retry: () => calibrate(),
-});
+const calibrationDialog = setUpCalibration(store);
 /** Output latency above this gets a note: likely Bluetooth headphones or speakers */
 const HIGH_OUTPUT_LATENCY_MS = 60;
 const metronomeViews = {
@@ -249,7 +94,6 @@ store.subscribe((s, prev) => { if (s.settings.chordTypes !== prev.settings.chord
 /* ---------------------------------------------------------------
    Modes: exactly one runs at a time and owns the right-hand card
    --------------------------------------------------------------- */
-const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRESCRIPTIVE;
 const practiceViews = { staff, practice, circle };
 /**
  * Starts a mode and the page behaviours its `PAGE_SETUP` turns on. The circle of fifths starts hidden; modes where
@@ -274,49 +118,12 @@ function startMode(id: View): Mode {
 }
 const startModeView = (id: View): Mode =>
   id === "free" ? startFreePlay(store, { staff, chordName, circle })
-  : id === "notes" ? startNotePractice(store, practiceViews, recorder)
-  : id === "chords" ? startChordPractice(store, practiceViews, recorder)
-  : id === "progressions" ? startProgressionPractice(store, practiceViews, recorder)
-  : id === "routines" ? startRoutinePractice(store, practiceViews, recorder)
-  : id === "progress" ? startProgress({ progress: progressView }, history, () => historySaved)
-  : startSequencePractice(store, practiceViews, id, recorder);
-
-/**
- * The exercises a mode runs (one, or a routine's), and the keys they are in: these decide which exercise options
- * apply. A routine sets each item's key itself, so its Key selector is hidden.
- */
-function exercisesOf(s: Settings): { ids: PrescriptiveId[]; keys: string[]; ownKey: boolean } {
-  if (isPrescriptive(s.mode)) return { ids: [s.mode], keys: [s.exercise.key], ownKey: true };
-  if (s.mode !== "routines") return { ids: [], keys: [], ownKey: false };
-  const items = routineById(s.routine.id)!.items(s.routine.direction);
-  return { ids: [...new Set(items.map(i => i.exercise))], keys: items.map(i => i.options.key ?? s.exercise.key), ownKey: false };
-}
-
-/** Shows the controls the mode uses: each exercise lists its options; the minor form only matters in minor keys. */
-function showControls(state: AppState) {
-  const s = state.settings, id = s.mode, page = pageSetup(viewOf(state));
-  $("progressBtn").classList.toggle("on", state.page === "progress");
-  $("progressBtn").setAttribute("aria-pressed", String(state.page === "progress"));
-  $("keyPick").hidden = !page.headerKey;
-  $("freeView").hidden = page.panel !== "chordName";
-  $("practice").hidden = page.panel !== "practice";
-  // The progress charts take the whole page: no staff, no practice card
-  $("staffCard").hidden = $("chordCard").hidden = page.panel === "progress";
-  $("progressView").hidden = page.panel !== "progress";
-  const ex = exercisesOf(s);
-  // Chord names vs Roman numerals matters wherever chords are prompted
-  $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));
-  $("inversionsOpt").hidden = $("chordFilters").hidden = id !== "chords";
-  $("routineOptions").hidden = id !== "routines";
-  const used = new Set<ExerciseOption>(ex.ids.flatMap(e => PRESCRIPTIVE[e].options));
-  if (!ex.ownKey) used.delete("key");
-  $("exerciseOptions").hidden = !used.size;
-  for (const el of document.querySelectorAll<HTMLElement>("#exerciseOptions [data-option]")) {
-    const option = el.dataset.option as ExerciseOption;
-    el.hidden = !used.has(option) || (option === "minorForm" && !ex.keys.some(k => k.endsWith(":minor")));
-  }
-  $("metronomeDetails").hidden = !s.exercise.metronome;
-}
+  : id === "notes" ? startNotePractice(store, practiceViews, history.recorder)
+  : id === "chords" ? startChordPractice(store, practiceViews, history.recorder)
+  : id === "progressions" ? startProgressionPractice(store, practiceViews, history.recorder)
+  : id === "routines" ? startRoutinePractice(store, practiceViews, history.recorder)
+  : id === "progress" ? startProgress({ progress: progressView }, history.store, history.saved)
+  : startSequencePractice(store, practiceViews, id, history.recorder);
 
 let mode = startMode(viewOf(store.getState()));
 showControls(store.getState());
@@ -353,31 +160,6 @@ $("routineRestart").onclick = () => {
   $("routineRestart").blur();
   mode.restart?.();
 };
-/* Latency calibration, in a dialog: from the Calibrate button, or by itself when the metronome starts and the
-   latency hasn't been dealt with yet (calibrated, typed in, or declined) */
-let stopCalibrating: (() => void) | null = null;
-function calibrate() {
-  const transport = store.getState().transport;
-  if (!transport) return;
-  stopCalibrating?.();
-  calibrationDialog.open(transport);
-  stopCalibrating = startCalibrating(store, p => {
-    if (p.kind !== "listening") stopCalibrating = null;
-    calibrationDialog.show(p);
-  });
-}
-$("calibrate").onclick = () => {
-  $("calibrate").blur();
-  calibrate();
-};
-const needsCalibrating = (s: AppState) => !!s.transport && !s.settings.latencyCalibrated && !stopCalibrating;
-store.subscribe((s, prev) => {
-  if (s.transport && !prev.transport && needsCalibrating(s)) calibrate();
-  // A new tempo while calibrating: the dialog's beat light follows it
-  else if (stopCalibrating && s.transport && s.transport !== prev.transport) calibrationDialog.open(s.transport);
-});
-// The metronome may already be running from the saved settings
-if (needsCalibrating(store.getState())) calibrate();
 $("panic").onclick = panic;
 $("retry").onclick = () => { $("retry").hidden = true; header.showMidiStatus({ kind: "requesting" }); midi.start(); };
 

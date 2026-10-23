@@ -1,5 +1,5 @@
 // Whole-app state: the performance, a history of recent input events, and user settings.
-import { DEFAULT_CHORD_TYPES, sanitizeChordTypes } from "../exercises/chordPractice";
+import { DEFAULT_CHORD_TYPES, sanitizeChordKey, sanitizeChordTypes } from "../exercises/chordPractice";
 import { PROMPT_STYLES, type PromptStyle } from "../exercises/chordPrompt";
 import { sanitizeEarOptions, type EarOptions } from "../exercises/earTraining";
 import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/prescriptive";
@@ -28,6 +28,8 @@ export interface Settings {
   readonly promptStyle: PromptStyle;
   /** Chord practice asks for a specific inversion */
   readonly inversions: boolean;
+  /** Chord practice's key: "none", "random" or a key value (see CHORD_KEYS) */
+  readonly chordKey: string;
   /** Options shared by the prescriptive exercises (scales, diatonic chords), also the base for routine items */
   readonly exercise: ExerciseOptions;
   /** Which routine, and which way round the circle of fifths */
@@ -49,6 +51,7 @@ export interface SavedSettings {
   chordTypes?: unknown;
   promptStyle?: unknown;
   inversions?: unknown;
+  chordKey?: unknown;
   exercise?: unknown;
   routine?: unknown;
   ear?: unknown;
@@ -83,6 +86,7 @@ export type AppAction =
   | { type: "setChordTypes"; types: readonly string[] }
   | { type: "setPromptStyle"; style: PromptStyle }
   | { type: "setInversions"; on: boolean }
+  | { type: "setChordKey"; value: string }
   | { type: "setExerciseOptions"; options: Partial<ExerciseOptions> }
   | { type: "setRoutineOptions"; options: Partial<RoutineOptions> }
   | { type: "setEarOptions"; options: Partial<EarOptions> }
@@ -113,6 +117,7 @@ export function createAppState(saved: SavedSettings = {}): AppState {
       chordTypes: sanitizeChordTypes(Array.isArray(saved.chordTypes) ? saved.chordTypes : DEFAULT_CHORD_TYPES),
       promptStyle: oneOf(PROMPT_STYLES, saved.promptStyle, "names"),
       inversions: saved.inversions === true,
+      chordKey: sanitizeChordKey(saved.chordKey),
       exercise: sanitizeExerciseOptions(saved.exercise),
       routine: sanitizeRoutineOptions(saved.routine),
       ear: sanitizeEarOptions(saved.ear),
@@ -145,6 +150,10 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return a.style === s.settings.promptStyle ? s : { ...s, settings: { ...s.settings, promptStyle: a.style } };
     case "setInversions":
       return a.on === s.settings.inversions ? s : { ...s, settings: { ...s.settings, inversions: a.on } };
+    case "setChordKey": {
+      const chordKey = sanitizeChordKey(a.value);
+      return chordKey === s.settings.chordKey ? s : { ...s, settings: { ...s.settings, chordKey } };
+    }
     case "setExerciseOptions": {
       const exercise = sanitizeExerciseOptions({ ...s.settings.exercise, ...a.options });
       const same = (Object.keys(exercise) as (keyof ExerciseOptions)[]).every(k => exercise[k] === s.settings.exercise[k]);

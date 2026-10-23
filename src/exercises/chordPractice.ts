@@ -6,6 +6,7 @@ import { freshAttempt, trackAttempt, type ChordAttempt } from "./chordAttempt";
 import { DEFAULT_CHORD_MATCH, isChord, type ChordMatchOptions } from "./chordMatch";
 import type { ChordPrompt } from "./chordPrompt";
 import type { Rng } from "./notePractice";
+import { ALL_KEYS } from "./romanPrompts";
 
 /** Chord types offered in the filter, grouped as shown. Ids are chord template ids. */
 export const CHORD_PRACTICE_GROUPS: readonly { label: string; types: readonly { id: string; label: string }[] }[] = [
@@ -25,6 +26,22 @@ export const CHORD_PRACTICE_GROUPS: readonly { label: string; types: readonly { 
 
 export const CHORD_PRACTICE_TYPES: readonly string[] = CHORD_PRACTICE_GROUPS.flatMap(g => g.types.map(t => t.id));
 export const DEFAULT_CHORD_TYPES: readonly string[] = ["M", "m"];
+
+/**
+ * The key chord practice draws from: "none" (chord names: any chord; Roman numerals: a new key each prompt),
+ * "random" (a new key every PROMPTS_PER_KEY prompts), or a key value: then only that key's diatonic chords come up.
+ */
+export const CHORD_KEYS: readonly string[] = ["none", "random", ...ALL_KEYS];
+export const sanitizeChordKey = (v: unknown): string => CHORD_KEYS.includes(v as string) ? v as string : "none";
+
+/** The key for the next prompts: the chosen one, or a random one other than the previous (null for "none") */
+export function pickChordKey(rng: Rng, choice: string, previous?: string | null): string | null {
+  if (choice === "none") return null;
+  if (choice !== "random") return choice;
+  let k: string;
+  do k = ALL_KEYS[Math.floor(rng() * ALL_KEYS.length)]; while (k === previous);
+  return k;
+}
 
 /** Keeps only known practice types, in display order; falls back to the defaults if nothing is left. */
 export function sanitizeChordTypes(ids: readonly string[]): string[] {

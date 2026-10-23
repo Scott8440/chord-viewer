@@ -1,5 +1,6 @@
 // The settings controls: each shows a setting and dispatches changes to it, and `showControls` shows just the ones
 // the current mode (or page) uses.
+import { CHORD_KEYS } from "../exercises/chordPractice";
 import type { PromptStyle } from "../exercises/chordPrompt";
 import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTraining";
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
@@ -9,7 +10,7 @@ import { pageSetup, viewOf } from "../modes/page";
 import type { AppStore } from "../modes/performance";
 import type { AppAction, AppState, ModeId, Settings } from "../state/app";
 import type { Strictness, Subdivision } from "../timing/grid";
-import { prettyAcc } from "../theory";
+import { buildKey, prettyAcc } from "../theory";
 import { fillKeySelect } from "../views/header";
 import { $ } from "./dom";
 
@@ -51,6 +52,11 @@ export function bindControls(store: AppStore) {
   bindCheckbox($("optPedal"), s => s.includeSustained, on => ({ type: "setIncludeSustained", on }));
   bindSelect($("promptStyle"), s => s.promptStyle, style => ({ type: "setPromptStyle", style: style as PromptStyle }));
   bindCheckbox($("optInversions"), s => s.inversions, on => ({ type: "setInversions", on }));
+  for (const k of CHORD_KEYS) {
+    const label = k === "none" ? "None" : k === "random" ? `Random (new key every ${PROMPTS_PER_KEY})` : prettyAcc(buildKey(k)!.label);
+    $("chordKey").append(new Option(label, k));
+  }
+  bindSelect($("chordKey"), s => s.chordKey, value => ({ type: "setChordKey", value }));
   const setExercise = (options: Partial<ExerciseOptions>): AppAction => ({ type: "setExerciseOptions", options });
   bindSelect($("exKey"), s => s.exercise.key, key => setExercise({ key }));
   bindSelect($("exOctaves"), s => String(s.exercise.octaves), v => setExercise({ octaves: Number(v) as ScaleOctaves }));
@@ -102,7 +108,9 @@ export function showControls(state: AppState) {
   const ex = exercisesOf(s);
   // Chord names vs Roman numerals matters wherever chords are prompted
   $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));
-  $("inversionsOpt").hidden = $("chordFilters").hidden = id !== "chords";
+  $("inversionsOpt").hidden = $("chordFilters").hidden = $("chordKeyPick").hidden = id !== "chords";
+  // With no key, chord names are any chord, and Roman numerals get a key of their own each time
+  $<HTMLSelectElement>("chordKey").options[0].text = s.promptStyle === "roman" ? "None (a new key every prompt)" : "None (any chord)";
   $("routineOptions").hidden = id !== "routines";
   // Both ear-training modes share their options; melodies have no drone, so the tonic is just the key
   const ear = id === "ear" || id === "earMelody";

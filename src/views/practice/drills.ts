@@ -99,13 +99,16 @@ export function chordPracticeDisplay(s: ChordPracticeState, key: KeyContext | nu
   if (s.status === "correct") feedback = roman ? `✓ ${prettyAcc(s.prompt.root + t.symbol + (slash ? "/" + slash : ""))}` : "✓ Correct";
   else if (s.status === "wrong" && s.attempt) feedback = "✗ " + describeMiss(s.prompt, s.attempt, promptKey);
   const invText = inv ? " · " + inversionName(inv.number) : "";
+  // A chord name drawn from a key says which
+  const keyText = s.prompt.inKey && key ? ` · in ${prettyAcc(key.label)}` +
+    (s.prompt.inKey.filterIgnored ? " · no selected chord type is in this key, so any triad" : "") : "";
   return {
     label: inv ? "Play this chord, with this note in the bass" : "Play this chord, any voicing or inversion",
     promptHtml: roman ? romanHtml(roman.numeral, inv?.number) : chordSymbolHtml(s.prompt.root, t.symbol, slash),
     size: "chord",
     sub: roman
       ? `in ${prettyAcc(promptKey!.label)}${invText}` + (roman.filterIgnored ? " · no selected chord type is in this key, so any triad" : "")
-      : prettyAcc(`${s.prompt.root} ${t.name}`) + invText,
+      : prettyAcc(`${s.prompt.root} ${t.name}`) + invText + keyText,
     status: s.status, feedback, score: scoreText(s),
   };
 }

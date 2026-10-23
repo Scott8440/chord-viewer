@@ -9,6 +9,8 @@ export interface ChordPrompt {
   type: string;
   /** Set when the prompt is a Roman numeral rather than a chord name */
   roman?: RomanPrompt;
+  /** Set when a chord name was drawn from a key's diatonic chords (chord practice with a key) */
+  inKey?: { keyValue: string; filterIgnored: boolean };
   /** Set when a specific inversion is required */
   inversion?: InversionPrompt;
 }

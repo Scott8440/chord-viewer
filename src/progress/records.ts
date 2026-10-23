@@ -158,6 +158,7 @@ export function chordDrillBody(p: ChordPrompt, answered: boolean, missed: boolea
   const detail: DrillBody["detail"] = { type: p.type, rootPc: p.rootPc, style: p.roman ? "roman" : "names" };
   if (p.inversion) detail.inversion = p.inversion.number;
   if (p.roman) { detail.numeral = p.roman.numeral; detail.key = p.roman.keyValue; }
+  if (p.inKey) detail.key = p.inKey.keyValue;
   return { kind: "drill", drill: "chords", prompt: chordLabel(p), detail, outcome: outcomeOf(answered, missed), ms: Math.round(ms) };
 }
 

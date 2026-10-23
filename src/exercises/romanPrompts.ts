@@ -36,7 +36,14 @@ export function diatonicChords(key: KeyContext): { numeral: string; type: string
 }
 
 const TRIAD_TYPES = ["M", "m", "dim"];
-const ALL_KEYS = [...KEY_MAJORS.map(t => t + ":major"), ...KEY_MINORS.map(t => t + ":minor")];
+/** The 24 keys, as key values ("C:major" … "B:minor") */
+export const ALL_KEYS = [...KEY_MAJORS.map(t => t + ":major"), ...KEY_MINORS.map(t => t + ":minor")];
+
+/** A diatonic chord of the key (the same pick as `makeRomanPrompt`), asked for by its chord name */
+export function makeDiatonicNamePrompt(rng: Rng, types: readonly string[], key: KeyContext, previous?: ChordPrompt): ChordPrompt {
+  const { rootPc, root, type, roman } = makeRomanPrompt(rng, types, key, previous);
+  return { rootPc, root, type, inKey: { keyValue: roman!.keyValue, filterIgnored: roman!.filterIgnored } };
+}
 
 /**
  * Picks a diatonic chord, by Roman numeral, in the given key (or a random key when there is none),

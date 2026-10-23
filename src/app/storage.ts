@@ -6,7 +6,7 @@ import { uuid } from "../progress/recorder";
 
 const STORAGE = {
   key: "chordDisplay.key", mode: "chordDisplay.mode", chordTypes: "chordDisplay.chordTypes",
-  promptStyle: "chordDisplay.promptStyle", inversions: "chordDisplay.inversions", exercise: "chordDisplay.exercise",
+  promptStyle: "chordDisplay.promptStyle", inversions: "chordDisplay.inversions", chordKey: "chordDisplay.chordKey", exercise: "chordDisplay.exercise",
   routine: "chordDisplay.routine", ear: "chordDisplay.ear", latency: "chordDisplay.latency", latencyCalibrated: "chordDisplay.latencyCalibrated",
   /** This browser's random id for practice history records */
   device: "chordDisplay.device",
@@ -26,6 +26,7 @@ export function loadSettings(includeSustained: boolean): SavedSettings {
     chordTypes: loadJson(STORAGE.chordTypes),
     promptStyle: load(STORAGE.promptStyle),
     inversions: load(STORAGE.inversions) === "1",
+    chordKey: load(STORAGE.chordKey),
     exercise: loadJson(STORAGE.exercise) ?? loadJson(STORAGE.legacyScale),
     routine: loadJson(STORAGE.routine),
     ear: loadJson(STORAGE.ear),
@@ -40,6 +41,7 @@ function saveSettings(t: Settings) {
   save(STORAGE.chordTypes, JSON.stringify(t.chordTypes));
   save(STORAGE.promptStyle, t.promptStyle);
   save(STORAGE.inversions, t.inversions ? "1" : "0");
+  save(STORAGE.chordKey, t.chordKey);
   save(STORAGE.exercise, JSON.stringify(t.exercise));
   save(STORAGE.routine, JSON.stringify(t.routine));
   save(STORAGE.ear, JSON.stringify(t.ear));

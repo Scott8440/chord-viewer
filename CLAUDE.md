@@ -51,7 +51,11 @@ mode and views subscribe to the store.
   tone is a "replace"). `chordPractice.ts`: `CHORD_PRACTICE_GROUPS` (the types offered in the filter: triads,
   sixths/sevenths, ninths; ids are chord template ids), `makeChordPrompt` (random root + allowed type, never the
   same chord twice; root spelled from the key, else conventionally) and `reduceChordPractice` (fed the held keys:
-  correct via `chordAttempt.ts`). `romanPrompts.ts`: `DIATONIC` lists each key's triads and sevenths (minor uses
+  correct via `chordAttempt.ts`). Its Key option (`CHORD_KEYS`, `Settings.chordKey`, saved): "none" (chord names:
+  any chord; Roman numerals: a new key each prompt, as before), "random" (a new key every `PROMPTS_PER_KEY` = 10
+  prompts, as in ear training) or one of the 24 keys; with a key, both styles ask for that key's diatonic chords
+  (`makeDiatonicNamePrompt` for names, flagged `inKey`, shown "in C major"), and the staff draws in it.
+  `romanPrompts.ts`: `DIATONIC` lists each key's triads and sevenths (minor uses
   harmonic minor for V, V7, vii°, vii°7); `makeRomanPrompt` picks one in the given key, or a random key per prompt
   when none (the mode always passes none), limited to the selected chord types (if none occur in the key, any
   diatonic triad, flagged `filterIgnored`). A test checks that `analyze` + `romanFor` give back the same numeral for
@@ -143,7 +147,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 293 tests (54 voicings) should pass
+npm test           # Vitest: 299 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,

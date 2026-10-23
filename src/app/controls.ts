@@ -105,6 +105,8 @@ export function showControls(state: AppState) {
   // The progress charts take the whole page: no staff, no practice card
   $("staffCard").hidden = $("chordCard").hidden = page.panel === "progress";
   $("progressView").hidden = page.panel !== "progress";
+  $("staff").hidden = page.stage !== "staff";
+  $("degreeCircle").hidden = page.stage !== "degrees";
   const ex = exercisesOf(s);
   // Chord names vs Roman numerals matters wherever chords are prompted
   $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));

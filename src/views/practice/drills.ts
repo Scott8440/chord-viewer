@@ -37,20 +37,19 @@ export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked
       status: "waiting", feedback: "", score: scoreText(s), stopLabel: "Start",
     };
   }
-  const key = buildKey(s.prompt.keyValue)!;
-  const tonicPc = chromaOf(key.tonic);
+  // Degrees only: the tonic's name never matters here
+  const tonicPc = chromaOf(buildKey(s.prompt.keyValue)!.tonic);
   let feedback = "";
-  if (s.status === "correct") feedback = `✓ ${prettyAcc(s.prompt.degree)} · ${prettyAcc(s.prompt.name)}`;
+  if (s.status === "correct") feedback = `✓ ${prettyAcc(s.prompt.degree)}`;
   else if (s.status === "wrong" && s.played != null) {
-    const pc = s.played % 12;
-    feedback = `✗ That was ${prettyAcc(degreeName(pc - tonicPc))} (${prettyAcc(key.spell[pc])}). Listen again`;
+    feedback = `✗ That was ${prettyAcc(degreeName(s.played % 12 - tonicPc))}. Listen again`;
   }
   return {
-    label: "Play the note you hear over the drone, in any octave, or press its degree (1–7)",
+    label: "Play the degree you hear over the drone, in any octave, or press it (1–7)",
     promptHtml: s.status === "correct" ? esc(prettyAcc(s.prompt.degree)) : "?",
     size: "note",
     sub: soundBlocked ? "Click anywhere or press a computer key to start the sound"
-      : `Drone on ${prettyAcc(key.tonic)} · degrees ${degrees.map(prettyAcc).join(", ")}`,
+      : `Degrees ${degrees.map(prettyAcc).join(", ")}`,
     status: s.status, feedback, score: scoreText(s), stopLabel: "Stop",
   };
 }

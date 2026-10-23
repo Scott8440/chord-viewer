@@ -6,6 +6,8 @@ export interface PageSetup {
   /** The right-hand panel: the chord name or the practice card, beside the staff; or the progress charts, in place
    *  of both */
   panel: "chordName" | "practice" | "progress";
+  /** What the left-hand card shows: the staff, or ear training's scale-degree circle (no notes, only degrees) */
+  stage: "staff" | "degrees";
   /** The header Key picker (free play only: exercises name their key or have their own selector) */
   headerKey: boolean;
   /** Fade the chord name out after IDLE_MS without input (and nothing sounding) */
@@ -16,19 +18,19 @@ export interface PageSetup {
 
 export const IDLE_MS = 10_000;
 
-const PRACTICE: PageSetup = { panel: "practice", headerKey: false, fadeChordWhenIdle: false, metronome: false };
+const PRACTICE: PageSetup = { panel: "practice", stage: "staff", headerKey: false, fadeChordWhenIdle: false, metronome: false };
 /** Prescriptive exercises and routines of them: timed against the metronome when it's on */
 const TIMED: PageSetup = { ...PRACTICE, metronome: true };
 
 export const PAGE_SETUP: Record<ModeId, PageSetup> = {
-  free: { panel: "chordName", headerKey: true, fadeChordWhenIdle: true, metronome: false },
+  free: { panel: "chordName", stage: "staff", headerKey: true, fadeChordWhenIdle: true, metronome: false },
   notes: PRACTICE,
   chords: PRACTICE,
   progressions: PRACTICE,
   scales: TIMED,
   diatonic: TIMED,
   routines: TIMED,
-  ear: PRACTICE,
+  ear: { ...PRACTICE, stage: "degrees" },
   earMelody: PRACTICE,
 };
 

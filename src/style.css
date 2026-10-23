@@ -128,6 +128,37 @@ main {
   padding: 12px; min-height: 340px;
 }
 #staff { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+#staff[hidden] { display: none; }
+/* Ear training's scale-degree circle, in place of the staff */
+:root { --ping-hear: #b8862b; --ping-correct: #2e8b57; --ping-wrong: #c8553d; }
+#degreeCircle { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+#degreeCircle[hidden] { display: none; }
+#degreeCircle svg { width: min(100%, 64vh); height: auto; overflow: visible; }
+.degrees text { text-anchor: middle; dominant-baseline: central; font: 600 20px system-ui, sans-serif; }
+.degrees .ring { fill: none; stroke: #d8d2c3; stroke-width: 2; }
+.degrees .node circle { fill: var(--paper); stroke: #cfc8b8; stroke-width: 2; }
+.degrees .node text { fill: #b3ad9f; }
+.degrees .node.on circle { fill: var(--ink); stroke: var(--ink); }
+.degrees .node.on text { fill: var(--paper); }
+.degrees .node.hear circle { animation: flash-hear 0.7s ease-out; }
+.degrees .node.correct circle { animation: flash-correct 0.7s ease-out; }
+.degrees .node.wrong circle { animation: flash-wrong 0.7s ease-out; }
+@keyframes flash-hear { from { fill: var(--ping-hear); stroke: var(--ping-hear); } }
+@keyframes flash-correct { from { fill: var(--ping-correct); stroke: var(--ping-correct); } }
+@keyframes flash-wrong { from { fill: var(--ping-wrong); stroke: var(--ping-wrong); } }
+.degrees .node.passing { animation: passing 1.2s ease-in forwards; }
+.degrees .node.passing circle { fill: var(--paper); stroke-width: 2; }
+.degrees .node.passing text { font-size: 15px; }
+.degrees .node.passing.wrong circle { stroke: var(--ping-wrong); }
+.degrees .node.passing.wrong text { fill: var(--ping-wrong); }
+.degrees .node.passing.correct circle { stroke: var(--ping-correct); }
+.degrees .node.passing.correct text { fill: var(--ping-correct); }
+@keyframes passing { 60% { opacity: 1; } to { opacity: 0; } }
+.degrees .ping { fill: none; stroke-width: 4; transform-box: fill-box; transform-origin: center; animation: ping 0.9s ease-out forwards; }
+.degrees .ping.hear { stroke: var(--ping-hear); }
+.degrees .ping.correct { stroke: var(--ping-correct); }
+.degrees .ping.wrong { stroke: var(--ping-wrong); }
+@keyframes ping { from { transform: scale(1); opacity: 0.9; } to { transform: scale(2.6); opacity: 0; } }
 #staff svg { max-width: 100%; max-height: 72vh; height: auto; }
 #chordCard {
   background: var(--panel); border: 1px solid var(--line);

@@ -32,6 +32,7 @@ import { analyze } from "./theory";
 import { createBeatView } from "./views/beat";
 import { createChordNameView } from "./views/chordName";
 import { createCircleView } from "./views/circleOfFifths";
+import { createDegreeCircle } from "./views/degreeCircle";
 import { createFilterView } from "./views/filter";
 import { createHeaderView } from "./views/header";
 import { createPracticeView } from "./views/practice";
@@ -59,6 +60,7 @@ store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 
 const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
+const degreeCircle = createDegreeCircle($("degreeCircle"));
 const progressView = createProgressView($("progressView"), {
   change(selection) {
     selectProgress(selection);
@@ -145,7 +147,7 @@ const startModeView = (id: View): Mode =>
   : id === "chords" ? startChordPractice(store, practiceViews, history.recorder)
   : id === "progressions" ? startProgressionPractice(store, practiceViews, history.recorder)
   : id === "routines" ? startRoutinePractice(store, practiceViews, history.recorder)
-  : id === "ear" ? startEarTraining(store, { ...practiceViews, tones }, history.recorder)
+  : id === "ear" ? startEarTraining(store, { practice, tones, degrees: degreeCircle }, history.recorder)
   : id === "earMelody" ? startEarMelody(store, { ...practiceViews, tones }, history.recorder)
   : id === "progress" ? startProgress({ progress: progressView }, history.store, history.saved)
   : startSequencePractice(store, practiceViews, id, history.recorder);

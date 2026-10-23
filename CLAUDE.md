@@ -147,7 +147,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 300 tests (54 voicings) should pass
+npm test           # Vitest: 303 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -318,14 +318,18 @@ First mode: scale degrees over a drone. A drone sounds the tonic (an octave belo
 app plays one note over it (the tonic F♯3–F4, the note in either of the two octaves above it, `EAR_OCTAVES`; never
 the same note twice running, though a degree may repeat in the other octave, so two degrees don't just alternate),
 and the player plays that note in any octave, or presses its degree on the number keys (1–7, no controller needed:
-`src/input/degreeKeys.ts`, a source the mode turns on, emitting the degree's note as source `"deg"`). Wrong notes are named as a degree ("That was ♭3 (E♭)"); the prompt shows "?" until answered, then the
-degree. After a wrong note the note plays again 1 s later (another wrong note in that second pushes it back).
+`src/input/degreeKeys.ts`, a source the mode turns on, emitting the degree's note as source `"deg"`). Wrong notes are named as a degree ("That was ♭3"); the prompt shows "?" until answered, then the
+degree. **No staff and no note names here, only degrees:** `PAGE_SETUP.stage: "degrees"` puts the scale-degree
+circle (`src/views/degreeCircle.ts`: 1–7 round a circle, 1 at the top, the degrees on offer solid) in the staff's
+place. Each time the drone starts (a new key, Start, or new options) it plays the root, the degrees on offer and
+the octave, pinging each node in turn (amber), then the note to find; every note played pings its degree, green if
+right, red if wrong (a note outside the scale pings between its neighbours with its name, e.g. ♭3). After a wrong note the note plays again 1 s later (another wrong note in that second pushes it back).
 Replay plays the note again; Skip moves on; Stop silences the drone and ignores played notes until Start,
 which brings the drone back (with its lead-in) and plays the note again. The note rings about 3 s. Options (saved, `Settings.ear`): the drone's tonic, or Random
 (a new key every `PROMPTS_PER_KEY` = 10 prompts, with 1.5 s of drone before the first note in a key); and the
 degrees on offer (1–7 of the major scale), starting with 1 and 5, added by the player as they get easy. Each
 prompt is a drill record (`drill: "ear"`, prompt "Degree 5", key and degrees in `detail`), charted with the other
-drills (4th series colour). The staff shows what's played, spelled in the drone's key. Sound comes from the browser
+drills (4th series colour). Sound comes from the browser
 here (unlike the user's keyboard, which they monitor through Ableton); audio waits for a click or computer key
 after a reload, and the prompt says so.
 The drone's low pass and detune have debug sliders (live, not saved; `DEFAULT_DRONE_TONE` in `tones.ts`).

@@ -25,6 +25,8 @@ const INTRO_GAP_S = 0.6;
 const INTRO_RING_S = 1.2;
 /** Then this long before the note to find */
 const INTRO_PAUSE_S = 1.2;
+/** Leaving the window (another app or tab) fades the drone out over this long */
+const AWAY_FADE_S = 3;
 /** After a wrong note, the prompt note plays again this long after it */
 const REPLAY_AFTER_MISS_MS = 1000;
 
@@ -91,11 +93,52 @@ export function startEarTraining(store: AppStore, views: {
     views.tones.play(state.prompt.note, delay);
   }
 
-  function silence() {
+  function silence(fadeOut?: number) {
     cancelIntro();
-    views.tones.drone(null);
+    views.tones.drone(null, fadeOut);
     droneKey = null;
   }
+
+  /** Stops (Stop, or leaving the window); the drone fades out over `fadeOut` seconds */
+  function pause(fadeOut?: number) {
+    clearTimeout(nextTimer);
+    clearTimeout(replayTimer);
+    running = false;
+    silence(fadeOut);
+    render();
+  }
+
+  /** Starts again (Start, or coming back): the drone and its introduction, then the note */
+  function resume() {
+    clearTimeout(nextTimer);
+    clearTimeout(replayTimer);
+    running = true;
+    if (state.status === "correct") {
+      // Stopped between an answer and the next note: go straight on to it
+      apply({ type: "next", prompt: newPrompt(state.prompt) });
+    } else {
+      shownAt = Date.now();
+      sound();
+      render();
+    }
+  }
+
+  /** Paused by leaving the window (another app, another tab): carries on when the player comes back */
+  let pausedAway = false;
+  function away() {
+    if (!running) return;
+    pausedAway = true;
+    pause(AWAY_FADE_S);
+  }
+  function back() {
+    if (!pausedAway || document.hidden || !document.hasFocus()) return;
+    pausedAway = false;
+    backAt = performance.now();
+    resume();
+  }
+  /** When `back` last resumed: coming back by clicking Start would otherwise resume on focus, then stop on the click */
+  let backAt = -Infinity;
+  const onVisibility = () => document.hidden ? away() : back();
 
   function render() {
     views.practice.render(earDisplay(state, options().degrees, views.tones.blocked(), running));
@@ -157,11 +200,17 @@ export function startEarTraining(store: AppStore, views: {
     }
     render();
   });
+  window.addEventListener("blur", away);
+  window.addEventListener("focus", back);
+  document.addEventListener("visibilitychange", onVisibility);
   render();
   sound();
 
   return {
     stop() {
+      window.removeEventListener("blur", away);
+      window.removeEventListener("focus", back);
+      document.removeEventListener("visibilitychange", onVisibility);
       offInput();
       offDegreeKeys();
       offSettings();
@@ -171,7 +220,7 @@ export function startEarTraining(store: AppStore, views: {
       silence();
     },
     skip() {
-      awaitingSound = false;
+      awaitingSound = pausedAway = false;
       running = true;   // skipping while stopped starts again, on the new note
       apply({ type: "skip", prompt: newPrompt(state.prompt) });
     },
@@ -179,21 +228,10 @@ export function startEarTraining(store: AppStore, views: {
       if (running) views.tones.play(state.prompt.note);
     },
     toggleRunning() {
-      awaitingSound = false;
-      clearTimeout(nextTimer);
-      clearTimeout(replayTimer);
-      running = !running;
-      if (!running) {
-        silence();
-        render();
-      } else if (state.status === "correct") {
-        // Stopped between an answer and the next note: go straight on to it
-        apply({ type: "next", prompt: newPrompt(state.prompt) });
-      } else {
-        shownAt = Date.now();
-        sound();
-        render();
-      }
+      awaitingSound = pausedAway = false;
+      if (running && performance.now() - backAt < 600) return;
+      if (running) pause();
+      else resume();
     },
   };
 }

@@ -3,8 +3,9 @@
 import { audioContext, unlockAudio } from "./context";
 
 export interface TonePlayer {
-  /** Sound a drone on this note (and an octave above), fading over from any drone already playing; null fades it out */
-  drone(midi: number | null): void;
+  /** Sound a drone on this note (and an octave above), fading over from any drone already playing; null fades it out.
+   *  The old drone fades out over `fadeOut` seconds (default a short fade) */
+  drone(midi: number | null, fadeOut?: number): void;
   /** Play one note, `delay` seconds from now, ringing for about `ring` seconds */
   play(midi: number, delay?: number, ring?: number): void;
   /** Cut off every note playing or still to come (not the drone) */
@@ -33,7 +34,7 @@ const NOTE_PARTIALS = [[1, 1], [2, 0.45], [3, 0.2], [4, 0.1]] as const;
 
 export function createTonePlayer(): TonePlayer {
   let ctx: AudioContext | null = null;
-  let current: { stop(at: number): void; retone(): void } | null = null;
+  let current: { stop(at: number, fade: number): void; retone(): void } | null = null;
   let tone = DEFAULT_DRONE_TONE;
   const listeners = new Set<() => void>();
   /** Notes playing or scheduled, until they end */
@@ -79,19 +80,19 @@ export function createTonePlayer(): TonePlayer {
     for (const o of oscs) o.start(t);
     return {
       retone,
-      stop(at: number) {
+      stop(at: number, fade: number) {
         out.gain.cancelScheduledValues(at);
         out.gain.setValueAtTime(out.gain.value, at);
-        out.gain.linearRampToValueAtTime(0, at + DRONE_FADE_OUT);
-        for (const o of oscs) o.stop(at + DRONE_FADE_OUT + 0.05);
+        out.gain.linearRampToValueAtTime(0, at + fade);
+        for (const o of oscs) o.stop(at + fade + 0.05);
       },
     };
   }
 
   return {
-    drone(midi) {
+    drone(midi, fadeOut = DRONE_FADE_OUT) {
       const c = context();
-      current?.stop(c.currentTime);
+      current?.stop(c.currentTime, fadeOut);
       current = midi == null ? null : startDrone(c, midi);
     },
     play(midi, delay = 0, ring = NOTE_DECAY) {

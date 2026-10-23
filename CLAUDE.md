@@ -325,7 +325,8 @@ place. Each time the drone starts (a new key, Start, or new options) it plays th
 the octave, pinging each node in turn (amber), then the note to find; every note played pings its degree, green if
 right, red if wrong (a note outside the scale pings between its neighbours with its name, e.g. ♭3). After a wrong note the note plays again 1 s later (another wrong note in that second pushes it back).
 Replay plays the note again; Skip moves on; Stop silences the drone and ignores played notes until Start,
-which brings the drone back (with its lead-in) and plays the note again. The note rings about 3 s. Options (saved, `Settings.ear`): the drone's tonic, or Random
+which brings the drone back (with its lead-in) and plays the note again. Leaving the window (another app, another
+tab) stops it the same way, with the drone fading over 3 s (`AWAY_FADE_S`), and coming back starts it again. The note rings about 3 s. Options (saved, `Settings.ear`): the drone's tonic, or Random
 (a new key every `PROMPTS_PER_KEY` = 10 prompts, with 1.5 s of drone before the first note in a key); and the
 degrees on offer (1–7 of the major scale), starting with 1 and 5, added by the player as they get easy. Each
 prompt is a drill record (`drill: "ear"`, prompt "Degree 5", key and degrees in `detail`), charted with the other

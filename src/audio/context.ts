@@ -14,6 +14,10 @@ export function audioContext(): AudioContext {
   return ctx;
 }
 
+/** Seconds from scheduling a sound to hearing it, as the browser reports it (Bluetooth adds a lot; browsers can
+ *  under-report it) */
+export const outputLatency = (c: AudioContext) => (c.outputLatency || 0) + (c.baseLatency || 0);
+
 /** Starts audio if it isn't running: works inside a gesture, or after one in browsers that remember it (Chrome) */
 export function unlockAudio() {
   if (!ctx || ctx.state === "running") return;

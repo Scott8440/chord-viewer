@@ -322,7 +322,8 @@ and the player plays that note in any octave, or presses its degree on the numbe
 card shows no prompt (an empty `promptHtml` hides it) and no feedback text, just the instruction, score and buttons. **No staff and no note names here, only degrees:** `PAGE_SETUP.stage: "degrees"` puts the scale-degree
 circle (`src/views/degreeCircle.ts`: 1–7 round a circle, 1 at the top, the degrees on offer solid) in the staff's
 place. Each time the drone starts (a new key, Start, or new options) it plays the root, the degrees on offer and
-the octave, pinging each node in turn (amber), then the note to find; every note played pings its degree, green if
+the octave, pinging each node in turn (amber; each ping waits the output latency, `tones.latency()`, so it lands when the note
+is heard, not sent: Bluetooth adds a few hundred ms), then the note to find; every note played pings its degree, green if
 right, red if wrong (a note outside the scale pings between its neighbours with its name, e.g. ♭3). After a wrong note the note plays again 1 s later (another wrong note in that second pushes it back).
 Replay plays the note again; Skip moves on; Stop silences the drone and ignores played notes until Start,
 which brings the drone back (with its lead-in) and plays the note again. Leaving the window (another app, another

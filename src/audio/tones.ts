@@ -1,6 +1,6 @@
 // Ear-training sounds, synthesised (no samples, so the build stays one small offline file): a soft sustained drone
 // and a short piano-like note. Notes asked for while audio is blocked play as soon as it starts.
-import { audioContext, unlockAudio } from "./context";
+import { audioContext, outputLatency, unlockAudio } from "./context";
 
 export interface TonePlayer {
   /** Sound a drone on this note (and an octave above), fading over from any drone already playing; null fades it out.
@@ -14,6 +14,8 @@ export interface TonePlayer {
   blocked(): boolean;
   /** Called whenever `blocked()` may have changed; returns a function that stops it */
   onBlockedChange(listener: () => void): () => void;
+  /** Seconds from asking for a sound to hearing it (output latency: large on Bluetooth), so visuals can wait for it */
+  latency(): number;
 }
 
 /** The drone's tone: a low pass, and the saws' detune in cents (the slow wobble is the two saws beating: wider
@@ -113,6 +115,7 @@ export function createTonePlayer(): TonePlayer {
       notes.clear();
     },
     blocked: () => context().state !== "running",
+    latency: () => outputLatency(context()),
     onBlockedChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

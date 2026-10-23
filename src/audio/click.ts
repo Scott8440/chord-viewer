@@ -2,7 +2,7 @@
 // it the same way). A look-ahead scheduler: every 25 ms, clicks that must start within the next 120 ms of the audio
 // clock are scheduled on it, so timer jitter never makes a click late, however much output latency there is.
 import { beatAt, beatMs, timeOfBeat, type Transport } from "../timing/transport";
-import { audioContext, unlockAudio } from "./context";
+import { audioContext, outputLatency, unlockAudio } from "./context";
 
 const TICK_MS = 25;
 const AHEAD_MS = 120;
@@ -32,7 +32,7 @@ export function createClickPlayer(onStatus: (status: ClickStatus) => void = () =
   function report() {
     const running = !!transport && !!ctx && ctx.state === "running";
     // Browsers settle on the device's latency a little after starting, so this is checked on every schedule
-    const latency = running ? Math.round(((ctx!.outputLatency || 0) + (ctx!.baseLatency || 0)) * 1000) : null;
+    const latency = running ? Math.round(outputLatency(ctx!) * 1000) : null;
     const status = { blocked: !!transport && !!ctx && !running, outputLatencyMs: latency };
     // Only real changes (a few ms of jitter isn't one)
     const moved = (status.outputLatencyMs == null) !== (last.outputLatencyMs == null) ||

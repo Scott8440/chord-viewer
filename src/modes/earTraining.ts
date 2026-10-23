@@ -82,10 +82,12 @@ export function startEarTraining(store: AppStore, views: {
       views.tones.drone(tonicMidi(tonic) - 12);
       droneKey = state.prompt.keyValue;
       const steps = introSteps();
+      // Each ping waits for its note to be heard, not just sent (Bluetooth headphones add a few hundred ms)
+      const heard = views.tones.latency();
       steps.forEach((semitones, i) => {
         const at = DRONE_LEAD_S + i * INTRO_GAP_S;
         views.tones.play(tonicMidi(tonic) + semitones, at, INTRO_RING_S);
-        introTimers.push(setTimeout(() => views.degrees.ping(semitones, "hear"), at * 1000));
+        introTimers.push(setTimeout(() => views.degrees.ping(semitones, "hear"), (at + heard) * 1000));
       });
       delay = DRONE_LEAD_S + (steps.length - 1) * INTRO_GAP_S + INTRO_PAUSE_S;
       introTimers.push(setTimeout(() => { introTimers = []; }, delay * 1000));

@@ -28,8 +28,11 @@ export function startEarMelody(store: AppStore, views: {
   let tonic = pickTonic(rng, options().tonic);
   let inKey = 0;
   let state: MelodyState = initialMelody(newPrompt());
-  // Spell what's played in the melody's key
-  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.prompt.keyValue));
+  // The staff draws the melody as it's played back, the root shown (grey) from the start, spelled in its key
+  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.prompt.keyValue), () => ({
+    notes: state.prompt.notes.slice(0, Math.max(1, state.index)).map((n, i) => ({ midi: n.note, dim: i >= state.index })),
+    slots: state.prompt.notes.length,
+  }));
   let nextTimer: ReturnType<typeof setTimeout> | undefined, replayTimer: ReturnType<typeof setTimeout> | undefined;
   let shownAt = Date.now();
   let running = true;
@@ -45,12 +48,12 @@ export function startEarMelody(store: AppStore, views: {
     return makeMelodyPrompt(rng, tonic, o.degrees, o.melodyLength, previous);
   }
 
-  /** Plays the root and then the melody, cutting off anything still sounding */
+  /** Plays the root and then the melody (a little gap after the root), cutting off anything still sounding */
   function sound() {
     if (!running) return;
     views.tones.stopNotes();
-    views.tones.play(state.prompt.root, 0, NOTE_RING_S);
-    state.prompt.notes.forEach((n, i) => views.tones.play(n.note, ROOT_GAP_S + i * NOTE_GAP_S, NOTE_RING_S));
+    state.prompt.notes.forEach((n, i) =>
+      views.tones.play(n.note, i === 0 ? 0 : ROOT_GAP_S + (i - 1) * NOTE_GAP_S, NOTE_RING_S));
   }
 
   function clearTimers() {
@@ -58,14 +61,10 @@ export function startEarMelody(store: AppStore, views: {
     clearTimeout(replayTimer);
   }
 
-  /** The key the staff was last drawn in: the drawer only redraws by itself on input */
-  let staffKey = state.prompt.keyValue;
   function render() {
     views.practice.render(earMelodyDisplay(state, options().degrees, views.tones.blocked(), running));
-    if (state.prompt.keyValue !== staffKey) {
-      staffKey = state.prompt.keyValue;
-      drawer.schedule();
-    }
+    // The drawer only redraws by itself on input; the melody and its key change here
+    drawer.schedule();
   }
 
   function apply(action: MelodyAction) {

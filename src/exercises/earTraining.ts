@@ -92,7 +92,7 @@ export function makeEarPrompt(rng: Rng, tonic: string, degrees: readonly string[
 }
 
 /* ---------------------------------------------------------------
-   Melodies: the root, then a few notes in the key; the player plays the notes back in order
+   Melodies: the root, then a few notes in the key; the player plays it all back in order, root first
    --------------------------------------------------------------- */
 
 export interface MelodyNote {
@@ -105,8 +105,7 @@ export interface MelodyNote {
 
 export interface MelodyPrompt {
   keyValue: string;
-  /** The root played first (MIDI): the tonic at `tonicMidi` */
-  root: number;
+  /** What to play back: the root (the tonic at `tonicMidi`, degree 1) first, then the melody */
   notes: readonly MelodyNote[];
 }
 
@@ -114,8 +113,9 @@ export interface MelodyPrompt {
 const MAX_LEAP = 12;
 
 /**
- * A melody of `length` notes from the allowed degrees, over EAR_OCTAVES octaves from the root, with no leap over an
- * octave and no note straight after itself (unless nothing else is in reach). Never the same melody twice running.
+ * The root, then a melody of `length` notes from the allowed degrees, over EAR_OCTAVES octaves from the root, with no
+ * leap over an octave and no note straight after itself (unless nothing else is in reach). Never the same melody
+ * twice running.
  */
 export function makeMelodyPrompt(rng: Rng, tonic: string, degrees: readonly string[], length: number,
                                  previous?: MelodyPrompt): MelodyPrompt {
@@ -124,19 +124,20 @@ export function makeMelodyPrompt(rng: Rng, tonic: string, degrees: readonly stri
   const pool = EAR_DEGREES.filter(d => degrees.includes(d.id))
     .flatMap(d => Array.from({ length: EAR_OCTAVES }, (_, o) => ({ degree: d.id, note: root + d.semitones + 12 * o })));
   const pick = <T>(xs: readonly T[]) => xs[Math.floor(rng() * xs.length)];
+  const note = (degree: string, midi: number): MelodyNote => ({ degree, note: midi, pc: midi % 12, name: key.spell[midi % 12] });
   for (let tries = 0; ; tries++) {
-    const notes: MelodyNote[] = [];
+    const notes: MelodyNote[] = [note("1", root)];
     for (let i = 0; i < length; i++) {
-      const last = notes[i - 1]?.note;
-      const near = last === undefined ? pool : pool.filter(c => Math.abs(c.note - last) <= MAX_LEAP);
+      const last = notes[notes.length - 1].note;
+      const near = pool.filter(c => Math.abs(c.note - last) <= MAX_LEAP);
       const fresh = near.filter(c => c.note !== last);
       const c = pick(fresh.length ? fresh : near);
-      notes.push({ ...c, pc: c.note % 12, name: key.spell[c.note % 12] });
+      notes.push(note(c.degree, c.note));
     }
     const same = previous && previous.keyValue === tonic + ":major" &&
       previous.notes.length === notes.length && previous.notes.every((n, i) => n.note === notes[i].note);
     // With very few notes on offer a repeat may be unavoidable
-    if (!same || tries > 20) return { keyValue: tonic + ":major", root, notes };
+    if (!same || tries > 20) return { keyValue: tonic + ":major", notes };
   }
 }
 

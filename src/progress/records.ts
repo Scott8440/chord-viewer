@@ -170,11 +170,12 @@ export function earDrillBody(p: EarPrompt, degrees: readonly string[], answered:
   };
 }
 
-/** An ear-training melody, judged as a whole; grouped by length ("3-note melody"), since melodies rarely repeat */
+/** An ear-training melody, judged as a whole; grouped by length ("Root + 3 notes"), since melodies rarely repeat */
 export function melodyDrillBody(p: MelodyPrompt, degrees: readonly string[], answered: boolean, missed: boolean, ms: number): DrillBody {
+  const length = p.notes.length - 1;
   return {
-    kind: "drill", drill: "melody", prompt: `${p.notes.length}-note melody`,
-    detail: { key: p.keyValue, melody: p.notes.map(n => n.degree).join(" "), length: p.notes.length, degrees: degrees.join(",") },
+    kind: "drill", drill: "melody", prompt: `Root + ${length} notes`,
+    detail: { key: p.keyValue, melody: p.notes.map(n => n.degree).join(" "), length, degrees: degrees.join(",") },
     outcome: outcomeOf(answered, missed), ms: Math.round(ms),
   };
 }

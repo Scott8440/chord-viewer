@@ -101,12 +101,12 @@ describe("judging", () => {
 });
 
 describe("makeMelodyPrompt", () => {
-  it("plays the root, then the given number of in-key notes from the allowed degrees", () => {
+  it("starts on the root, then the given number of in-key notes from the allowed degrees", () => {
     for (let i = 0; i < 200; i++) {
       const m = makeMelodyPrompt(Math.random, "D", ["1", "3", "5"], 4);
       expect(m.keyValue).toBe("D:major");
-      expect(m.root).toBe(62);
-      expect(m.notes).toHaveLength(4);
+      expect(m.notes[0]).toEqual({ degree: "1", note: 62, pc: 2, name: "D" });
+      expect(m.notes).toHaveLength(5);
       for (const n of m.notes) {
         expect(["1", "3", "5"]).toContain(n.degree);
         expect(["D", "F#", "A"]).toContain(n.name);
@@ -129,7 +129,7 @@ describe("makeMelodyPrompt", () => {
 
   it("repeats the only note there is", () => {
     const m = makeMelodyPrompt(seq(0), "C", ["1"], 3);
-    expect(m.notes.map(n => n.note)).toEqual([60, 72, 60]);
+    expect(m.notes.map(n => n.note)).toEqual([60, 72, 60, 72]);
   });
 
   it("never gives the same melody twice running", () => {
@@ -144,28 +144,31 @@ describe("makeMelodyPrompt", () => {
 
 describe("reduceMelody", () => {
   const melody: MelodyPrompt = {
-    keyValue: "C:major", root: 60,
-    notes: [{ degree: "5", note: 67, pc: 7, name: "G" }, { degree: "3", note: 64, pc: 4, name: "E" }],
+    keyValue: "C:major",
+    notes: [{ degree: "1", note: 60, pc: 0, name: "C" }, { degree: "5", note: 67, pc: 7, name: "G" },
+            { degree: "3", note: 64, pc: 4, name: "E" }],
   };
 
-  it("steps through the notes in order, in any octave, then counts the melody right first time", () => {
-    let s = reduceMelody(initialMelody(melody), { type: "play", note: 55 });
-    expect(s).toMatchObject({ index: 1, status: "waiting" });
+  it("steps through the notes in order, root first, in any octave, then counts the melody right first time", () => {
+    let s = reduceMelody(initialMelody(melody), { type: "play", note: 48 });
+    s = reduceMelody(s, { type: "play", note: 55 });
+    expect(s).toMatchObject({ index: 2, status: "waiting" });
     s = reduceMelody(s, { type: "play", note: 76 });
-    expect(s).toMatchObject({ index: 2, status: "correct", answered: 1, firstTry: 1 });
+    expect(s).toMatchObject({ index: 3, status: "correct", answered: 1, firstTry: 1 });
     expect(reduceMelody(s, { type: "play", note: 60 })).toBe(s);
   });
 
   it("holds the step on a wrong note, and the melody then isn't right first time", () => {
-    let s = reduceMelody(initialMelody(melody), { type: "play", note: 67 });
-    s = reduceMelody(s, { type: "play", note: 65 });
-    expect(s).toMatchObject({ index: 1, status: "wrong", played: 65, missed: true });
+    let s = reduceMelody(initialMelody(melody), { type: "play", note: 62 });
+    expect(s).toMatchObject({ index: 0, status: "wrong", played: 62, missed: true });
+    s = reduceMelody(s, { type: "play", note: 60 });
+    s = reduceMelody(s, { type: "play", note: 67 });
     s = reduceMelody(s, { type: "play", note: 64 });
     expect(s).toMatchObject({ status: "correct", answered: 1, firstTry: 0 });
   });
 
   it("starts the next melody fresh, and counts a skip once", () => {
-    let s = reduceMelody(initialMelody(melody), { type: "play", note: 67 });
+    let s = reduceMelody(initialMelody(melody), { type: "play", note: 60 });
     s = reduceMelody(s, { type: "skip", prompt: melody });
     expect(s).toMatchObject({ index: 0, status: "waiting", missed: false, answered: 1, firstTry: 0 });
     s = reduceMelody(s, { type: "next", prompt: melody });
@@ -174,8 +177,8 @@ describe("reduceMelody", () => {
 
   it("is recorded as a whole, grouped by length", () => {
     expect(melodyDrillBody(melody, ["1", "3", "5"], true, true, 4000)).toEqual({
-      kind: "drill", drill: "melody", prompt: "2-note melody",
-      detail: { key: "C:major", melody: "5 3", length: 2, degrees: "1,3,5" }, outcome: "corrected", ms: 4000,
+      kind: "drill", drill: "melody", prompt: "Root + 2 notes",
+      detail: { key: "C:major", melody: "1 5 3", length: 2, degrees: "1,3,5" }, outcome: "corrected", ms: 4000,
     });
   });
 });

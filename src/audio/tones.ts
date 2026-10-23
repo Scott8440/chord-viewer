@@ -11,20 +11,28 @@ export interface TonePlayer {
   blocked(): boolean;
   /** Called whenever `blocked()` may have changed; returns a function that stops it */
   onBlockedChange(listener: () => void): () => void;
+  /** Change the drone's tone, live (debug sliders) */
+  setDroneTone(tone: Partial<DroneTone>): void;
 }
+
+/** The drone's slow wobble is the two saws beating: wider detune beats faster */
+export interface DroneTone {
+  lowpassHz: number;
+  detuneCents: number;
+}
+export const DEFAULT_DRONE_TONE: DroneTone = { lowpassHz: 550, detuneCents: 1.5 };
 
 const freq = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
 const DRONE_GAIN = 0.07, DRONE_FADE_IN = 1.2, DRONE_FADE_OUT = 0.6;
-/** The drone's slow wobble is the two saws beating: wider detune beats faster */
-const DRONE_DETUNE_CENTS = 1.5, DRONE_LOWPASS_HZ = 550;
 const NOTE_GAIN = 0.3, NOTE_DECAY = 3.2;
 /** Piano-ish: partials (multiple, level); higher ones die away faster */
 const NOTE_PARTIALS = [[1, 1], [2, 0.45], [3, 0.2], [4, 0.1]] as const;
 
 export function createTonePlayer(): TonePlayer {
   let ctx: AudioContext | null = null;
-  let current: { stop(at: number): void } | null = null;
+  let current: { stop(at: number): void; retone(): void } | null = null;
+  let tone = DEFAULT_DRONE_TONE;
   const listeners = new Set<() => void>();
 
   function context(): AudioContext {
@@ -44,23 +52,29 @@ export function createTonePlayer(): TonePlayer {
     // A warm low tone: two slightly detuned saws, softened, plus a pure octave above
     const filter = c.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = DRONE_LOWPASS_HZ;
     filter.connect(out).connect(c.destination);
-    const oscs = [-DRONE_DETUNE_CENTS, DRONE_DETUNE_CENTS].map(cents => {
+    const saws = [-1, 1].map(() => {
       const o = c.createOscillator();
       o.type = "sawtooth";
       o.frequency.value = freq(midi);
-      o.detune.value = cents;
       o.connect(filter);
       return o;
     });
+    function retone() {
+      // Smoothed a little, so dragging a slider doesn't click
+      filter.frequency.setTargetAtTime(tone.lowpassHz, c.currentTime, 0.02);
+      saws.forEach((o, i) => o.detune.setTargetAtTime((i ? 1 : -1) * tone.detuneCents, c.currentTime, 0.02));
+    }
+    filter.frequency.value = tone.lowpassHz;
+    saws.forEach((o, i) => o.detune.value = (i ? 1 : -1) * tone.detuneCents);
     const octave = c.createOscillator(), octaveGain = c.createGain();
     octave.frequency.value = freq(midi + 12);
     octaveGain.gain.value = 0.6;
     octave.connect(octaveGain).connect(out);
-    oscs.push(octave);
+    const oscs = [...saws, octave];
     for (const o of oscs) o.start(t);
     return {
+      retone,
       stop(at: number) {
         out.gain.cancelScheduledValues(at);
         out.gain.setValueAtTime(out.gain.value, at);
@@ -90,6 +104,10 @@ export function createTonePlayer(): TonePlayer {
         o.start(t);
         o.stop(t + decay + 0.05);
       }
+    },
+    setDroneTone(t) {
+      tone = { ...tone, ...t };
+      current?.retone();
     },
     blocked: () => !!ctx && ctx.state !== "running",
     onBlockedChange(listener) {

@@ -53,6 +53,10 @@
         <label class="pick">Drone
           <select id="earTonic"></select>
         </label>
+        <span class="debugTone" title="Debug: the drone's tone, live. Not saved.">
+          <label class="pick">Low pass <input type="range" id="droneLowpass" min="150" max="3000" step="10"> <span id="droneLowpassVal"></span></label>
+          <label class="pick">Detune <input type="range" id="droneDetune" min="0" max="10" step="0.1"> <span id="droneDetuneVal"></span></label>
+        </span>
         <details id="earFilters" open>
           <summary id="earFilterSummary"></summary>
           <div id="earFilterBody"></div>

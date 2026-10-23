@@ -7,7 +7,7 @@ import { $ } from "./app/dom";
 import { openHistory } from "./app/history";
 import { deviceId, loadSettings, saveSettingsOnChange } from "./app/storage";
 import { createClickPlayer } from "./audio/click";
-import { createTonePlayer } from "./audio/tones";
+import { createTonePlayer, DEFAULT_DRONE_TONE } from "./audio/tones";
 import { CHORD_PRACTICE_GROUPS } from "./exercises/chordPractice";
 import { EAR_DEGREES } from "./exercises/earTraining";
 import type { InputEvent } from "./input/events";
@@ -101,6 +101,17 @@ earFilter.render(store.getState().settings.ear.degrees);
 $("earFilters").addEventListener("toggle", () => $("earFilterSummary").blur());
 store.subscribe((s, prev) => { if (s.settings.ear.degrees !== prev.settings.ear.degrees) earFilter.render(s.settings.ear.degrees); });
 const tones = createTonePlayer();
+// Debug sliders for the drone's tone: live, not saved
+function bindToneSlider(id: string, initial: number, format: (v: number) => string, set: (v: number) => void) {
+  const el = $<HTMLInputElement>(id);
+  const show = () => { $(id + "Val").textContent = format(el.valueAsNumber); };
+  el.value = String(initial);
+  show();
+  el.oninput = () => { set(el.valueAsNumber); show(); };
+  el.onchange = () => el.blur();   // so computer-key note input keeps working
+}
+bindToneSlider("droneLowpass", DEFAULT_DRONE_TONE.lowpassHz, v => `${v} Hz`, lowpassHz => tones.setDroneTone({ lowpassHz }));
+bindToneSlider("droneDetune", DEFAULT_DRONE_TONE.detuneCents, v => `±${v.toFixed(1)} ¢`, detuneCents => tones.setDroneTone({ detuneCents }));
 
 /* ---------------------------------------------------------------
    Modes: exactly one runs at a time and owns the right-hand card

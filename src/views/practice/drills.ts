@@ -46,7 +46,7 @@ export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked
     feedback = `✗ That was ${prettyAcc(degreeName(pc - tonicPc))} (${prettyAcc(key.spell[pc])}). Listen again`;
   }
   return {
-    label: "Play the note you hear over the drone, in any octave",
+    label: "Play the note you hear over the drone, in any octave, or press its degree (1–7)",
     promptHtml: s.status === "correct" ? esc(prettyAcc(s.prompt.degree)) : "?",
     size: "note",
     sub: soundBlocked ? "Click anywhere or press a computer key to start the sound"

@@ -19,6 +19,12 @@ export const DEFAULT_EAR_DEGREES: readonly string[] = ["1", "5"];
 const DEGREE_NAMES = ["1", "b2", "2", "b3", "3", "4", "#4", "5", "b6", "6", "b7", "7"];
 export const degreeName = (semitones: number) => DEGREE_NAMES[((semitones % 12) + 12) % 12];
 
+/** The note a degree ("5") names above a tonic note, or null if it isn't one of EAR_DEGREES */
+export function degreeNote(tonic: number, degree: string): number | null {
+  const d = EAR_DEGREES.find(x => x.id === degree);
+  return d ? tonic + d.semitones : null;
+}
+
 /** Drone tonic: one of the major key tonics, or a random one that changes every few prompts */
 export const EAR_TONICS: readonly string[] = ["random", ...KEY_MAJORS];
 /** With a random tonic, a new key every this many prompts */

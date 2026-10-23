@@ -147,7 +147,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 299 tests (54 voicings) should pass
+npm test           # Vitest: 300 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -317,7 +317,8 @@ A set of prescriptive exercises played one after another, e.g. every major scale
 First mode: scale degrees over a drone. A drone sounds the tonic (an octave below, plus the octave above it), the
 app plays one note over it (the tonic F♯3–F4, the note in either of the two octaves above it, `EAR_OCTAVES`; never
 the same note twice running, though a degree may repeat in the other octave, so two degrees don't just alternate),
-and the player plays that note in any octave. Wrong notes are named as a degree ("That was ♭3 (E♭)"); the prompt shows "?" until answered, then the
+and the player plays that note in any octave, or presses its degree on the number keys (1–7, no controller needed:
+`src/input/degreeKeys.ts`, a source the mode turns on, emitting the degree's note as source `"deg"`). Wrong notes are named as a degree ("That was ♭3 (E♭)"); the prompt shows "?" until answered, then the
 degree. After a wrong note the note plays again 1 s later (another wrong note in that second pushes it back).
 Replay plays the note again; Skip moves on; Stop silences the drone and ignores played notes until Start,
 which brings the drone back (with its lead-in) and plays the note again. The note rings about 3 s. Options (saved, `Settings.ear`): the drone's tonic, or Random

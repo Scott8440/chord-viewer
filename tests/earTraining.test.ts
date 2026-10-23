@@ -1,7 +1,7 @@
 // Ear training: prompts, options and judging.
 import { describe, expect, it } from "vitest";
 import {
-  degreeName, initialMelody, makeEarPrompt, makeMelodyPrompt, pickTonic, reduceMelody, sanitizeEarOptions, tonicMidi,
+  degreeName, degreeNote, initialMelody, makeEarPrompt, makeMelodyPrompt, pickTonic, reduceMelody, sanitizeEarOptions, tonicMidi,
   type EarPrompt, type MelodyPrompt,
 } from "../src/exercises/earTraining";
 import { initialNotePractice, reduceNotePractice } from "../src/exercises/notePractice";
@@ -66,6 +66,14 @@ describe("pickTonic", () => {
 describe("degreeName", () => {
   it("names every semitone above the tonic", () => {
     expect([0, 3, 6, 7, 10, 11, -1, 15].map(degreeName)).toEqual(["1", "b3", "#4", "5", "b7", "7", "7", "b3"]);
+  });
+});
+
+describe("degreeNote", () => {
+  it("gives the note a number key names above the tonic, and nothing for other keys", () => {
+    expect(["1", "3", "5", "7"].map(d => degreeNote(62, d))).toEqual([62, 66, 69, 73]);
+    expect(degreeNote(62, "8")).toBeNull();
+    expect(degreeNote(62, "0")).toBeNull();
   });
 });
 

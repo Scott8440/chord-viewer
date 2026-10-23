@@ -3,9 +3,10 @@
 // everything and ignores played notes; Start brings the drone back and plays the current note again.
 import type { TonePlayer } from "../audio/tones";
 import {
-  makeEarPrompt, pickTonic, PROMPTS_PER_KEY, tonicMidi, type EarAction, type EarOptions, type EarPrompt, type EarState,
+  degreeNote, makeEarPrompt, pickTonic, PROMPTS_PER_KEY, tonicMidi, type EarAction, type EarOptions, type EarPrompt, type EarState,
 } from "../exercises/earTraining";
 import { initialNotePractice, reduceNotePractice, type Rng } from "../exercises/notePractice";
+import { createDegreeKeys } from "../input/degreeKeys";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { earDrillBody } from "../progress/records";
 import { buildKey } from "../theory";
@@ -111,6 +112,9 @@ export function startEarTraining(store: AppStore, views: {
   }
 
   const offInput = onPlayerInput(store, { noteOn: note => { if (running) apply({ type: "play", note }); } });
+  // No controller needed: 1–7 play that degree, so they're judged (and drawn) like any other note
+  const offDegreeKeys = createDegreeKeys(event => store.dispatch({ type: "input", event }),
+    digit => degreeNote(tonicMidi(tonic), digit));
   const offSettings = store.subscribe((s, p) => { if (s.settings.ear !== p.settings.ear) restart(s.settings.ear, p.settings.ear); });
   const offBlocked = views.tones.onBlockedChange(render);
   sound();
@@ -119,6 +123,7 @@ export function startEarTraining(store: AppStore, views: {
   return {
     stop() {
       offInput();
+      offDegreeKeys();
       offSettings();
       offBlocked();
       drawer.stop();

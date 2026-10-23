@@ -17,6 +17,8 @@ import { createPerformanceDrawer, onPlayerInput, type AppStore, type Mode } from
 const NEXT_PROMPT_MS = 1000;
 /** Seconds of drone before the first note in a key, so the key sinks in */
 const DRONE_LEAD_S = 1.5;
+/** After a wrong note, the prompt note plays again this long after it */
+const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarTraining(store: AppStore, views: {
   staff: StaffView; practice: PracticeView; tones: TonePlayer;
@@ -27,7 +29,7 @@ export function startEarTraining(store: AppStore, views: {
   let state: EarState = initialNotePractice(newPrompt());
   // Spell what's played in the drone's key
   const drawer = createPerformanceDrawer(store, views, () => buildKey(state.prompt.keyValue));
-  let nextTimer: ReturnType<typeof setTimeout> | undefined;
+  let nextTimer: ReturnType<typeof setTimeout> | undefined, replayTimer: ReturnType<typeof setTimeout> | undefined;
   let shownAt = Date.now();
 
   /** The next prompt: in the same key, or a new one (when the tonic is random and this key has had its turn) */
@@ -79,6 +81,9 @@ export function startEarTraining(store: AppStore, views: {
     }
     render();
     clearTimeout(nextTimer);
+    clearTimeout(replayTimer);
+    // A miss: hear the note again (another miss meanwhile pushes it back, so it never plays over your trying)
+    if (state.status === "wrong") replayTimer = setTimeout(() => { if (running) views.tones.play(state.prompt.note); }, REPLAY_AFTER_MISS_MS);
     if (state.status === "correct") {
       nextTimer = setTimeout(() => apply({ type: "next", prompt: newPrompt(state.prompt) }), NEXT_PROMPT_MS);
     }
@@ -87,6 +92,7 @@ export function startEarTraining(store: AppStore, views: {
   /** New options: a fresh prompt in the right key (not a skip) */
   function restart(o: EarOptions, before: EarOptions) {
     clearTimeout(nextTimer);
+    clearTimeout(replayTimer);
     if (o.tonic !== before.tonic) { tonic = pickTonic(rng, o.tonic, tonic); inKey = 0; }
     const prev = state.prompt;
     inKey++;
@@ -109,6 +115,7 @@ export function startEarTraining(store: AppStore, views: {
       offBlocked();
       drawer.stop();
       clearTimeout(nextTimer);
+      clearTimeout(replayTimer);
       silence();
     },
     skip() {
@@ -120,6 +127,7 @@ export function startEarTraining(store: AppStore, views: {
     },
     toggleRunning() {
       clearTimeout(nextTimer);
+      clearTimeout(replayTimer);
       running = !running;
       if (!running) {
         silence();

@@ -314,7 +314,8 @@ First mode: scale degrees over a drone. A drone sounds the tonic (an octave belo
 app plays one note over it (the tonic F♯3–F4, the note in either of the two octaves above it, `EAR_OCTAVES`; never
 the same note twice running, though a degree may repeat in the other octave, so two degrees don't just alternate),
 and the player plays that note in any octave. Wrong notes are named as a degree ("That was ♭3 (E♭)"); the prompt shows "?" until answered, then the
-degree. Replay plays the note again; Skip moves on; Stop silences the drone and ignores played notes until Start,
+degree. After a wrong note the note plays again 1 s later (another wrong note in that second pushes it back).
+Replay plays the note again; Skip moves on; Stop silences the drone and ignores played notes until Start,
 which brings the drone back (with its lead-in) and plays the note again. The note rings about 3 s. Options (saved, `Settings.ear`): the drone's tonic, or Random
 (a new key every `PROMPTS_PER_KEY` = 10 prompts, with 1.5 s of drone before the first note in a key); and the
 degrees on offer (1–7 of the major scale), starting with 1 and 5, added by the player as they get easy. Each

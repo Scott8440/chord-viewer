@@ -9,7 +9,7 @@ import { initialPerformance, reducePerformance, type PerformanceState } from "./
 
 export const HISTORY_LIMIT = 512;
 
-export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "routines", "progress"] as const;
+export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "routines"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
@@ -64,7 +64,11 @@ export interface AppState {
   readonly transport: Transport | null;
   /** A latency calibration is listening: exercises ignore the player's notes meanwhile */
   readonly calibrating: boolean;
+  /** Practising (the mode in settings), or looking at the Progress page. Not saved: the app always opens on practice */
+  readonly page: Page;
 }
+
+export type Page = "practice" | "progress";
 
 export type AppAction =
   | { type: "input"; event: InputEvent }
@@ -82,7 +86,8 @@ export type AppAction =
   | { type: "setLatencyCalibrated" }
   /** From whatever drives the clock */
   | { type: "setTransport"; transport: Transport | null }
-  | { type: "setCalibrating"; on: boolean };
+  | { type: "setCalibrating"; on: boolean }
+  | { type: "setPage"; page: Page };
 
 const oneOf = <T>(values: readonly T[], v: unknown, fallback: T): T => values.includes(v as T) ? v as T : fallback;
 
@@ -94,6 +99,7 @@ export function createAppState(saved: SavedSettings = {}): AppState {
     history: [],
     transport: null,
     calibrating: false,
+    page: "practice",
     settings: {
       keyValue, key: buildKey(keyValue),
       includeSustained: typeof saved.includeSustained === "boolean" ? saved.includeSustained : true,
@@ -123,7 +129,9 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
     case "setIncludeSustained":
       return { ...s, settings: { ...s.settings, includeSustained: a.on } };
     case "setMode":
-      return a.mode === s.settings.mode ? s : { ...s, settings: { ...s.settings, mode: a.mode } };
+      // Choosing a mode is choosing to practise: it leaves the Progress page
+      if (a.mode === s.settings.mode) return s.page === "practice" ? s : { ...s, page: "practice" };
+      return { ...s, page: "practice", settings: { ...s.settings, mode: a.mode } };
     case "setChordTypes":
       return { ...s, settings: { ...s.settings, chordTypes: sanitizeChordTypes(a.types) } };
     case "setPromptStyle":
@@ -151,5 +159,7 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return a.transport === s.transport ? s : { ...s, transport: a.transport };
     case "setCalibrating":
       return a.on === s.calibrating ? s : { ...s, calibrating: a.on };
+    case "setPage":
+      return a.page === s.page ? s : { ...s, page: a.page };
   }
 }

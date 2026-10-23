@@ -1,6 +1,6 @@
-// The page around each mode: which panel it shows and which page-wide behaviours it turns on. Data, so a behaviour
-// is written once and any mode can opt into it.
-import type { ModeId } from "../state/app";
+// The page around each mode (and the Progress page): which panel it shows and which page-wide behaviours it turns on.
+// Data, so a behaviour is written once and any mode can opt into it.
+import type { AppState, ModeId } from "../state/app";
 
 export interface PageSetup {
   /** The right-hand panel: the chord name or the practice card, beside the staff; or the progress charts, in place
@@ -28,5 +28,14 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   scales: TIMED,
   diatonic: TIMED,
   routines: TIMED,
-  progress: { ...PRACTICE, panel: "progress" },
 };
+
+/** What's on screen: a practice mode, or the Progress page (opened from the header, apart from the modes) */
+export type View = ModeId | "progress";
+
+export const viewOf = (s: AppState): View => s.page === "progress" ? "progress" : s.settings.mode;
+
+/** The Progress page: its charts in place of the staff and practice card, nothing running */
+const PROGRESS_PAGE: PageSetup = { ...PRACTICE, panel: "progress" };
+
+export const pageSetup = (view: View): PageSetup => view === "progress" ? PROGRESS_PAGE : PAGE_SETUP[view];

@@ -27,7 +27,7 @@ mode and views subscribe to the store.
     is for free play only; pedal-notes-count option; active mode; chord types, prompt style and inversions for chord
     practice; `exercise`, the `ExerciseOptions` shared by the prescriptive exercises; `routine`, which routine
     and which way round the circle of fifths; `latencyMs`; and `latencyCalibrated`) + `transport` (where the beats are, while a clock
-    runs; see "Metronome"). `createAppState(saved)`
+    runs; see "Metronome") + `page` ("practice" or "progress"; not saved). `createAppState(saved)`
     takes saved settings and validates each one; `reduceApp` over `AppAction`s.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed. A subscriber
     that unsubscribes during a dispatch is not called for the rest of it (the old mode on a mode switch).
@@ -132,7 +132,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 269 tests (54 voicings) should pass
+npm test           # Vitest: 271 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -299,7 +299,7 @@ A set of prescriptive exercises played one after another, e.g. every major scale
 - **Built:** major scales; diatonic chords; scale then diatonic chords; each round the circle.
 
 ## Practice history
-Everything practised is recorded, and the **Progress** mode charts it.
+Everything practised is recorded, and the **Progress** page charts it.
 - **Records, not stats:** plain JSON, only ever added. `run` (one per finished exercise run, alone or in a routine:
   exercise, `exerciseId` with the settings that change what's played, key, metronome settings or null, mistakes,
   duration, BPM, evenness, timing, routine session), `routine` (one per session, finished or left part-way: routine,
@@ -319,8 +319,11 @@ Everything practised is recorded, and the **Progress** mode charts it.
 - **Footer:** the record count, Export (a `chord-display-history-<date>.json` file) and Import (merges by id, so
   importing twice adds nothing; says how many were new). If IndexedDB won't open, history is kept in memory and the
   footer says it isn't saved.
-- **Progress view** (mode "progress"; `PAGE_SETUP` panel "progress" hides the staff and practice card, and the page
-  area scrolls): one filter row (range: last 7/30/90 days or all time; routine and exercise, defaulting to the most
+- **Progress page:** not a mode. A Progress button in the header (shown pressed while open) sets `AppState.page`;
+  "← Back to practice", the button again, or choosing any mode returns to practising (`setMode` always leaves the
+  page). What's on screen is `viewOf(state)`: the mode, or "progress", which main starts like a mode (so the mode in
+  progress stops: no metronome, a routine left part-way is recorded) with `pageSetup("progress")` (panel "progress"
+  hides the staff and practice card, and the page area scrolls). The app always opens on practice. The page has one filter row (range: last 7/30/90 days or all time; routine and exercise, defaulting to the most
   played; the selection lasts while the page is open), summary tiles (days practised, practice time, exercise runs
   and how many clean, routines finished, drill prompts), and cards: practice time per day (columns); the routine's
   time to complete and mistakes per finished session; the exercise's mistakes and on-time share (metronome runs) or

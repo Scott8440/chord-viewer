@@ -41,3 +41,20 @@ describe("store", () => {
     expect(calls).toEqual(["a", "a"]);
   });
 });
+
+describe("the Progress page", () => {
+  it("opens and closes apart from the mode, and isn't saved", () => {
+    const s = reduceApp(createAppState({ mode: "scales" }), { type: "setPage", page: "progress" });
+    expect(s).toMatchObject({ page: "progress", settings: { mode: "scales" } });
+    expect(reduceApp(s, { type: "setPage", page: "progress" })).toBe(s);
+    expect(reduceApp(s, { type: "setPage", page: "practice" }).page).toBe("practice");
+    expect(createAppState({ mode: "progress" })).toMatchObject({ page: "practice", settings: { mode: "free" } });
+  });
+
+  it("choosing a mode goes back to practising, the same mode included", () => {
+    const s = reduceApp(createAppState({ mode: "scales" }), { type: "setPage", page: "progress" });
+    expect(reduceApp(s, { type: "setMode", mode: "chords" })).toMatchObject({ page: "practice", settings: { mode: "chords" } });
+    expect(reduceApp(s, { type: "setMode", mode: "scales" })).toMatchObject({ page: "practice", settings: { mode: "scales" } });
+  });
+});
+

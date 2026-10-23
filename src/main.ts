@@ -11,7 +11,7 @@ import { createMidiSource } from "./input/midi";
 import { startChordPractice } from "./modes/chordPractice";
 import { startFreePlay } from "./modes/freePlay";
 import { startNotePractice } from "./modes/notePractice";
-import { IDLE_MS, PAGE_SETUP } from "./modes/page";
+import { IDLE_MS, pageSetup, viewOf, type View } from "./modes/page";
 import { startCalibrating } from "./modes/calibrate";
 import { startMetronome } from "./modes/metronome";
 import { selectProgress, startProgress } from "./modes/progress";
@@ -201,9 +201,12 @@ store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 
 const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
-const progressView = createProgressView($("progressView"), selection => {
-  selectProgress(selection);
-  mode.refresh?.();
+const progressView = createProgressView($("progressView"), {
+  change(selection) {
+    selectProgress(selection);
+    mode.refresh?.();
+  },
+  back: () => store.dispatch({ type: "setPage", page: "practice" }),
 });
 // The circle fills the staff's free top-right corner, growing and shrinking with the window
 fitToStaffCorner($("circle"), $("staffCard"), $("staff"));
@@ -252,13 +255,13 @@ const practiceViews = { staff, practice, circle };
  * Starts a mode and the page behaviours its `PAGE_SETUP` turns on. The circle of fifths starts hidden; modes where
  * it is relevant draw it.
  */
-function startMode(id: ModeId): Mode {
+function startMode(id: View): Mode {
   circle.render(null);
   const mode = startModeView(id);
-  const offIdle = PAGE_SETUP[id].fadeChordWhenIdle
+  const offIdle = pageSetup(id).fadeChordWhenIdle
     ? onIdle(store, IDLE_MS, { idle: () => chordName.setIdle(true), active: () => chordName.setIdle(false) })
     : null;
-  const offMetronome = PAGE_SETUP[id].metronome ? startMetronome(store, metronomeViews) : null;
+  const offMetronome = pageSetup(id).metronome ? startMetronome(store, metronomeViews) : null;
   return {
     ...mode,
     stop() {
@@ -269,7 +272,7 @@ function startMode(id: ModeId): Mode {
     },
   };
 }
-const startModeView = (id: ModeId): Mode =>
+const startModeView = (id: View): Mode =>
   id === "free" ? startFreePlay(store, { staff, chordName, circle })
   : id === "notes" ? startNotePractice(store, practiceViews, recorder)
   : id === "chords" ? startChordPractice(store, practiceViews, recorder)
@@ -290,8 +293,10 @@ function exercisesOf(s: Settings): { ids: PrescriptiveId[]; keys: string[]; ownK
 }
 
 /** Shows the controls the mode uses: each exercise lists its options; the minor form only matters in minor keys. */
-function showControls(s: Settings) {
-  const id = s.mode, page = PAGE_SETUP[id];
+function showControls(state: AppState) {
+  const s = state.settings, id = s.mode, page = pageSetup(viewOf(state));
+  $("progressBtn").classList.toggle("on", state.page === "progress");
+  $("progressBtn").setAttribute("aria-pressed", String(state.page === "progress"));
   $("keyPick").hidden = !page.headerKey;
   $("freeView").hidden = page.panel !== "chordName";
   $("practice").hidden = page.panel !== "practice";
@@ -313,16 +318,21 @@ function showControls(s: Settings) {
   $("metronomeDetails").hidden = !s.exercise.metronome;
 }
 
-let mode = startMode(store.getState().settings.mode);
-showControls(store.getState().settings);
+let mode = startMode(viewOf(store.getState()));
+showControls(store.getState());
 store.subscribe((s, prev) => {
-  if (s.settings === prev.settings) return;
-  showControls(s.settings);
-  if (s.settings.mode !== prev.settings.mode) {
+  if (s.settings === prev.settings && s.page === prev.page) return;
+  showControls(s);
+  if (viewOf(s) !== viewOf(prev)) {
     mode.stop();
-    mode = startMode(s.settings.mode);
+    mode = startMode(viewOf(s));
   }
 });
+// Progress: a page of its own, opened and closed from the header (choosing a mode also goes back to practising)
+$("progressBtn").onclick = () => {
+  $("progressBtn").blur();
+  store.dispatch({ type: "setPage", page: store.getState().page === "progress" ? "practice" : "progress" });
+};
 
 /* ---------------------------------------------------------------
    Input sources and buttons

@@ -223,6 +223,10 @@ label.opt input { accent-color: var(--accent); }
 /* Taller than the window: the page area scrolls (between the header and footer), practice modes never need to */
 main:has(#progressView:not([hidden])) { overflow-y: auto; }
 #progressView { grid-column: 1 / -1; min-width: 0; align-self: start; }
+.pvFilters #pvBack { color: var(--muted); font-size: 13px; text-decoration: none; }
+.pvFilters #pvBack:hover { color: var(--text); }
+/* The header's Progress button reads as pressed while the page is open */
+#progressBtn.on { background: var(--accent); border-color: var(--accent); color: #14161a; }
 .pvFilters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin-bottom: 16px; }
 .pvCount { margin-left: auto; color: var(--muted); font-size: 12px; }
 .pvTiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }

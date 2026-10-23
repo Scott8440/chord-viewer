@@ -45,7 +45,13 @@ function table(head: string[], rows: string[][]): string {
     `<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></details>`;
 }
 
-export function createProgressView(el: HTMLElement, change: (selection: ProgressSelection) => void): ProgressView {
+export function createProgressView(el: HTMLElement, actions: {
+  /** A new range, routine or exercise was picked */
+  change(selection: ProgressSelection): void;
+  /** Back to practising */
+  back(): void;
+}): ProgressView {
+  const change = actions.change;
   let unmount: (() => void)[] = [];
   const clear = () => { unmount.forEach(f => f()); unmount = []; };
 
@@ -136,7 +142,7 @@ export function createProgressView(el: HTMLElement, change: (selection: Progress
 
       const option = (value: string, text: string, selected: boolean) => `<option value="${esc(value)}"${selected ? " selected" : ""}>${esc(text)}</option>`;
       el.innerHTML =
-        `<div class="pvFilters">` +
+        `<div class="pvFilters"><button class="link" id="pvBack">← Back to practice</button>` +
           `<label class="pick">Range <select id="pvRange">${RANGES.map(r => option(r, r === "all" ? "All time" : `Last ${r} days`, r === sel.range)).join("")}</select></label>` +
           (routines.length ? `<label class="pick">Routine <select id="pvRoutine">${routines.map(r => option(r.id, r.name, r === routine)).join("")}</select></label>` : "") +
           (exercises.length ? `<label class="pick">Exercise <select id="pvExercise">${exercises.map(x => option(x.exerciseId, prettyAcc(x.label), x === exercise)).join("")}</select></label>` : "") +
@@ -150,6 +156,7 @@ export function createProgressView(el: HTMLElement, change: (selection: Progress
         const s = el.querySelector<HTMLSelectElement>(`#${id}`);
         if (s) s.onchange = () => { s.blur(); change(f(s.value)); };
       };
+      el.querySelector<HTMLButtonElement>("#pvBack")!.onclick = () => actions.back();
       pick("pvRange", v => ({ ...sel, range: v as RangeChoice }));
       pick("pvRoutine", v => ({ ...sel, routine: v }));
       pick("pvExercise", v => ({ ...sel, exercise: v }));

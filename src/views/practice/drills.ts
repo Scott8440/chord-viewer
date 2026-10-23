@@ -32,30 +32,19 @@ export function notePracticeDisplay(s: NotePracticeState, key: KeyContext | null
 /** Browsers start audio only after a click or key press on the page (a MIDI note doesn't count) */
 const SOUND_WAITING = "Click anywhere or press a computer key to start";
 
-/** Ear training: no prompt (the degree circle is the display), just the instruction and feedback, by degree */
-export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked: boolean, running: boolean): PracticeDisplay {
+/** Ear training: the degree circle is the display (its pings say right or wrong), so no prompt and no feedback here:
+ *  just the instruction, the score and, while stopped or waiting for audio, how to start */
+export function earDisplay(s: EarState, soundBlocked: boolean, running: boolean): PracticeDisplay {
+  const base = { promptHtml: "", size: "note", status: "waiting", feedback: "", score: scoreText(s) } as const;
   if (!running) {
     return {
-      label: soundBlocked ? "Ready" : "Stopped", promptHtml: "", size: "note",
-      sub: soundBlocked ? SOUND_WAITING : "Press Start to hear the note again",
-      status: "waiting", feedback: "", score: scoreText(s), stopLabel: "Start",
+      ...base, label: soundBlocked ? "Ready" : "Stopped",
+      sub: soundBlocked ? SOUND_WAITING : "Press Start to hear the note again", stopLabel: "Start",
     };
   }
-  // Degrees only: the tonic's name never matters here
-  const tonicPc = chromaOf(buildKey(s.prompt.keyValue)!.tonic);
-  let feedback = "";
-  if (s.status === "correct") feedback = `✓ ${prettyAcc(s.prompt.degree)}`;
-  else if (s.status === "wrong" && s.played != null) {
-    feedback = `✗ That was ${prettyAcc(degreeName(s.played % 12 - tonicPc))}. Listen again`;
-  }
   return {
-    label: "Play the degree you hear over the drone, in any octave, or press it (1–7)",
-    // No prompt: the circle is the display
-    promptHtml: "",
-    size: "note",
-    sub: soundBlocked ? "Click anywhere or press a computer key to start the sound"
-      : `Degrees ${degrees.map(prettyAcc).join(", ")}`,
-    status: s.status, feedback, score: scoreText(s), stopLabel: "Stop",
+    ...base, label: "Play the degree you hear over the drone, in any octave, or press it (1–7)",
+    sub: soundBlocked ? SOUND_WAITING : "", stopLabel: "Stop",
   };
 }
 

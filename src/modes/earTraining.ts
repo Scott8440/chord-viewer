@@ -141,7 +141,7 @@ export function startEarTraining(store: AppStore, views: {
   const onVisibility = () => document.hidden ? away() : back();
 
   function render() {
-    views.practice.render(earDisplay(state, options().degrees, views.tones.blocked(), running));
+    views.practice.render(earDisplay(state, views.tones.blocked(), running));
     views.degrees.render(options().degrees);
   }
 

@@ -14,16 +14,11 @@ export interface TonePlayer {
   blocked(): boolean;
   /** Called whenever `blocked()` may have changed; returns a function that stops it */
   onBlockedChange(listener: () => void): () => void;
-  /** Change the drone's tone, live (debug sliders) */
-  setDroneTone(tone: Partial<DroneTone>): void;
 }
 
-/** The drone's slow wobble is the two saws beating: wider detune beats faster */
-export interface DroneTone {
-  lowpassHz: number;
-  detuneCents: number;
-}
-export const DEFAULT_DRONE_TONE: DroneTone = { lowpassHz: 550, detuneCents: 1.5 };
+/** The drone's tone: a low pass, and the saws' detune in cents (the slow wobble is the two saws beating: wider
+ *  detune beats faster) */
+const DRONE_LOWPASS_HZ = 550, DRONE_DETUNE_CENTS = 1.5;
 
 const freq = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
@@ -34,8 +29,7 @@ const NOTE_PARTIALS = [[1, 1], [2, 0.45], [3, 0.2], [4, 0.1]] as const;
 
 export function createTonePlayer(): TonePlayer {
   let ctx: AudioContext | null = null;
-  let current: { stop(at: number, fade: number): void; retone(): void } | null = null;
-  let tone = DEFAULT_DRONE_TONE;
+  let current: { stop(at: number, fade: number): void } | null = null;
   const listeners = new Set<() => void>();
   /** Notes playing or scheduled, until they end */
   const notes = new Set<{ gain: GainNode; osc: OscillatorNode }>();
@@ -65,13 +59,8 @@ export function createTonePlayer(): TonePlayer {
       o.connect(filter);
       return o;
     });
-    function retone() {
-      // Smoothed a little, so dragging a slider doesn't click
-      filter.frequency.setTargetAtTime(tone.lowpassHz, c.currentTime, 0.02);
-      saws.forEach((o, i) => o.detune.setTargetAtTime((i ? 1 : -1) * tone.detuneCents, c.currentTime, 0.02));
-    }
-    filter.frequency.value = tone.lowpassHz;
-    saws.forEach((o, i) => o.detune.value = (i ? 1 : -1) * tone.detuneCents);
+    filter.frequency.value = DRONE_LOWPASS_HZ;
+    saws.forEach((o, i) => o.detune.value = (i ? 1 : -1) * DRONE_DETUNE_CENTS);
     const octave = c.createOscillator(), octaveGain = c.createGain();
     octave.frequency.value = freq(midi + 12);
     octaveGain.gain.value = 0.6;
@@ -79,7 +68,6 @@ export function createTonePlayer(): TonePlayer {
     const oscs = [...saws, octave];
     for (const o of oscs) o.start(t);
     return {
-      retone,
       stop(at: number, fade: number) {
         out.gain.cancelScheduledValues(at);
         out.gain.setValueAtTime(out.gain.value, at);
@@ -123,10 +111,6 @@ export function createTonePlayer(): TonePlayer {
         try { n.osc.stop(t + 0.1); } catch {}
       }
       notes.clear();
-    },
-    setDroneTone(t) {
-      tone = { ...tone, ...t };
-      current?.retone();
     },
     blocked: () => context().state !== "running",
     onBlockedChange(listener) {

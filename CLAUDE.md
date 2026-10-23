@@ -318,8 +318,8 @@ First mode: scale degrees over a drone. A drone sounds the tonic (an octave belo
 app plays one note over it (the tonic F♯3–F4, the note in either of the two octaves above it, `EAR_OCTAVES`; never
 the same note twice running, though a degree may repeat in the other octave, so two degrees don't just alternate),
 and the player plays that note in any octave, or presses its degree on the number keys (1–7, no controller needed:
-`src/input/degreeKeys.ts`, a source the mode turns on, emitting the degree's note as source `"deg"`). Wrong notes are named as a degree ("That was ♭3"); there is no prompt in the practice card (an
-empty `promptHtml` hides it): the circle is the display, and the feedback names the degree once answered. **No staff and no note names here, only degrees:** `PAGE_SETUP.stage: "degrees"` puts the scale-degree
+`src/input/degreeKeys.ts`, a source the mode turns on, emitting the degree's note as source `"deg"`). The circle is the only display: the practice
+card shows no prompt (an empty `promptHtml` hides it) and no feedback text, just the instruction, score and buttons. **No staff and no note names here, only degrees:** `PAGE_SETUP.stage: "degrees"` puts the scale-degree
 circle (`src/views/degreeCircle.ts`: 1–7 round a circle, 1 at the top, the degrees on offer solid) in the staff's
 place. Each time the drone starts (a new key, Start, or new options) it plays the root, the degrees on offer and
 the octave, pinging each node in turn (amber), then the note to find; every note played pings its degree, green if
@@ -334,7 +334,7 @@ drills (4th series colour). Sound comes from the browser
 here (unlike the user's keyboard, which they monitor through Ableton); audio waits for a click or computer key
 after a reload: both ear modes then open stopped ("Ready", click anywhere or press a key) and start once audio
 unlocks, instead of queueing sound to burst out on the first click.
-The drone's low pass and detune have debug sliders (live, not saved; `DEFAULT_DRONE_TONE` in `tones.ts`).
+The drone's low pass and detune are constants in `tones.ts` (`DRONE_LOWPASS_HZ`, `DRONE_DETUNE_CENTS`).
 
 **Melodies** (mode "earMelody", `src/modes/earMelody.ts`; `makeMelodyPrompt` and `reduceMelody` in
 `earTraining.ts`): the root, then N notes (Notes: 2–8, default 3) from the allowed degrees within one octave, from

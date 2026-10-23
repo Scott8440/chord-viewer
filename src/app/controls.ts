@@ -118,7 +118,6 @@ export function showControls(state: AppState) {
   const ear = id === "ear" || id === "earMelody";
   $("earOptions").hidden = $("practiceReplay").hidden = !ear;
   $("melodyLengthPick").hidden = id !== "earMelody";
-  $("droneTone").hidden = id !== "ear";
   $("earTonicLabel").textContent = id === "earMelody" ? "Key" : "Drone";
   const used = new Set<ExerciseOption>(ex.ids.flatMap(e => PRESCRIPTIVE[e].options));
   if (!ex.ownKey) used.delete("key");

@@ -15,6 +15,10 @@
 /* The hidden attribute must win over display rules (e.g. .opt, #chordOptions, #exerciseOptions) */
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
+/* Nothing here is text to edit or select: no text cursor where you click (even with Chrome's caret browsing, F7)
+   and no accidental selections. The number fields keep theirs. */
+body { user-select: none; caret-color: transparent; }
+input, textarea { user-select: text; caret-color: auto; }
 body {
   background: var(--bg);
   color: var(--text);

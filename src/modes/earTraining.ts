@@ -63,7 +63,15 @@ export function startEarTraining(store: AppStore, views: {
     droneKey = null;
   }
 
-  const render = () => views.practice.render(earDisplay(state, options().degrees, views.tones.blocked(), running));
+  /** The key the staff was last drawn in: the drawer only redraws by itself on input */
+  let staffKey = state.prompt.keyValue;
+  function render() {
+    views.practice.render(earDisplay(state, options().degrees, views.tones.blocked(), running));
+    if (state.prompt.keyValue !== staffKey) {
+      staffKey = state.prompt.keyValue;
+      drawer.schedule();
+    }
+  }
 
   function apply(action: EarAction) {
     const prev = state;

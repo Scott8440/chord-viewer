@@ -3,8 +3,9 @@
 import type { ModeId } from "../state/app";
 
 export interface PageSetup {
-  /** The right-hand panel: the chord name, or the practice card */
-  panel: "chordName" | "practice";
+  /** The right-hand panel: the chord name or the practice card, beside the staff; or the progress charts, in place
+   *  of both */
+  panel: "chordName" | "practice" | "progress";
   /** The header Key picker (free play only: exercises name their key or have their own selector) */
   headerKey: boolean;
   /** Fade the chord name out after IDLE_MS without input (and nothing sounding) */
@@ -27,4 +28,5 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   scales: TIMED,
   diatonic: TIMED,
   routines: TIMED,
+  progress: { ...PRACTICE, panel: "progress" },
 };

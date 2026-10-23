@@ -76,10 +76,12 @@ mode and views subscribe to the store.
   step against the metronome: `judgeTime`, `timingVerdict`, `timingSummary`) and `calibration.ts` (tap-along latency). See "Metronome" below.
 - `src/progress/`: practice history (see "Practice history" below): `records.ts` (record types, pure builders,
   reading back and export files), `store.ts` (the `ProgressStore` interface and an in-memory one), `idbStore.ts`
-  (IndexedDB), `recorder.ts` (stamps and stores records; `uuid`).
+  (IndexedDB), `recorder.ts` (stamps and stores records; `uuid`), `stats.ts` (what the Progress view charts, worked
+  out from records; pure).
 - `src/audio/click.ts`: the metronome click (Web Audio look-ahead scheduler that follows the transport).
 - `src/views/`: DOM rendering only: `beat.ts` (the beat light), `staff.ts` (VexFlow; also `staffCorner`), `staffCorner.ts`
-  (`fitToStaffCorner`), `chordName.ts` (also `chordSymbolHtml`),
+  (`fitToStaffCorner`), `charts.ts` (line and column time charts: pure SVG builders + `mountChart` with the hover
+  layer), `progressView.ts` (the Progress view), `chordName.ts` (also `chordSymbolHtml`),
   `practice.ts` (renders a `PracticeDisplay`; `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state
   into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
   answered and add the played chord's numeral; inversions show as slash chords or figured bass (V⁶₅, I⁶₄, V⁴₂), and
@@ -130,7 +132,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 259 tests (54 voicings) should pass
+npm test           # Vitest: 269 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -297,8 +299,7 @@ A set of prescriptive exercises played one after another, e.g. every major scale
 - **Built:** major scales; diatonic chords; scale then diatonic chords; each round the circle.
 
 ## Practice history
-Phase 1 of progress tracking: everything is recorded; charts come next (a "Progress" view with routine time and
-mistakes, per-exercise mistakes and timing, practice time per day).
+Everything practised is recorded, and the **Progress** mode charts it.
 - **Records, not stats:** plain JSON, only ever added. `run` (one per finished exercise run, alone or in a routine:
   exercise, `exerciseId` with the settings that change what's played, key, metronome settings or null, mistakes,
   duration, BPM, evenness, timing, routine session), `routine` (one per session, finished or left part-way: routine,
@@ -318,6 +319,21 @@ mistakes, per-exercise mistakes and timing, practice time per day).
 - **Footer:** the record count, Export (a `chord-display-history-<date>.json` file) and Import (merges by id, so
   importing twice adds nothing; says how many were new). If IndexedDB won't open, history is kept in memory and the
   footer says it isn't saved.
+- **Progress view** (mode "progress"; `PAGE_SETUP` panel "progress" hides the staff and practice card, and the page
+  area scrolls): one filter row (range: last 7/30/90 days or all time; routine and exercise, defaulting to the most
+  played; the selection lasts while the page is open), summary tiles (days practised, practice time, exercise runs
+  and how many clean, routines finished, drill prompts), and cards: practice time per day (columns); the routine's
+  time to complete and mistakes per finished session; the exercise's mistakes and on-time share (metronome runs) or
+  evenness, each run a faint dot with a line through the day's median; drills' share right first time per day (one
+  line per drill, legend) and the trickiest prompts (asked twice or more, least often right first time). Each chart
+  has a Table. Practice time = runs outside routines + routine sessions + drill prompts capped at a minute each.
+  Imports refresh it (`Mode.refresh`).
+- **Charts** (`src/views/charts.ts`): hand-written SVG (no library; the build stays one small offline file), redrawn
+  to the container's width. Dataviz rules: 2px lines, ≥8px markers with a surface ring, hairline grid, columns ≤24px
+  with a 4px rounded end, no dual axes (two measures = two charts), text never in series colours. Series colours are
+  the reference palette's first three dark steps (`--series-1..3`: #3987e5, #d95926, #199e70), validated against the
+  panel surface (#1d2026). Hover: a crosshair snaps to the nearest day and the tooltip (value first) lists every
+  series there, beside the crosshair and level with the pointer; columns lift.
 - **Storage is per address:** the GitHub Pages site and a local file each have their own history; export/import moves
   it. The user plans to practise on GitHub Pages.
 
@@ -343,7 +359,7 @@ mistakes, per-exercise mistakes and timing, practice time per day).
 4. **Audio:** the metronome is **built** (see "Metronome"). Still to do: a small sampled piano for ear training.
    Keep it switchable, since the user often monitors through Ableton.
 5. **Persistence:** practice history is **built** (see "Practice history"): IndexedDB with schema versioning and
-   JSON export/import. Local-first, no accounts. Next: the Progress view with charts.
+   JSON export/import, and the Progress view. Local-first, no accounts.
 6. **Tests:** the voicing corpus, recorded MIDI performances replayed through the whole pipeline, and occasional
    notation screenshot tests.
 

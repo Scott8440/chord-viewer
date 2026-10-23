@@ -12,6 +12,8 @@ export interface Mode {
   skip?(): void;
   /** Start over from the beginning (routines) */
   restart?(): void;
+  /** Read its data again (the Progress view, after an import) */
+  refresh?(): void;
 }
 
 export type AppStore = Store<AppState, AppAction>;

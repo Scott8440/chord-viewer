@@ -14,6 +14,7 @@ import { startNotePractice } from "./modes/notePractice";
 import { IDLE_MS, PAGE_SETUP } from "./modes/page";
 import { startCalibrating } from "./modes/calibrate";
 import { startMetronome } from "./modes/metronome";
+import { selectProgress, startProgress } from "./modes/progress";
 import { openIdbStore } from "./progress/idbStore";
 import { createRecorder, uuid } from "./progress/recorder";
 import { exportFile, parseExport } from "./progress/records";
@@ -34,6 +35,7 @@ import { createCircleView } from "./views/circleOfFifths";
 import { createFilterView } from "./views/filter";
 import { createHeaderView, fillKeySelect } from "./views/header";
 import { createPracticeView } from "./views/practice";
+import { createProgressView } from "./views/progressView";
 import { createStaffView } from "./views/staff";
 import { fitToStaffCorner } from "./views/staffCorner";
 
@@ -185,6 +187,7 @@ $<HTMLInputElement>("historyFile").onchange = async () => {
   historyNote(`Imported ${added} new record${added === 1 ? "" : "s"}` + (already ? `, ${already} already here` : "") +
               (parsed.skipped ? `, ${parsed.skipped} unreadable` : "") + ".");
   void showHistoryCount();
+  mode.refresh?.();
 };
 
 /* ---------------------------------------------------------------
@@ -198,6 +201,10 @@ store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 
 const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
+const progressView = createProgressView($("progressView"), selection => {
+  selectProgress(selection);
+  mode.refresh?.();
+});
 // The circle fills the staff's free top-right corner, growing and shrinking with the window
 fitToStaffCorner($("circle"), $("staffCard"), $("staff"));
 const beat = createBeatView($("beat"));
@@ -268,6 +275,7 @@ const startModeView = (id: ModeId): Mode =>
   : id === "chords" ? startChordPractice(store, practiceViews, recorder)
   : id === "progressions" ? startProgressionPractice(store, practiceViews, recorder)
   : id === "routines" ? startRoutinePractice(store, practiceViews, recorder)
+  : id === "progress" ? startProgress({ progress: progressView }, history, () => historySaved)
   : startSequencePractice(store, practiceViews, id, recorder);
 
 /**
@@ -287,6 +295,9 @@ function showControls(s: Settings) {
   $("keyPick").hidden = !page.headerKey;
   $("freeView").hidden = page.panel !== "chordName";
   $("practice").hidden = page.panel !== "practice";
+  // The progress charts take the whole page: no staff, no practice card
+  $("staffCard").hidden = $("chordCard").hidden = page.panel === "progress";
+  $("progressView").hidden = page.panel !== "progress";
   const ex = exercisesOf(s);
   // Chord names vs Roman numerals matters wherever chords are prompted
   $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));

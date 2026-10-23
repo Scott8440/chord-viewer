@@ -94,6 +94,9 @@ button {
 }
 button:hover { border-color: var(--muted); }
 
+/* Chart series (the reference palette's first three dark steps, validated against --panel) */
+:root { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; }
+
 main {
   flex: 1; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: 20px; padding: 20px; align-items: stretch; min-height: 0;
@@ -215,3 +218,50 @@ label.opt input { accent-color: var(--accent); }
   header, footer { padding-left: 16px; padding-right: 16px; }
   #staffCard { min-height: 260px; }
 }
+
+/* Progress view: filters, summary tiles, chart cards (src/views/progressView.ts, src/views/charts.ts) */
+/* Taller than the window: the page area scrolls (between the header and footer), practice modes never need to */
+main:has(#progressView:not([hidden])) { overflow-y: auto; }
+#progressView { grid-column: 1 / -1; min-width: 0; align-self: start; }
+.pvFilters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin-bottom: 16px; }
+.pvCount { margin-left: auto; color: var(--muted); font-size: 12px; }
+.pvTiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.pvTile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+.pvTileLabel { color: var(--muted); font-size: 12px; }
+.pvTileValue { font-size: 26px; font-weight: 600; margin-top: 4px; }
+.pvTileNote { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.pvGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
+.pvCard { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.pvCard.wide { grid-column: 1 / -1; }
+.pvCard h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.pvCard h4 { margin: 12px 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
+.pvSub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.pvPair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.pvEmpty { color: var(--muted); font-size: 13px; padding: 28px 0; }
+.pvLegend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 10px; }
+.pvLegend i { display: inline-block; width: 14px; height: 2px; border-radius: 1px; vertical-align: middle; margin-right: 6px; }
+.pvChart { position: relative; margin-top: 6px; }
+.pvTable { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.pvTable summary { cursor: pointer; }
+.pvCard table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.pvCard th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 4px 8px 4px 0; }
+.pvCard td { color: var(--text); border-bottom: 1px solid var(--line); padding: 4px 8px 4px 0; }
+.chart { display: block; }
+.chart .grid { stroke: #2c3038; stroke-width: 1; }
+.chart .base { stroke: #3a3f49; stroke-width: 1; }
+.chart text { fill: var(--muted); font: 11px system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.chart .ytick { text-anchor: end; dominant-baseline: middle; }
+.chart .xtick { text-anchor: middle; }
+.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .marker { stroke: var(--panel); stroke-width: 2; }
+.chart .dot { opacity: .35; }
+.chart .bar.hot { filter: brightness(1.25); }
+.chart .cross { stroke: var(--muted); stroke-width: 1; }
+.chartTip {
+  position: absolute; pointer-events: none; background: #0f1114; border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 9px; font-size: 12px; color: var(--muted); white-space: nowrap; z-index: 2;
+}
+.chartTip .tipTitle { margin-bottom: 3px; }
+.chartTip .tipRow { display: flex; align-items: center; gap: 6px; }
+.chartTip .tipKey { width: 10px; height: 2px; border-radius: 1px; }
+.chartTip strong { color: var(--text); font-weight: 600; }

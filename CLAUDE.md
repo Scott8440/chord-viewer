@@ -143,7 +143,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 291 tests (54 voicings) should pass
+npm test           # Vitest: 293 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -326,19 +326,20 @@ after a reload, and the prompt says so.
 The drone's low pass and detune have debug sliders (live, not saved; `DEFAULT_DRONE_TONE` in `tones.ts`).
 
 **Melodies** (mode "earMelody", `src/modes/earMelody.ts`; `makeMelodyPrompt` and `reduceMelody` in
-`earTraining.ts`): the root, then N notes (Notes: 2–8, default 3) from the allowed degrees over two octaves, no leap
-over an octave, no note straight after itself if anything else is in reach, never the same melody twice running.
-No drone. The player plays it all back in order, root first (the root is step 0 of `prompt.notes`), each in any
-octave; a wrong note holds the step and the whole melody plays again 1 s later. Steps show as dots with the degree
+`earTraining.ts`): the root, then N notes (Notes: 2–8, default 3) from the allowed degrees within one octave, from
+the root up to the next root (that one only when degree 1 is allowed), no note straight after itself if anything
+else is in reach, never the same melody twice running. No drone. The player plays it all back in order, root first
+(the root is step 0 of `prompt.notes`), at the exact pitch (the right note in another octave is wrong: "Right note,
+wrong octave: too low"); a wrong note holds the step and the whole melody plays again 1 s later. Steps show as dots with the degree
 revealed once played (the root's from the start). The staff draws the melody as it's played back, left to right
 (`StaffRow` in `staff.ts`, passed through `createPerformanceDrawer`'s `rowOf`): the root grey from the start,
-each note once played (the target's octave), and the held keys at the next step. Shares `Settings.ear` with
+each note once played, and the held keys at the next step. Shares `Settings.ear` with
 scale degrees (its tonic picker reads "Key" here). Recorded as `drill: "melody"`, prompt "Root + 3 notes" (the
 degrees in `detail.melody`), charted as a 5th series. `tones.stopNotes()` cuts off a melody still playing
 (skip, replay, stop).
 
 **Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,
-intervals and chord qualities; judging melodies by exact octave (contour).
+intervals and chord qualities.
 
 ## Practice history
 Everything practised is recorded, and the **Progress** page charts it.

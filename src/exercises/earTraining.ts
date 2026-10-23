@@ -1,5 +1,6 @@
 // Ear training. Scale degrees: a drone sounds the tonic, the app plays one note over it, and the player finds that
-// note on the keyboard (any octave). Melodies: the root, then a few notes in the key, played back in order. Both
+// note on the keyboard (any octave). Melodies: the root, then a few notes in the key, played back in order at the
+// same pitch. Both
 // share the options: which degrees can come up (starting with just 1 and 5) and the tonic.
 // Pure data and functions; the mode in src/modes/earTraining.ts drives it and makes the sound. Answers are judged
 // like note practice (reduceNotePractice).
@@ -92,7 +93,8 @@ export function makeEarPrompt(rng: Rng, tonic: string, degrees: readonly string[
 }
 
 /* ---------------------------------------------------------------
-   Melodies: the root, then a few notes in the key; the player plays it all back in order, root first
+   Melodies: the root, then a few notes in the key within an octave; the player plays it all back in order, root
+   first, at the same pitch
    --------------------------------------------------------------- */
 
 export interface MelodyNote {
@@ -109,29 +111,25 @@ export interface MelodyPrompt {
   notes: readonly MelodyNote[];
 }
 
-/** No leap between neighbouring notes is wider than this (semitones) */
-const MAX_LEAP = 12;
-
 /**
- * The root, then a melody of `length` notes from the allowed degrees, over EAR_OCTAVES octaves from the root, with no
- * leap over an octave and no note straight after itself (unless nothing else is in reach). Never the same melody
- * twice running.
+ * The root, then a melody of `length` notes from the allowed degrees, within the octave from the root up to the next
+ * root (when degree 1 is allowed), and no note straight after itself (unless it's the only one). Never the same
+ * melody twice running.
  */
 export function makeMelodyPrompt(rng: Rng, tonic: string, degrees: readonly string[], length: number,
                                  previous?: MelodyPrompt): MelodyPrompt {
   const key = buildKey(tonic + ":major")!;
   const root = tonicMidi(tonic);
-  const pool = EAR_DEGREES.filter(d => degrees.includes(d.id))
-    .flatMap(d => Array.from({ length: EAR_OCTAVES }, (_, o) => ({ degree: d.id, note: root + d.semitones + 12 * o })));
+  const pool = EAR_DEGREES.filter(d => degrees.includes(d.id)).map(d => ({ degree: d.id, note: root + d.semitones }));
+  if (degrees.includes("1")) pool.push({ degree: "1", note: root + 12 });
   const pick = <T>(xs: readonly T[]) => xs[Math.floor(rng() * xs.length)];
   const note = (degree: string, midi: number): MelodyNote => ({ degree, note: midi, pc: midi % 12, name: key.spell[midi % 12] });
   for (let tries = 0; ; tries++) {
     const notes: MelodyNote[] = [note("1", root)];
     for (let i = 0; i < length; i++) {
       const last = notes[notes.length - 1].note;
-      const near = pool.filter(c => Math.abs(c.note - last) <= MAX_LEAP);
-      const fresh = near.filter(c => c.note !== last);
-      const c = pick(fresh.length ? fresh : near);
+      const fresh = pool.filter(c => c.note !== last);
+      const c = pick(fresh.length ? fresh : pool);
       notes.push(note(c.degree, c.note));
     }
     const same = previous && previous.keyValue === tonic + ":major" &&
@@ -168,8 +166,8 @@ export function reduceMelody(s: MelodyState, a: MelodyAction): MelodyState {
   switch (a.type) {
     case "play": {
       if (s.status === "correct") return s;   // done; ignore notes until the next melody
-      // Each note in any octave, like the single-note drill
-      if (a.note % 12 !== s.prompt.notes[s.index].pc) return { ...s, status: "wrong", played: a.note, missed: true };
+      // The exact note, octave included: the melody's shape is part of it
+      if (a.note !== s.prompt.notes[s.index].note) return { ...s, status: "wrong", played: a.note, missed: true };
       const index = s.index + 1;
       if (index < s.prompt.notes.length) return { ...s, index, status: "waiting", played: a.note };
       return { ...s, index, status: "correct", played: a.note, answered: s.answered + 1, firstTry: s.firstTry + (s.missed ? 0 : 1) };

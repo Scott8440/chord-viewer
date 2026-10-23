@@ -72,12 +72,14 @@ export function earMelodyDisplay(s: MelodyState, degrees: readonly string[], sou
   let feedback = "";
   if (s.status === "correct") feedback = "✓ " + s.prompt.notes.map(n => prettyAcc(n.name)).join(" ");
   else if (s.status === "wrong" && s.played != null) {
-    const pc = s.played % 12;
-    feedback = `✗ That was ${prettyAcc(degreeName(pc - chromaOf(key.tonic)))} (${prettyAcc(key.spell[pc])}). Listen again`;
+    const pc = s.played % 12, target = s.prompt.notes[s.index].note;
+    feedback = pc === target % 12
+      ? `✗ Right note, wrong octave: ${s.played < target ? "too low" : "too high"}`
+      : `✗ That was ${prettyAcc(degreeName(pc - chromaOf(key.tonic)))} (${prettyAcc(key.spell[pc])}). Listen again`;
   }
   const n = s.prompt.notes.length - 1;
   return {
-    label: "Play it back from the root, in order, in any octave",
+    label: "Play it back from the root, in order, at the same pitch",
     promptHtml, size: "sequence",
     sub: soundBlocked ? "Click anywhere or press a computer key to start the sound"
       : `Root ${prettyAcc(key.tonic)} + ${n} notes · degrees ${degrees.map(prettyAcc).join(", ")}`,

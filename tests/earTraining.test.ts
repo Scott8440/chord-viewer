@@ -110,20 +110,26 @@ describe("makeMelodyPrompt", () => {
       for (const n of m.notes) {
         expect(["1", "3", "5"]).toContain(n.degree);
         expect(["D", "F#", "A"]).toContain(n.name);
-        expect(n.note).toBeGreaterThanOrEqual(62);
-        expect(n.note).toBeLessThan(62 + 24);
         expect(n.pc).toBe(n.note % 12);
       }
     }
   });
 
-  it("never leaps more than an octave, and never repeats a note straight away when another is in reach", () => {
-    for (let i = 0; i < 200; i++) {
+  it("stays within the octave from the root up to the next root, and never repeats a note straight away", () => {
+    const seen = new Set<number>();
+    for (let i = 0; i < 300; i++) {
       const notes = makeMelodyPrompt(Math.random, "C", ["1", "2", "5", "7"], 8).notes.map(n => n.note);
-      for (let j = 1; j < notes.length; j++) {
-        expect(Math.abs(notes[j] - notes[j - 1])).toBeLessThanOrEqual(12);
-        expect(notes[j]).not.toBe(notes[j - 1]);
-      }
+      notes.forEach(n => seen.add(n));
+      for (let j = 1; j < notes.length; j++) expect(notes[j]).not.toBe(notes[j - 1]);
+    }
+    expect([...seen].sort((a, b) => a - b)).toEqual([60, 62, 67, 71, 72]);
+  });
+
+  it("only uses the upper root when degree 1 is allowed", () => {
+    for (let i = 0; i < 100; i++) {
+      const notes = makeMelodyPrompt(Math.random, "C", ["3", "5"], 6).notes.map(n => n.note);
+      expect(notes[0]).toBe(60);
+      for (const n of notes.slice(1)) expect([64, 67]).toContain(n);
     }
   });
 
@@ -149,13 +155,18 @@ describe("reduceMelody", () => {
             { degree: "3", note: 64, pc: 4, name: "E" }],
   };
 
-  it("steps through the notes in order, root first, in any octave, then counts the melody right first time", () => {
-    let s = reduceMelody(initialMelody(melody), { type: "play", note: 48 });
-    s = reduceMelody(s, { type: "play", note: 55 });
+  it("steps through the notes in order, root first, then counts the melody right first time", () => {
+    let s = reduceMelody(initialMelody(melody), { type: "play", note: 60 });
+    s = reduceMelody(s, { type: "play", note: 67 });
     expect(s).toMatchObject({ index: 2, status: "waiting" });
-    s = reduceMelody(s, { type: "play", note: 76 });
+    s = reduceMelody(s, { type: "play", note: 64 });
     expect(s).toMatchObject({ index: 3, status: "correct", answered: 1, firstTry: 1 });
     expect(reduceMelody(s, { type: "play", note: 60 })).toBe(s);
+  });
+
+  it("needs the exact note: the right one in another octave is wrong", () => {
+    const s = reduceMelody(initialMelody(melody), { type: "play", note: 72 });
+    expect(s).toMatchObject({ index: 0, status: "wrong", played: 72, missed: true });
   });
 
   it("holds the step on a wrong note, and the melody then isn't right first time", () => {

@@ -1,10 +1,11 @@
-// Presenters for the drills: note, chord and progression practice.
+// Presenters for the drills: note, chord and progression practice, and ear training.
 
 import type { ChordPracticeState } from "../../exercises/chordPractice";
 import type { PromptStyle } from "../../exercises/chordPrompt";
+import { degreeName, type EarState } from "../../exercises/earTraining";
 import type { NotePracticeState } from "../../exercises/notePractice";
 import type { ProgressionState } from "../../exercises/progressions";
-import { buildKey, FLAT, prettyAcc, SHARP, templateById, type KeyContext } from "../../theory";
+import { buildKey, chromaOf, FLAT, prettyAcc, SHARP, templateById, type KeyContext } from "../../theory";
 import { chordSymbolHtml } from "../chordName";
 import { esc } from "../html";
 import { chordStepHtml, describeMiss, inversionName, romanHtml } from "./chords";
@@ -23,6 +24,26 @@ export function notePracticeDisplay(s: NotePracticeState, key: KeyContext | null
   }
   return {
     label: "Play this note, in any octave", promptHtml: esc(prettyAcc(s.prompt.name)), size: "note", sub: "",
+    status: s.status, feedback, score: scoreText(s),
+  };
+}
+
+/** Ear training: the degree stays hidden ("?") until answered; a wrong note is named as a degree too */
+export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked: boolean): PracticeDisplay {
+  const key = buildKey(s.prompt.keyValue)!;
+  const tonicPc = chromaOf(key.tonic);
+  let feedback = "";
+  if (s.status === "correct") feedback = `✓ ${prettyAcc(s.prompt.degree)} · ${prettyAcc(s.prompt.name)}`;
+  else if (s.status === "wrong" && s.played != null) {
+    const pc = s.played % 12;
+    feedback = `✗ That was ${prettyAcc(degreeName(pc - tonicPc))} (${prettyAcc(key.spell[pc])}). Listen again`;
+  }
+  return {
+    label: "Play the note you hear over the drone, in any octave",
+    promptHtml: s.status === "correct" ? esc(prettyAcc(s.prompt.degree)) : "?",
+    size: "note",
+    sub: soundBlocked ? "Click anywhere or press a computer key to start the sound"
+      : `Drone on ${prettyAcc(key.tonic)} · degrees ${degrees.map(prettyAcc).join(", ")}`,
     status: s.status, feedback, score: scoreText(s),
   };
 }

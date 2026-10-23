@@ -20,6 +20,7 @@
       <option value="scales">Scale practice</option>
       <option value="diatonic">Diatonic chords</option>
       <option value="routines">Routines</option>
+      <option value="ear">Ear training: scale degrees</option>
     </select>
   </label>
   <button id="progressBtn" title="Your practice history, as charts" aria-pressed="false">Progress</button>
@@ -47,7 +48,16 @@
       <div id="practicePrompt"></div>
       <div id="practiceSub"></div>
       <div id="practiceFeedback"></div>
-      <div id="practiceFooter"><span id="practiceScore"></span><button id="practiceSkip" title="Skip this one">Skip</button></div>
+      <div id="practiceFooter"><span id="practiceScore"></span><button id="practiceReplay" hidden title="Play the note again">Replay</button><button id="practiceSkip" title="Skip this one">Skip</button></div>
+      <div id="earOptions" hidden>
+        <label class="pick">Drone
+          <select id="earTonic"></select>
+        </label>
+        <details id="earFilters" open>
+          <summary id="earFilterSummary"></summary>
+          <div id="earFilterBody"></div>
+        </details>
+      </div>
       <div id="chordOptions" hidden>
         <label class="pick">Prompts
           <select id="promptStyle">

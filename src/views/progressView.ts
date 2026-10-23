@@ -26,8 +26,8 @@ export interface ProgressView {
   clear(): void;
 }
 
-/** Series colours: the reference palette's first three dark steps, validated on the panel surface */
-const SERIES = ["var(--series-1)", "var(--series-2)", "var(--series-3)"];
+/** Series colours: the reference palette's first four dark steps, in its fixed order */
+const SERIES = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)"];
 const DAY = 86_400_000;
 
 const minutes = (ms: number) => {
@@ -37,7 +37,7 @@ const minutes = (ms: number) => {
 const clock = (ms: number) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const longDate = (ms: number) => new Date(ms).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-const DRILL_NAMES = { notes: "Notes", chords: "Chords", progressions: "Progressions" } as const;
+const DRILL_NAMES = { notes: "Notes", chords: "Chords", progressions: "Progressions", ear: "Ear training" } as const;
 
 function table(head: string[], rows: string[][]): string {
   if (!rows.length) return "";
@@ -132,7 +132,7 @@ export function createProgressView(el: HTMLElement, actions: {
           (weak.length ? `<h4>Trickiest prompts</h4><table class="pvWeak"><thead><tr><th>Prompt</th><th>Drill</th><th>Asked</th><th>First try</th><th>Typical time</th></tr></thead><tbody>` +
             weak.map(w => `<tr><td>${esc(prettyAcc(w.prompt))}</td><td>${esc(DRILL_NAMES[w.drill])}</td><td>${w.asked}</td><td>${pct(w.firstTry)}</td><td>${(w.medianMs / 1000).toFixed(1)} s</td></tr>`).join("") +
             `</tbody></table>` : "")
-        : empty("Answer some note, chord or progression prompts to see them here."));
+        : empty("Answer some note, chord, progression or ear-training prompts to see them here."));
 
       const tiles = [
         ["Days practised", String(sum.daysPractised)], ["Practice time", minutes(sum.practiceMs)],

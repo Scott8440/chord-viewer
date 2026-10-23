@@ -28,6 +28,7 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   scales: TIMED,
   diatonic: TIMED,
   routines: TIMED,
+  ear: PRACTICE,
 };
 
 /** What's on screen: a practice mode, or the Progress page (opened from the header, apart from the modes) */

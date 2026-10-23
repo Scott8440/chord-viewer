@@ -7,7 +7,7 @@ import { uuid } from "../progress/recorder";
 const STORAGE = {
   key: "chordDisplay.key", mode: "chordDisplay.mode", chordTypes: "chordDisplay.chordTypes",
   promptStyle: "chordDisplay.promptStyle", inversions: "chordDisplay.inversions", exercise: "chordDisplay.exercise",
-  routine: "chordDisplay.routine", latency: "chordDisplay.latency", latencyCalibrated: "chordDisplay.latencyCalibrated",
+  routine: "chordDisplay.routine", ear: "chordDisplay.ear", latency: "chordDisplay.latency", latencyCalibrated: "chordDisplay.latencyCalibrated",
   /** This browser's random id for practice history records */
   device: "chordDisplay.device",
   /** Scale options saved by an earlier version ({key, minorForm, octaves}), read if there are no exercise options */
@@ -28,6 +28,7 @@ export function loadSettings(includeSustained: boolean): SavedSettings {
     inversions: load(STORAGE.inversions) === "1",
     exercise: loadJson(STORAGE.exercise) ?? loadJson(STORAGE.legacyScale),
     routine: loadJson(STORAGE.routine),
+    ear: loadJson(STORAGE.ear),
     latencyMs: loadJson(STORAGE.latency),
     latencyCalibrated: loadJson(STORAGE.latencyCalibrated),
   };
@@ -41,6 +42,7 @@ function saveSettings(t: Settings) {
   save(STORAGE.inversions, t.inversions ? "1" : "0");
   save(STORAGE.exercise, JSON.stringify(t.exercise));
   save(STORAGE.routine, JSON.stringify(t.routine));
+  save(STORAGE.ear, JSON.stringify(t.ear));
   save(STORAGE.latency, JSON.stringify(t.latencyMs));
   save(STORAGE.latencyCalibrated, JSON.stringify(t.latencyCalibrated));
 }

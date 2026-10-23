@@ -57,6 +57,9 @@ mode and views subscribe to the store.
   diatonic triad, flagged `filterIgnored`). A test checks that `analyze` + `romanFor` give back the same numeral for
   every diatonic chord in all 24 keys. `inversions.ts`: `withInversion` adds a random required inversion (root
   position included; the bass is a chord tone up to the 7th, never a 9th; `atInversion` asks for a specific one).
+  `earTraining.ts`: ear training by scale degree (see "Ear training" below): `EAR_DEGREES`, options, `pickTonic`,
+  `tonicMidi`, `makeEarPrompt` and `degreeName`; answers are judged by `reduceNotePractice`, which is generic in its
+  prompt for this.
   `progressions.ts`: `PROGRESSIONS`, the app's shared list of popular progressions (id, name, major/minor, steps of
   numeral + scale degree + chord type, a `weight` for how common it is, and style `tags`: basic, pop, jazz,
   classical; minor uses the natural scale, so VII not vii°). There is deliberately no user selector: other features
@@ -78,7 +81,10 @@ mode and views subscribe to the store.
   reading back and export files), `store.ts` (the `ProgressStore` interface and an in-memory one), `idbStore.ts`
   (IndexedDB), `recorder.ts` (stamps and stores records; `uuid`), `stats.ts` (what the Progress view charts, worked
   out from records; pure).
-- `src/audio/click.ts`: the metronome click (Web Audio look-ahead scheduler that follows the transport).
+- `src/audio/`: `context.ts` (the one shared AudioContext and the autoplay unlock on any click, tap or key; a MIDI
+  note isn't a gesture), `click.ts` (the metronome click: Web Audio look-ahead scheduler that follows the transport),
+  `tones.ts` (ear training: a synthesised drone and piano-ish note, no samples; `blocked()` while audio waits for a
+  gesture).
 - `src/views/`: DOM rendering only: `beat.ts` (the beat light), `staff.ts` (VexFlow; also `staffCorner`), `staffCorner.ts`
   (`fitToStaffCorner`), `charts.ts` (line and column time charts: pure SVG builders + `mountChart` with the hover
   layer), `progressView.ts` (the Progress view), `chordName.ts` (also `chordSymbolHtml`),
@@ -137,7 +143,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 271 tests (54 voicings) should pass
+npm test           # Vitest: 282 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -303,6 +309,20 @@ A set of prescriptive exercises played one after another, e.g. every major scale
   then least even; at most three, never clean ones).
 - **Built:** major scales; diatonic chords; scale then diatonic chords; each round the circle.
 
+## Ear training (mode "ear", `src/modes/earTraining.ts`)
+First mode: scale degrees over a drone. A drone sounds the tonic (an octave below, plus the octave above it), the
+app plays one note over it (the tonic F♯3–F4, the note up to a 7th above), and the player plays that note in any
+octave. Wrong notes are named as a degree ("That was ♭3 (E♭)"); the prompt shows "?" until answered, then the
+degree. Replay plays the note again; Skip moves on. Options (saved, `Settings.ear`): the drone's tonic, or Random
+(a new key every `PROMPTS_PER_KEY` = 10 prompts, with 1.5 s of drone before the first note in a key); and the
+degrees on offer (1–7 of the major scale), starting with 1 and 5, added by the player as they get easy. Each
+prompt is a drill record (`drill: "ear"`, prompt "Degree 5", key and degrees in `detail`), charted with the other
+drills (4th series colour). The staff shows what's played, spelled in the drone's key. Sound comes from the browser
+here (unlike the user's keyboard, which they monitor through Ableton); audio waits for a click or computer key
+after a reload, and the prompt says so.
+**Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,
+intervals and chord qualities.
+
 ## Practice history
 Everything practised is recorded, and the **Progress** page charts it.
 - **Records, not stats:** plain JSON, only ever added. `run` (one per finished exercise run, alone or in a routine:
@@ -364,8 +384,9 @@ Everything practised is recorded, and the **Progress** page charts it.
    Prescriptive exercises (above): scales and diatonic chords, and routines of them round the circle of fifths.
    **Exercises as data:** a prompt generator, a matcher with configurable tolerances (any voicing or a specific
    inversion, octave sensitivity, timing window) and feedback.
-4. **Audio:** the metronome is **built** (see "Metronome"). Still to do: a small sampled piano for ear training.
-   Keep it switchable, since the user often monitors through Ableton.
+4. **Audio:** the metronome is **built** (see "Metronome"), and ear training's synthesised drone and notes (see
+   "Ear training"). Maybe later: a small sampled piano. Keep it switchable, since the user often monitors through
+   Ableton.
 5. **Persistence:** practice history is **built** (see "Practice history"): IndexedDB with schema versioning and
    JSON export/import, and the Progress view. Local-first, no accounts.
 6. **Tests:** the voicing corpus, recorded MIDI performances replayed through the whole pipeline, and occasional

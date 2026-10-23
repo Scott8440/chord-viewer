@@ -2,6 +2,7 @@
 // it the same way). A look-ahead scheduler: every 25 ms, clicks that must start within the next 120 ms of the audio
 // clock are scheduled on it, so timer jitter never makes a click late, however much output latency there is.
 import { beatAt, beatMs, timeOfBeat, type Transport } from "../timing/transport";
+import { audioContext, unlockAudio } from "./context";
 
 const TICK_MS = 25;
 const AHEAD_MS = 120;
@@ -26,23 +27,6 @@ export function createClickPlayer(onStatus: (status: ClickStatus) => void = () =
   /** Performance time of the last click scheduled. Kept by time, not beat number, so a new tempo or anchor carries
    *  on without a doubled click (nothing within half a beat of it is scheduled) */
   let lastClick = -Infinity;
-
-  // iOS: play through the ring/silent switch, like a music app (Safari 16.4+; elsewhere this does nothing)
-  const session = (navigator as { audioSession?: { type: string } }).audioSession;
-  if (session) try { session.type = "playback"; } catch {}
-
-  // Browsers only start audio after a user gesture. Listen in the capture phase so nothing can swallow it, and on
-  // every gesture event, since browsers differ in which count (iOS wants touchend or click, not pointerdown)
-  function unlock() {
-    if (!ctx || ctx.state === "running") return;
-    void ctx.resume().then(report);
-    // Older iOS only unlocks once a sound starts inside the gesture: a silent one will do
-    const silent = ctx.createBufferSource();
-    silent.buffer = ctx.createBuffer(1, 1, 22050);
-    silent.connect(ctx.destination);
-    silent.start();
-  }
-  for (const type of ["pointerdown", "touchend", "click", "keydown"]) addEventListener(type, unlock, { capture: true });
 
   let last: ClickStatus = { blocked: false, outputLatencyMs: null };
   function report() {
@@ -98,11 +82,11 @@ export function createClickPlayer(onStatus: (status: ClickStatus) => void = () =
       transport = t;
       if (!t) { clearInterval(timer); timer = undefined; lastClick = -Infinity; report(); return; }
       if (!ctx) {
-        ctx = new AudioContext();
-        ctx.onstatechange = report;
+        ctx = audioContext();
+        ctx.addEventListener("statechange", report);
       }
-      // Works when this follows a gesture (ticking the Metronome box); otherwise unlock() does it on the next one
-      unlock();
+      // Works when this follows a gesture (ticking the Metronome box); otherwise the next gesture does it
+      unlockAudio();
       report();
       timer ??= setInterval(schedule, TICK_MS);
       schedule();

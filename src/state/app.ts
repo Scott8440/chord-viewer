@@ -1,6 +1,7 @@
 // Whole-app state: the performance, a history of recent input events, and user settings.
 import { DEFAULT_CHORD_TYPES, sanitizeChordTypes } from "../exercises/chordPractice";
 import { PROMPT_STYLES, type PromptStyle } from "../exercises/chordPrompt";
+import { sanitizeEarOptions, type EarOptions } from "../exercises/earTraining";
 import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/prescriptive";
 import { sanitizeRoutineOptions, type RoutineOptions } from "../exercises/routines";
 import type { InputEvent } from "../input/events";
@@ -10,7 +11,7 @@ import { initialPerformance, reducePerformance, type PerformanceState } from "./
 
 export const HISTORY_LIMIT = 512;
 
-export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "routines"] as const;
+export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "routines", "ear"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
@@ -31,6 +32,8 @@ export interface Settings {
   readonly exercise: ExerciseOptions;
   /** Which routine, and which way round the circle of fifths */
   readonly routine: RoutineOptions;
+  /** Ear training: the drone's tonic (or random) and which scale degrees it asks for */
+  readonly ear: EarOptions;
   /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
   readonly latencyMs: number;
   /** The latency has been dealt with: calibrated, set by hand, or calibration declined. Until it is, starting the
@@ -48,6 +51,7 @@ export interface SavedSettings {
   inversions?: unknown;
   exercise?: unknown;
   routine?: unknown;
+  ear?: unknown;
   latencyMs?: unknown;
   latencyCalibrated?: unknown;
 }
@@ -81,6 +85,7 @@ export type AppAction =
   | { type: "setInversions"; on: boolean }
   | { type: "setExerciseOptions"; options: Partial<ExerciseOptions> }
   | { type: "setRoutineOptions"; options: Partial<RoutineOptions> }
+  | { type: "setEarOptions"; options: Partial<EarOptions> }
   /** Calibrated or typed in: either way, the latency counts as dealt with */
   | { type: "setLatency"; ms: number }
   /** Calibration declined */
@@ -110,6 +115,7 @@ export function createAppState(saved: SavedSettings = {}): AppState {
       inversions: saved.inversions === true,
       exercise: sanitizeExerciseOptions(saved.exercise),
       routine: sanitizeRoutineOptions(saved.routine),
+      ear: sanitizeEarOptions(saved.ear),
       latencyMs: sanitizeLatency(saved.latencyMs),
       // A latency saved before this flag existed was calibrated or typed in, unless it's the default 0
       latencyCalibrated: saved.latencyCalibrated === true || sanitizeLatency(saved.latencyMs) !== 0,
@@ -148,6 +154,11 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       const routine = sanitizeRoutineOptions({ ...s.settings.routine, ...a.options });
       return routine.id === s.settings.routine.id && routine.direction === s.settings.routine.direction ? s
         : { ...s, settings: { ...s.settings, routine } };
+    }
+    case "setEarOptions": {
+      const ear = sanitizeEarOptions({ ...s.settings.ear, ...a.options });
+      return ear.tonic === s.settings.ear.tonic && ear.degrees.join() === s.settings.ear.degrees.join() ? s
+        : { ...s, settings: { ...s.settings, ear } };
     }
     case "setLatency": {
       const latencyMs = sanitizeLatency(a.ms);

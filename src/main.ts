@@ -7,11 +7,14 @@ import { $ } from "./app/dom";
 import { openHistory } from "./app/history";
 import { deviceId, loadSettings, saveSettingsOnChange } from "./app/storage";
 import { createClickPlayer } from "./audio/click";
+import { createTonePlayer } from "./audio/tones";
 import { CHORD_PRACTICE_GROUPS } from "./exercises/chordPractice";
+import { EAR_DEGREES } from "./exercises/earTraining";
 import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
 import { createMidiSource } from "./input/midi";
 import { startChordPractice } from "./modes/chordPractice";
+import { startEarTraining } from "./modes/earTraining";
 import { startFreePlay } from "./modes/freePlay";
 import { startMetronome } from "./modes/metronome";
 import { startNotePractice } from "./modes/notePractice";
@@ -90,6 +93,14 @@ const chordFilter = createFilterView({ summary: $("chordFilterSummary"), body: $
 chordFilter.render(store.getState().settings.chordTypes);
 $("chordFilters").addEventListener("toggle", () => $("chordFilterSummary").blur());   // so Space stays the pedal
 store.subscribe((s, prev) => { if (s.settings.chordTypes !== prev.settings.chordTypes) chordFilter.render(s.settings.chordTypes); });
+// Ear training: which scale degrees it asks for (start with 1 and 5, add more as they get easy)
+const earFilter = createFilterView({ summary: $("earFilterSummary"), body: $("earFilterBody") },
+  [{ label: "Scale degrees", types: EAR_DEGREES }], "Degrees",
+  degrees => store.dispatch({ type: "setEarOptions", options: { degrees } }));
+earFilter.render(store.getState().settings.ear.degrees);
+$("earFilters").addEventListener("toggle", () => $("earFilterSummary").blur());
+store.subscribe((s, prev) => { if (s.settings.ear.degrees !== prev.settings.ear.degrees) earFilter.render(s.settings.ear.degrees); });
+const tones = createTonePlayer();
 
 /* ---------------------------------------------------------------
    Modes: exactly one runs at a time and owns the right-hand card
@@ -122,6 +133,7 @@ const startModeView = (id: View): Mode =>
   : id === "chords" ? startChordPractice(store, practiceViews, history.recorder)
   : id === "progressions" ? startProgressionPractice(store, practiceViews, history.recorder)
   : id === "routines" ? startRoutinePractice(store, practiceViews, history.recorder)
+  : id === "ear" ? startEarTraining(store, { ...practiceViews, tones }, history.recorder)
   : id === "progress" ? startProgress({ progress: progressView }, history.store, history.saved)
   : startSequencePractice(store, practiceViews, id, history.recorder);
 
@@ -155,6 +167,10 @@ function panic() {
 $("practiceSkip").onclick = () => {
   $("practiceSkip").blur();   // so Space (pedal) doesn't press it again
   mode.skip?.();
+};
+$("practiceReplay").onclick = () => {
+  $("practiceReplay").blur();
+  mode.replay?.();
 };
 $("routineRestart").onclick = () => {
   $("routineRestart").blur();

@@ -4,6 +4,7 @@
 // clashes between devices), UTC epoch-ms times, a schema version per record, and the device that made it.
 // Pure: the builders take everything they need, including the record's id, time and device (see recorder.ts).
 import type { ChordPrompt } from "../exercises/chordPrompt";
+import type { EarPrompt } from "../exercises/earTraining";
 import type { NotePrompt } from "../exercises/notePractice";
 import type { ExerciseOptions, PrescriptiveId } from "../exercises/prescriptive";
 import type { ProgressionPrompt } from "../exercises/progressions";
@@ -82,9 +83,9 @@ export interface RoutineBody {
   tempo: TempoSettings | null;
 }
 
-export type DrillKind = "notes" | "chords" | "progressions";
+export type DrillKind = "notes" | "chords" | "progressions" | "ear";
 
-/** One prompt of a drill (note, chord or progression practice), answered or skipped. */
+/** One prompt of a drill (note, chord, progression practice or ear training), answered or skipped. */
 export interface DrillBody {
   kind: "drill";
   drill: DrillKind;
@@ -158,6 +159,15 @@ export function chordDrillBody(p: ChordPrompt, answered: boolean, missed: boolea
   if (p.inversion) detail.inversion = p.inversion.number;
   if (p.roman) { detail.numeral = p.roman.numeral; detail.key = p.roman.keyValue; }
   return { kind: "drill", drill: "chords", prompt: chordLabel(p), detail, outcome: outcomeOf(answered, missed), ms: Math.round(ms) };
+}
+
+/** An ear-training prompt, by degree ("Degree 5") so the trickiest degrees show across keys */
+export function earDrillBody(p: EarPrompt, degrees: readonly string[], answered: boolean, missed: boolean, ms: number): DrillBody {
+  return {
+    kind: "drill", drill: "ear", prompt: `Degree ${p.degree}`,
+    detail: { degree: p.degree, key: p.keyValue, note: p.note, degrees: degrees.join(",") },
+    outcome: outcomeOf(answered, missed), ms: Math.round(ms),
+  };
 }
 
 /** A progression, judged as a whole: first try only if every chord was */

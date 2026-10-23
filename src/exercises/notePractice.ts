@@ -22,8 +22,9 @@ export function makeNotePrompt(rng: Rng, key: KeyContext | null, previous?: Note
   return { pc, name };
 }
 
-export interface NotePracticeState {
-  prompt: NotePrompt;
+/** Generic in the prompt, so other "play this pitch class" drills (ear training) judge the same way */
+export interface NotePracticeState<P extends NotePrompt = NotePrompt> {
+  prompt: P;
   /** waiting: nothing played yet; wrong: last note was wrong; correct: answered, about to move on */
   status: "waiting" | "wrong" | "correct";
   /** Last note played for this prompt (MIDI number) */
@@ -36,16 +37,16 @@ export interface NotePracticeState {
   firstTry: number;
 }
 
-export type NotePracticeAction =
+export type NotePracticeAction<P extends NotePrompt = NotePrompt> =
   | { type: "play"; note: number }
-  | { type: "next"; prompt: NotePrompt }
-  | { type: "skip"; prompt: NotePrompt };
+  | { type: "next"; prompt: P }
+  | { type: "skip"; prompt: P };
 
-export function initialNotePractice(prompt: NotePrompt): NotePracticeState {
+export function initialNotePractice<P extends NotePrompt>(prompt: P): NotePracticeState<P> {
   return { prompt, status: "waiting", played: null, missed: false, answered: 0, firstTry: 0 };
 }
 
-export function reduceNotePractice(s: NotePracticeState, a: NotePracticeAction): NotePracticeState {
+export function reduceNotePractice<P extends NotePrompt>(s: NotePracticeState<P>, a: NotePracticeAction<P>): NotePracticeState<P> {
   switch (a.type) {
     case "play":
       if (s.status === "correct") return s;   // already answered; ignore notes until the next prompt

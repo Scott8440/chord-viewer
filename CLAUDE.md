@@ -74,6 +74,9 @@ mode and views subscribe to the store.
   (state per key, shared by the routine row and the circle).
 - `src/timing/`: pure. `transport.ts` (`Transport`, `beatAt`, `timeOfBeat`, `retempo`), `grid.ts` (judging a
   step against the metronome: `judgeTime`, `timingVerdict`, `timingSummary`) and `calibration.ts` (tap-along latency). See "Metronome" below.
+- `src/progress/`: practice history (see "Practice history" below): `records.ts` (record types, pure builders,
+  reading back and export files), `store.ts` (the `ProgressStore` interface and an in-memory one), `idbStore.ts`
+  (IndexedDB), `recorder.ts` (stamps and stores records; `uuid`).
 - `src/audio/click.ts`: the metronome click (Web Audio look-ahead scheduler that follows the transport).
 - `src/views/`: DOM rendering only: `beat.ts` (the beat light), `staff.ts` (VexFlow; also `staffCorner`), `staffCorner.ts`
   (`fitToStaffCorner`), `chordName.ts` (also `chordSymbolHtml`),
@@ -127,7 +130,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 246 tests (54 voicings) should pass
+npm test           # Vitest: 259 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -293,6 +296,31 @@ A set of prescriptive exercises played one after another, e.g. every major scale
   then least even; at most three, never clean ones).
 - **Built:** major scales; diatonic chords; scale then diatonic chords; each round the circle.
 
+## Practice history
+Phase 1 of progress tracking: everything is recorded; charts come next (a "Progress" view with routine time and
+mistakes, per-exercise mistakes and timing, practice time per day).
+- **Records, not stats:** plain JSON, only ever added. `run` (one per finished exercise run, alone or in a routine:
+  exercise, `exerciseId` with the settings that change what's played, key, metronome settings or null, mistakes,
+  duration, BPM, evenness, timing, routine session), `routine` (one per session, finished or left part-way: routine,
+  direction, start, first-to-last-note time, each item's outcome, total mistakes, metronome), `drill` (one per note,
+  chord or progression prompt answered or skipped: the prompt as asked, grouping details such as chord type and
+  inversion, firstTry/corrected/skipped, time to answer). Charts are worked out from these, so new charts don't need
+  new records.
+- **Ready to move to a server later:** every record has a random UUID, a schema version (`RECORD_VERSION`; readers go
+  through `upgradeRecord`, which drops malformed records and ones from a newer version), a UTC time and a device id
+  (a UUID kept in localStorage). Everything goes through the `ProgressStore` interface (`add`, `all`, `merge` by id,
+  `count`); only `idbStore.ts` knows about IndexedDB (database `chordDisplay` v1, store `records` keyed by id, index on
+  `at`). A server would be another `ProgressStore`, or a sync step behind IndexedDB.
+- **Recording:** modes hand finished things to a `Recorder` (passed in by main; tests use `noRecorder`), which stamps
+  and stores in the background. Sequence practice records each run; routine practice each item's run (with the
+  session id) and the session when it finishes or is left (restart, another routine, another mode); drills each
+  prompt when answered or skipped (a new prompt from a settings change isn't a skip).
+- **Footer:** the record count, Export (a `chord-display-history-<date>.json` file) and Import (merges by id, so
+  importing twice adds nothing; says how many were new). If IndexedDB won't open, history is kept in memory and the
+  footer says it isn't saved.
+- **Storage is per address:** the GitHub Pages site and a local file each have their own history; export/import moves
+  it. The user plans to practise on GitHub Pages.
+
 ## Planned architecture (agreed direction; do this first)
 1. ✅ **Done.** **Port to Vite + TypeScript** in this repo with identical behavior. Keep single-file offline output
    (`vite-plugin-singlefile`), and possibly a PWA later. Move the voicing corpus to Vitest and run it against the
@@ -314,7 +342,8 @@ A set of prescriptive exercises played one after another, e.g. every major scale
    inversion, octave sensitivity, timing window) and feedback.
 4. **Audio:** the metronome is **built** (see "Metronome"). Still to do: a small sampled piano for ear training.
    Keep it switchable, since the user often monitors through Ableton.
-5. **Persistence:** IndexedDB with schema versioning and JSON export/import. Local-first, no accounts.
+5. **Persistence:** practice history is **built** (see "Practice history"): IndexedDB with schema versioning and
+   JSON export/import. Local-first, no accounts. Next: the Progress view with charts.
 6. **Tests:** the voicing corpus, recorded MIDI performances replayed through the whole pipeline, and occasional
    notation screenshot tests.
 

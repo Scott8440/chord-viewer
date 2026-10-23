@@ -1,5 +1,7 @@
 // Routine mode: plays a routine's exercises one after another, moving on whenever an item's run finishes.
-import { initialRoutine, keyProgress, reduceRoutine, routineById, type RoutineAction, type RoutineState } from "../exercises/routines";
+import { initialRoutine, itemExercise, keyProgress, reduceRoutine, routineById, type RoutineAction, type RoutineState } from "../exercises/routines";
+import { noRecorder, toWallTime, uuid, type Recorder } from "../progress/recorder";
+import { routineBody, runBody } from "../progress/records";
 import { buildKey } from "../theory";
 import type { CircleView } from "../views/circleOfFifths";
 import { routineDisplay, type PracticeView } from "../views/practice";
@@ -8,13 +10,23 @@ import { createPerformanceDrawer, heldNotes, onPlayerInput, onTimingGrid, timing
 
 export function startRoutinePractice(store: AppStore, views: {
   staff: StaffView; practice: PracticeView; circle: CircleView;
-}): Mode {
+}, recorder: Recorder = noRecorder): Mode {
   const fresh = (): RoutineState => {
     const s = store.getState();
     return initialRoutine(routineById(s.settings.routine.id)!, s.settings.routine.direction, s.settings.exercise, heldNotes(s),
                           timingGrid(s));
   };
   let state = fresh();
+  /** Ties the session's run records to its routine record */
+  let session = uuid();
+
+  /** Records the session: when it finishes, or when it's left part-way (restart, another routine, another mode) */
+  function recordRoutine() {
+    if (state.startTime == null) return;   // nothing played
+    const { routine, latencyMs } = store.getState().settings;
+    const s = state;
+    recorder.record(routineBody(s, session, routine.direction, latencyMs, i => itemExercise(s.items[i], s.base), toWallTime));
+  }
   // The staff follows the key of the item in progress
   const drawer = createPerformanceDrawer(store, views, () => buildKey(state.current.exercise.keyValue));
 
@@ -35,11 +47,21 @@ export function startRoutinePractice(store: AppStore, views: {
     const prev = state;
     state = reduceRoutine(state, action);
     if (state === prev) return;
+    // An item's run finished: record it, as part of this session
+    const finished = state.outcomes.length > prev.outcomes.length ? state.outcomes[prev.outcomes.length] : null;
+    if (finished && finished !== "skipped") {
+      const i = prev.outcomes.length, item = state.items[i];
+      const { latencyMs } = store.getState().settings;
+      recorder.record(runBody(item.exercise, itemExercise(item, state.base), state.base, latencyMs, finished, session));
+    }
+    if (state.status === "done" && prev.status !== "done") recordRoutine();
     render();
     if (state.current.exercise !== prev.current.exercise) drawer.schedule();
   }
   function restart() {
+    if (state.status !== "done") recordRoutine();
     state = fresh();
+    session = uuid();
     render();
     drawer.schedule();
   }
@@ -59,6 +81,7 @@ export function startRoutinePractice(store: AppStore, views: {
 
   return {
     stop() {
+      if (state.status !== "done") recordRoutine();
       offInput();
       offGrid();
       offSettings();

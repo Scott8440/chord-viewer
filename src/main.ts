@@ -14,6 +14,10 @@ import { startNotePractice } from "./modes/notePractice";
 import { IDLE_MS, PAGE_SETUP } from "./modes/page";
 import { startCalibrating } from "./modes/calibrate";
 import { startMetronome } from "./modes/metronome";
+import { openIdbStore } from "./progress/idbStore";
+import { createRecorder, uuid } from "./progress/recorder";
+import { exportFile, parseExport } from "./progress/records";
+import { createMemoryStore, type ProgressStore } from "./progress/store";
 import { onIdle, type Mode } from "./modes/performance";
 import { startProgressionPractice } from "./modes/progressionPractice";
 import { startRoutinePractice } from "./modes/routinePractice";
@@ -42,6 +46,8 @@ const STORAGE = {
   key: "chordDisplay.key", mode: "chordDisplay.mode", chordTypes: "chordDisplay.chordTypes",
   promptStyle: "chordDisplay.promptStyle", inversions: "chordDisplay.inversions", exercise: "chordDisplay.exercise",
   routine: "chordDisplay.routine", latency: "chordDisplay.latency", latencyCalibrated: "chordDisplay.latencyCalibrated",
+  /** This browser's random id for practice history records */
+  device: "chordDisplay.device",
   /** Scale options saved by an earlier version ({key, minorForm, octaves}), read if there are no exercise options */
   legacyScale: "chordDisplay.scale",
 };
@@ -132,6 +138,56 @@ bindSelect($("routineDir"), s => s.routine.direction,
   direction => ({ type: "setRoutineOptions", options: { direction: direction as CircleDirection } }));
 
 /* ---------------------------------------------------------------
+   Practice history: kept in IndexedDB (in memory only if the browser won't store anything), recorded by the modes
+   --------------------------------------------------------------- */
+/** This browser's id, stamped on every record so histories from several devices can be merged later */
+const device = load(STORAGE.device) ?? (() => { const id = uuid(); save(STORAGE.device, id); return id; })();
+let historySaved = true;
+const history: Promise<ProgressStore> = openIdbStore().catch(e => {
+  console.error("Practice history won't be saved:", e);
+  historySaved = false;
+  return createMemoryStore();
+});
+const recorder = createRecorder(history, device);
+
+async function showHistoryCount() {
+  const n = await (await history).count();
+  $("historyCount").textContent = `${n} record${n === 1 ? "" : "s"}` + (historySaved ? "" : " (not saved in this browser)");
+}
+void showHistoryCount();
+recorder.onRecorded(() => void showHistoryCount());
+
+let historyNoteTimer: ReturnType<typeof setTimeout> | undefined;
+function historyNote(text: string) {
+  $("historyNote").textContent = text;
+  clearTimeout(historyNoteTimer);
+  historyNoteTimer = setTimeout(() => { $("historyNote").textContent = ""; }, 6000);
+}
+$("historyExport").onclick = async () => {
+  $("historyExport").blur();
+  const records = await (await history).all();
+  const blob = new Blob([JSON.stringify(exportFile(records, Date.now()))], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `chord-display-history-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+};
+$("historyImport").onclick = () => { $("historyImport").blur(); $("historyFile").click(); };
+$<HTMLInputElement>("historyFile").onchange = async () => {
+  const input = $<HTMLInputElement>("historyFile"), file = input.files?.[0];
+  input.value = "";   // so the same file can be picked again
+  if (!file) return;
+  const parsed = parseExport(await file.text());
+  if ("error" in parsed) { historyNote(parsed.error); return; }
+  const added = await (await history).merge(parsed.records);
+  const already = parsed.records.length - added;
+  historyNote(`Imported ${added} new record${added === 1 ? "" : "s"}` + (already ? `, ${already} already here` : "") +
+              (parsed.skipped ? `, ${parsed.skipped} unreadable` : "") + ".");
+  void showHistoryCount();
+};
+
+/* ---------------------------------------------------------------
    Views
    --------------------------------------------------------------- */
 const header = createHeaderView({
@@ -208,11 +264,11 @@ function startMode(id: ModeId): Mode {
 }
 const startModeView = (id: ModeId): Mode =>
   id === "free" ? startFreePlay(store, { staff, chordName, circle })
-  : id === "notes" ? startNotePractice(store, practiceViews)
-  : id === "chords" ? startChordPractice(store, practiceViews)
-  : id === "progressions" ? startProgressionPractice(store, practiceViews)
-  : id === "routines" ? startRoutinePractice(store, practiceViews)
-  : startSequencePractice(store, practiceViews, id);
+  : id === "notes" ? startNotePractice(store, practiceViews, recorder)
+  : id === "chords" ? startChordPractice(store, practiceViews, recorder)
+  : id === "progressions" ? startProgressionPractice(store, practiceViews, recorder)
+  : id === "routines" ? startRoutinePractice(store, practiceViews, recorder)
+  : startSequencePractice(store, practiceViews, id, recorder);
 
 /**
  * The exercises a mode runs (one, or a routine's), and the keys they are in: these decide which exercise options

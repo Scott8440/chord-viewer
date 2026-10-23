@@ -194,6 +194,10 @@ main {
 #practiceFeedback.wrong { color: var(--warn); }
 #practiceFooter { margin-top: 18px; display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 14px; min-height: 28px; }
 
+#history { margin-left: auto; }
+#historyNote { margin-left: 6px; color: var(--accent); }
+button.link { background: none; border: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+button.link:hover { color: var(--text); }
 footer {
   padding: 10px 20px 14px; color: var(--muted); font-size: 12px;
   display: flex; gap: 18px; flex-wrap: wrap; align-items: center;

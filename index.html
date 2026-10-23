@@ -121,6 +121,10 @@
   <label class="opt"><input type="checkbox" id="optPedal" checked> Pedal-held notes count toward chord</label>
   <span>Computer keys: <kbd>A</kbd>–<kbd>K</kbd> white, <kbd>W</kbd><kbd>E</kbd><kbd>T</kbd><kbd>Y</kbd><kbd>U</kbd> black, <kbd>Z</kbd>/<kbd>X</kbd> octave, <kbd>Space</kbd> pedal, <kbd>Esc</kbd> clear</span>
   <span id="kbdOct"></span>
+  <span id="history" title="Your practice history, kept in this browser">History: <span id="historyCount">…</span>
+    · <button class="link" id="historyExport">Export</button> · <button class="link" id="historyImport">Import</button>
+    <input type="file" id="historyFile" accept=".json,application/json" hidden>
+    <span id="historyNote"></span></span>
 </footer>
 </body>
 </html>

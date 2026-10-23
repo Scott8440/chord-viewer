@@ -16,6 +16,8 @@ export interface TonePlayer {
 const freq = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
 const DRONE_GAIN = 0.07, DRONE_FADE_IN = 1.2, DRONE_FADE_OUT = 0.6;
+/** The drone's slow wobble is the two saws beating: wider detune beats faster */
+const DRONE_DETUNE_CENTS = 1.5, DRONE_LOWPASS_HZ = 550;
 const NOTE_GAIN = 0.3, NOTE_DECAY = 3.2;
 /** Piano-ish: partials (multiple, level); higher ones die away faster */
 const NOTE_PARTIALS = [[1, 1], [2, 0.45], [3, 0.2], [4, 0.1]] as const;
@@ -42,9 +44,9 @@ export function createTonePlayer(): TonePlayer {
     // A warm low tone: two slightly detuned saws, softened, plus a pure octave above
     const filter = c.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = 900;
+    filter.frequency.value = DRONE_LOWPASS_HZ;
     filter.connect(out).connect(c.destination);
-    const oscs = [-4, 4].map(cents => {
+    const oscs = [-DRONE_DETUNE_CENTS, DRONE_DETUNE_CENTS].map(cents => {
       const o = c.createOscillator();
       o.type = "sawtooth";
       o.frequency.value = freq(midi);

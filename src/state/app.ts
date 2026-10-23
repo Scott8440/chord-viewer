@@ -11,7 +11,7 @@ import { initialPerformance, reducePerformance, type PerformanceState } from "./
 
 export const HISTORY_LIMIT = 512;
 
-export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "routines", "ear"] as const;
+export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "routines", "ear", "earMelody"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
@@ -32,7 +32,7 @@ export interface Settings {
   readonly exercise: ExerciseOptions;
   /** Which routine, and which way round the circle of fifths */
   readonly routine: RoutineOptions;
-  /** Ear training: the drone's tonic (or random) and which scale degrees it asks for */
+  /** Ear training (both modes): the tonic (or random), which scale degrees it asks for, and the melody length */
   readonly ear: EarOptions;
   /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
   readonly latencyMs: number;
@@ -157,7 +157,8 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
     }
     case "setEarOptions": {
       const ear = sanitizeEarOptions({ ...s.settings.ear, ...a.options });
-      return ear.tonic === s.settings.ear.tonic && ear.degrees.join() === s.settings.ear.degrees.join() ? s
+      return ear.tonic === s.settings.ear.tonic && ear.degrees.join() === s.settings.ear.degrees.join() &&
+        ear.melodyLength === s.settings.ear.melodyLength ? s
         : { ...s, settings: { ...s.settings, ear } };
     }
     case "setLatency": {

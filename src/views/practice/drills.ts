@@ -2,13 +2,14 @@
 
 import type { ChordPracticeState } from "../../exercises/chordPractice";
 import type { PromptStyle } from "../../exercises/chordPrompt";
-import { degreeName, type EarState } from "../../exercises/earTraining";
+import { degreeName, type EarState, type MelodyState } from "../../exercises/earTraining";
 import type { NotePracticeState } from "../../exercises/notePractice";
 import type { ProgressionState } from "../../exercises/progressions";
 import { buildKey, chromaOf, FLAT, prettyAcc, SHARP, templateById, type KeyContext } from "../../theory";
 import { chordSymbolHtml } from "../chordName";
 import { esc } from "../html";
 import { chordStepHtml, describeMiss, inversionName, romanHtml } from "./chords";
+import { stepHtml } from "./steps";
 import type { PracticeDisplay } from "./view";
 
 const scoreText = (s: { answered: number; firstTry: number }) => s.answered ? `${s.firstTry} / ${s.answered} right first time` : "";
@@ -50,6 +51,34 @@ export function earDisplay(s: EarState, degrees: readonly string[], soundBlocked
     size: "note",
     sub: soundBlocked ? "Click anywhere or press a computer key to start the sound"
       : `Drone on ${prettyAcc(key.tonic)} · degrees ${degrees.map(prettyAcc).join(", ")}`,
+    status: s.status, feedback, score: scoreText(s), stopLabel: "Stop",
+  };
+}
+
+/** Ear-training melodies: a dot per note, green once played back, its degree revealed underneath */
+export function earMelodyDisplay(s: MelodyState, degrees: readonly string[], soundBlocked: boolean, running: boolean): PracticeDisplay {
+  const key = buildKey(s.prompt.keyValue)!;
+  const steps = s.prompt.notes.map((n, i) => stepHtml(
+    i < s.index ? "done" : i === s.index && running ? "current" : "upcoming", "•", i < s.index ? esc(prettyAcc(n.degree)) : ""));
+  const promptHtml = `<div class="seqRow">${steps.join("")}</div>`;
+  if (!running) {
+    return {
+      label: "Stopped", promptHtml, size: "sequence", sub: "Press Start to hear the melody again",
+      status: "waiting", feedback: "", score: scoreText(s), stopLabel: "Start",
+    };
+  }
+  let feedback = "";
+  if (s.status === "correct") feedback = "✓ " + s.prompt.notes.map(n => prettyAcc(n.name)).join(" ");
+  else if (s.status === "wrong" && s.played != null) {
+    const pc = s.played % 12;
+    feedback = `✗ That was ${prettyAcc(degreeName(pc - chromaOf(key.tonic)))} (${prettyAcc(key.spell[pc])}). Listen again`;
+  }
+  const n = s.prompt.notes.length;
+  return {
+    label: "Play back the notes after the root, in order, in any octave",
+    promptHtml, size: "sequence",
+    sub: soundBlocked ? "Click anywhere or press a computer key to start the sound"
+      : `Root ${prettyAcc(key.tonic)} · ${n} notes · degrees ${degrees.map(prettyAcc).join(", ")}`,
     status: s.status, feedback, score: scoreText(s), stopLabel: "Stop",
   };
 }

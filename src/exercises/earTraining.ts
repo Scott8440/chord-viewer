@@ -1,5 +1,6 @@
-// Ear training, scale degrees: a drone sounds the tonic, the app plays one note over it, and the player finds that
-// note on the keyboard (any octave). The player chooses which degrees can come up, starting with just 1 and 5.
+// Ear training. Scale degrees: a drone sounds the tonic, the app plays one note over it, and the player finds that
+// note on the keyboard (any octave). Melodies: the root, then a few notes in the key, played back in order. Both
+// share the options: which degrees can come up (starting with just 1 and 5) and the tonic.
 // Pure data and functions; the mode in src/modes/earTraining.ts drives it and makes the sound. Answers are judged
 // like note practice (reduceNotePractice).
 import { buildKey, chromaOf, KEY_MAJORS } from "../theory";
@@ -22,9 +23,15 @@ export const EAR_TONICS: readonly string[] = ["random", ...KEY_MAJORS];
 /** With a random tonic, a new key every this many prompts */
 export const PROMPTS_PER_KEY = 10;
 
+/** Melodies: how many notes after the root */
+export const MELODY_LENGTHS: readonly number[] = [2, 3, 4, 5, 6, 8];
+export const DEFAULT_MELODY_LENGTH = 3;
+
+/** Shared by both ear-training modes; `melodyLength` is for melodies only */
 export interface EarOptions {
   tonic: string;
   degrees: readonly string[];
+  melodyLength: number;
 }
 
 /** Keeps known degrees, in scale order; falls back to the defaults if nothing is left. */
@@ -38,6 +45,7 @@ export function sanitizeEarOptions(raw: unknown): EarOptions {
   return {
     tonic: EAR_TONICS.includes(o.tonic as string) ? o.tonic as string : "random",
     degrees: sanitizeEarDegrees(Array.isArray(o.degrees) ? o.degrees : DEFAULT_EAR_DEGREES),
+    melodyLength: MELODY_LENGTHS.includes(o.melodyLength as number) ? o.melodyLength as number : DEFAULT_MELODY_LENGTH,
   };
 }
 
@@ -81,4 +89,95 @@ export function makeEarPrompt(rng: Rng, tonic: string, degrees: readonly string[
     note = tonicMidi(tonic) + d.semitones + 12 * Math.floor(rng() * EAR_OCTAVES);
   } while (previous && note === previous.note);
   return { keyValue: tonic + ":major", degree: d.id, note, pc: note % 12, name: buildKey(tonic + ":major")!.spell[note % 12] };
+}
+
+/* ---------------------------------------------------------------
+   Melodies: the root, then a few notes in the key; the player plays the notes back in order
+   --------------------------------------------------------------- */
+
+export interface MelodyNote {
+  degree: string;
+  /** MIDI */
+  note: number;
+  pc: number;
+  name: string;
+}
+
+export interface MelodyPrompt {
+  keyValue: string;
+  /** The root played first (MIDI): the tonic at `tonicMidi` */
+  root: number;
+  notes: readonly MelodyNote[];
+}
+
+/** No leap between neighbouring notes is wider than this (semitones) */
+const MAX_LEAP = 12;
+
+/**
+ * A melody of `length` notes from the allowed degrees, over EAR_OCTAVES octaves from the root, with no leap over an
+ * octave and no note straight after itself (unless nothing else is in reach). Never the same melody twice running.
+ */
+export function makeMelodyPrompt(rng: Rng, tonic: string, degrees: readonly string[], length: number,
+                                 previous?: MelodyPrompt): MelodyPrompt {
+  const key = buildKey(tonic + ":major")!;
+  const root = tonicMidi(tonic);
+  const pool = EAR_DEGREES.filter(d => degrees.includes(d.id))
+    .flatMap(d => Array.from({ length: EAR_OCTAVES }, (_, o) => ({ degree: d.id, note: root + d.semitones + 12 * o })));
+  const pick = <T>(xs: readonly T[]) => xs[Math.floor(rng() * xs.length)];
+  for (let tries = 0; ; tries++) {
+    const notes: MelodyNote[] = [];
+    for (let i = 0; i < length; i++) {
+      const last = notes[i - 1]?.note;
+      const near = last === undefined ? pool : pool.filter(c => Math.abs(c.note - last) <= MAX_LEAP);
+      const fresh = near.filter(c => c.note !== last);
+      const c = pick(fresh.length ? fresh : near);
+      notes.push({ ...c, pc: c.note % 12, name: key.spell[c.note % 12] });
+    }
+    const same = previous && previous.keyValue === tonic + ":major" &&
+      previous.notes.length === notes.length && previous.notes.every((n, i) => n.note === notes[i].note);
+    // With very few notes on offer a repeat may be unavoidable
+    if (!same || tries > 20) return { keyValue: tonic + ":major", root, notes };
+  }
+}
+
+export interface MelodyState {
+  prompt: MelodyPrompt;
+  /** How many notes have been played back so far */
+  index: number;
+  /** waiting: playing it back; wrong: the last note was wrong (the step waits for the right one); correct: all played */
+  status: "waiting" | "wrong" | "correct";
+  /** The last note played (MIDI) */
+  played: number | null;
+  /** A wrong note was played on this melody */
+  missed: boolean;
+  answered: number;
+  firstTry: number;
+}
+
+export type MelodyAction =
+  | { type: "play"; note: number }
+  | { type: "next"; prompt: MelodyPrompt }
+  | { type: "skip"; prompt: MelodyPrompt };
+
+export function initialMelody(prompt: MelodyPrompt): MelodyState {
+  return { prompt, index: 0, status: "waiting", played: null, missed: false, answered: 0, firstTry: 0 };
+}
+
+export function reduceMelody(s: MelodyState, a: MelodyAction): MelodyState {
+  switch (a.type) {
+    case "play": {
+      if (s.status === "correct") return s;   // done; ignore notes until the next melody
+      // Each note in any octave, like the single-note drill
+      if (a.note % 12 !== s.prompt.notes[s.index].pc) return { ...s, status: "wrong", played: a.note, missed: true };
+      const index = s.index + 1;
+      if (index < s.prompt.notes.length) return { ...s, index, status: "waiting", played: a.note };
+      return { ...s, index, status: "correct", played: a.note, answered: s.answered + 1, firstTry: s.firstTry + (s.missed ? 0 : 1) };
+    }
+    case "next":
+      return { ...s, prompt: a.prompt, index: 0, status: "waiting", played: null, missed: false };
+    case "skip":
+      // A skipped melody counts as answered, but not right first time
+      return { ...s, prompt: a.prompt, index: 0, status: "waiting", played: null, missed: false,
+               answered: s.status === "correct" ? s.answered : s.answered + 1 };
+  }
 }

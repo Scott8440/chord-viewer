@@ -94,8 +94,8 @@ button {
 }
 button:hover { border-color: var(--muted); }
 
-/* Chart series (the reference palette's first four dark steps, in its fixed order) */
-:root { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; }
+/* Chart series (the reference palette's first five dark steps, in its fixed order) */
+:root { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; }
 
 main {
   flex: 1; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);

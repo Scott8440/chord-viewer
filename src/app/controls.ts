@@ -1,7 +1,7 @@
 // The settings controls: each shows a setting and dispatches changes to it, and `showControls` shows just the ones
 // the current mode (or page) uses.
 import type { PromptStyle } from "../exercises/chordPrompt";
-import { EAR_TONICS, PROMPTS_PER_KEY } from "../exercises/earTraining";
+import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTraining";
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
 import { ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
@@ -66,6 +66,9 @@ export function bindControls(store: AppStore) {
     $("earTonic").append(new Option(t === "random" ? `Random (new key every ${PROMPTS_PER_KEY})` : prettyAcc(t), t));
   }
   bindSelect($("earTonic"), s => s.ear.tonic, tonic => ({ type: "setEarOptions", options: { tonic } }));
+  for (const n of MELODY_LENGTHS) $("melodyLength").append(new Option(String(n), String(n)));
+  bindSelect($("melodyLength"), s => String(s.ear.melodyLength),
+    v => ({ type: "setEarOptions", options: { melodyLength: Number(v) } }));
   for (const r of ROUTINES) $("routineSel").append(new Option(r.name, r.id));
   bindSelect($("routineSel"), s => s.routine.id, id => ({ type: "setRoutineOptions", options: { id } }));
   bindSelect($("routineDir"), s => s.routine.direction,
@@ -101,7 +104,12 @@ export function showControls(state: AppState) {
   $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));
   $("inversionsOpt").hidden = $("chordFilters").hidden = id !== "chords";
   $("routineOptions").hidden = id !== "routines";
-  $("earOptions").hidden = $("practiceReplay").hidden = id !== "ear";
+  // Both ear-training modes share their options; melodies have no drone, so the tonic is just the key
+  const ear = id === "ear" || id === "earMelody";
+  $("earOptions").hidden = $("practiceReplay").hidden = !ear;
+  $("melodyLengthPick").hidden = id !== "earMelody";
+  $("droneTone").hidden = id !== "ear";
+  $("earTonicLabel").textContent = id === "earMelody" ? "Key" : "Drone";
   const used = new Set<ExerciseOption>(ex.ids.flatMap(e => PRESCRIPTIVE[e].options));
   if (!ex.ownKey) used.delete("key");
   $("exerciseOptions").hidden = !used.size;

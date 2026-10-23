@@ -5,8 +5,10 @@ import { audioContext, unlockAudio } from "./context";
 export interface TonePlayer {
   /** Sound a drone on this note (and an octave above), fading over from any drone already playing; null fades it out */
   drone(midi: number | null): void;
-  /** Play one note, `delay` seconds from now */
-  play(midi: number, delay?: number): void;
+  /** Play one note, `delay` seconds from now, ringing for about `ring` seconds */
+  play(midi: number, delay?: number, ring?: number): void;
+  /** Cut off every note playing or still to come (not the drone) */
+  stopNotes(): void;
   /** Audio is waiting for a click or key press (browser autoplay rules) */
   blocked(): boolean;
   /** Called whenever `blocked()` may have changed; returns a function that stops it */
@@ -34,6 +36,8 @@ export function createTonePlayer(): TonePlayer {
   let current: { stop(at: number): void; retone(): void } | null = null;
   let tone = DEFAULT_DRONE_TONE;
   const listeners = new Set<() => void>();
+  /** Notes playing or scheduled, until they end */
+  const notes = new Set<{ gain: GainNode; osc: OscillatorNode }>();
 
   function context(): AudioContext {
     if (!ctx) {
@@ -90,20 +94,34 @@ export function createTonePlayer(): TonePlayer {
       current?.stop(c.currentTime);
       current = midi == null ? null : startDrone(c, midi);
     },
-    play(midi, delay = 0) {
+    play(midi, delay = 0, ring = NOTE_DECAY) {
       const c = context();
       const t = c.currentTime + delay;
       for (const [multiple, level] of NOTE_PARTIALS) {
         const o = c.createOscillator(), g = c.createGain();
         o.frequency.value = freq(midi) * multiple;
-        const decay = NOTE_DECAY / multiple;
+        const decay = ring / multiple;
         g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(NOTE_GAIN * level, t + 0.008);
         g.gain.exponentialRampToValueAtTime(0.0005, t + decay);
         o.connect(g).connect(c.destination);
         o.start(t);
         o.stop(t + decay + 0.05);
+        const n = { gain: g, osc: o };
+        notes.add(n);
+        o.onended = () => notes.delete(n);
       }
+    },
+    stopNotes() {
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      for (const n of notes) {
+        // A quick fade rather than a cut, so it doesn't click
+        n.gain.gain.cancelScheduledValues(t);
+        n.gain.gain.setTargetAtTime(0, t, 0.015);
+        try { n.osc.stop(t + 0.1); } catch {}
+      }
+      notes.clear();
     },
     setDroneTone(t) {
       tone = { ...tone, ...t };

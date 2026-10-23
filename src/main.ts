@@ -14,6 +14,7 @@ import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
 import { createMidiSource } from "./input/midi";
 import { startChordPractice } from "./modes/chordPractice";
+import { startEarMelody } from "./modes/earMelody";
 import { startEarTraining } from "./modes/earTraining";
 import { startFreePlay } from "./modes/freePlay";
 import { startMetronome } from "./modes/metronome";
@@ -145,6 +146,7 @@ const startModeView = (id: View): Mode =>
   : id === "progressions" ? startProgressionPractice(store, practiceViews, history.recorder)
   : id === "routines" ? startRoutinePractice(store, practiceViews, history.recorder)
   : id === "ear" ? startEarTraining(store, { ...practiceViews, tones }, history.recorder)
+  : id === "earMelody" ? startEarMelody(store, { ...practiceViews, tones }, history.recorder)
   : id === "progress" ? startProgress({ progress: progressView }, history.store, history.saved)
   : startSequencePractice(store, practiceViews, id, history.recorder);
 

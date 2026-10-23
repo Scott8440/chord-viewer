@@ -4,7 +4,7 @@
 // clashes between devices), UTC epoch-ms times, a schema version per record, and the device that made it.
 // Pure: the builders take everything they need, including the record's id, time and device (see recorder.ts).
 import type { ChordPrompt } from "../exercises/chordPrompt";
-import type { EarPrompt } from "../exercises/earTraining";
+import type { EarPrompt, MelodyPrompt } from "../exercises/earTraining";
 import type { NotePrompt } from "../exercises/notePractice";
 import type { ExerciseOptions, PrescriptiveId } from "../exercises/prescriptive";
 import type { ProgressionPrompt } from "../exercises/progressions";
@@ -83,7 +83,7 @@ export interface RoutineBody {
   tempo: TempoSettings | null;
 }
 
-export type DrillKind = "notes" | "chords" | "progressions" | "ear";
+export type DrillKind = "notes" | "chords" | "progressions" | "ear" | "melody";
 
 /** One prompt of a drill (note, chord, progression practice or ear training), answered or skipped. */
 export interface DrillBody {
@@ -166,6 +166,15 @@ export function earDrillBody(p: EarPrompt, degrees: readonly string[], answered:
   return {
     kind: "drill", drill: "ear", prompt: `Degree ${p.degree}`,
     detail: { degree: p.degree, key: p.keyValue, note: p.note, degrees: degrees.join(",") },
+    outcome: outcomeOf(answered, missed), ms: Math.round(ms),
+  };
+}
+
+/** An ear-training melody, judged as a whole; grouped by length ("3-note melody"), since melodies rarely repeat */
+export function melodyDrillBody(p: MelodyPrompt, degrees: readonly string[], answered: boolean, missed: boolean, ms: number): DrillBody {
+  return {
+    kind: "drill", drill: "melody", prompt: `${p.notes.length}-note melody`,
+    detail: { key: p.keyValue, melody: p.notes.map(n => n.degree).join(" "), length: p.notes.length, degrees: degrees.join(",") },
     outcome: outcomeOf(answered, missed), ms: Math.round(ms),
   };
 }

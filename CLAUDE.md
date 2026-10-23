@@ -143,7 +143,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 283 tests (54 voicings) should pass
+npm test           # Vitest: 291 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -323,8 +323,19 @@ prompt is a drill record (`drill: "ear"`, prompt "Degree 5", key and degrees in 
 drills (4th series colour). The staff shows what's played, spelled in the drone's key. Sound comes from the browser
 here (unlike the user's keyboard, which they monitor through Ableton); audio waits for a click or computer key
 after a reload, and the prompt says so.
+The drone's low pass and detune have debug sliders (live, not saved; `DEFAULT_DRONE_TONE` in `tones.ts`).
+
+**Melodies** (mode "earMelody", `src/modes/earMelody.ts`; `makeMelodyPrompt` and `reduceMelody` in
+`earTraining.ts`): the root, then N notes (Notes: 2–8, default 3) from the allowed degrees over two octaves, no leap
+over an octave, no note straight after itself if anything else is in reach, never the same melody twice running.
+No drone. The player plays them back in order, each in any octave; a wrong note holds the step and the whole
+melody plays again 1 s later. Steps show as dots with the degree revealed once played. Shares `Settings.ear` with
+scale degrees (its tonic picker reads "Key" here). Recorded as `drill: "melody"`, prompt "3-note melody" (the
+degrees played in `detail.melody`), charted as a 5th series. `tones.stopNotes()` cuts off a melody still playing
+(skip, replay, stop).
+
 **Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,
-intervals and chord qualities.
+intervals and chord qualities; judging melodies by exact octave (contour).
 
 ## Practice history
 Everything practised is recorded, and the **Progress** page charts it.

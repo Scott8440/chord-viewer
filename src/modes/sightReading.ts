@@ -8,7 +8,7 @@ import { PROMPTS_PER_KEY } from "../exercises/earTraining";
 import type { Excerpt, ExcerptFile } from "../exercises/excerpts";
 import type { Rng } from "../exercises/notePractice";
 import {
-  excerptLevel, initialReading, makeExcerptPrompt, makeReadingPrompt, pickReadingKey, reduceReading,
+  CHORD_WINDOW_MS, excerptLevel, initialReading, makeExcerptPrompt, makeReadingPrompt, pickReadingKey, reduceReading,
   type ReadingAction, type ReadingOptions, type ReadingPrompt, type ReadingState,
 } from "../exercises/sightReading";
 import { noRecorder, type Recorder } from "../progress/recorder";
@@ -64,6 +64,8 @@ export function startSightReading(store: AppStore, views: {
   /** The last passage's state, for its score, while there's none */
   let carried: ReadingState | null = null;
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Ends a chord attempt that hasn't come together in time */
+  let expireTimer: ReturnType<typeof setTimeout> | undefined;
   /** When the current passage appeared, to time the answer */
   let shownAt = Date.now();
 
@@ -159,6 +161,10 @@ export function startSightReading(store: AppStore, views: {
     }
     if (state.prompt !== prev.prompt) shownAt = Date.now();
     render();
+    clearTimeout(expireTimer);
+    if (state.attemptAt != null) {
+      expireTimer = setTimeout(() => apply({ type: "expire", time: performance.now() }), CHORD_WINDOW_MS + 20);
+    }
     clearTimeout(nextTimer);
     if (state.status === "correct") {
       nextTimer = setTimeout(() => apply({ type: "next", prompt: nextPrompt(state!.prompt) }), NEXT_PROMPT_MS);
@@ -185,6 +191,7 @@ export function startSightReading(store: AppStore, views: {
       offSettings();
       drawer.stop();
       clearTimeout(nextTimer);
+      clearTimeout(expireTimer);
     },
     skip() {
       if (state) apply({ type: "skip", prompt: nextPrompt(state.prompt) });

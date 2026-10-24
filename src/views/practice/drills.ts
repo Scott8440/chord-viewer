@@ -28,6 +28,8 @@ export function sightReadingDisplay(s: ReadingState): PracticeDisplay {
   let feedback = "";
   if (s.status === "correct") {
     feedback = m ? `✓ All ${n} ${single ? "notes" : "notes and chords"}` : "✓ " + s.prompt.steps.map(step => prettyAcc(step[0].name)).join(" ");
+  } else if (s.status === "wrong" && s.played == null) {
+    feedback = "✗ Play the chord's notes together";
   } else if (s.status === "wrong" && s.played != null) {
     const step = s.prompt.steps[s.index];
     const near = step.filter(t => t.note % 12 === s.played! % 12 && !s.struck.includes(t.note));

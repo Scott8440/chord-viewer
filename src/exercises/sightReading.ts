@@ -171,10 +171,12 @@ export interface ReadingState {
   prompt: ReadingPrompt;
   /** The step being played */
   index: number;
-  /** The current step's notes struck so far (a chord's can come in any order) */
+  /** The current step's notes struck so far in this attempt (a chord's in any order, all within CHORD_WINDOW_MS) */
   struck: readonly number[];
+  /** When this attempt's first note was struck (note-on time), or null */
+  attemptAt: number | null;
   status: "waiting" | "wrong" | "correct";
-  /** The last note played, or null */
+  /** The last wrong note played, or null (wrong with none: a chord's notes didn't come together) */
   played: number | null;
   /** Any wrong note in this prompt */
   missed: boolean;
@@ -184,6 +186,9 @@ export interface ReadingState {
   firstTry: number;
 }
 
+/** A chord's notes must all be struck within this long of the first (ms): played together, not one by one */
+export const CHORD_WINDOW_MS = 200;
+
 /** A note of the chord just finished, this soon after it (ms), is still that chord: struck again along with the
  *  rest of it (the whole chord played again after a mistake), not a wrong note for the next step */
 export const CHORD_SPILL_MS = 300;
@@ -191,41 +196,57 @@ export const CHORD_SPILL_MS = 300;
 export type ReadingAction =
   /** A note-on, with its time when known (performance.now() clock) */
   | { type: "play"; note: number; time?: number }
+  /** Time has passed (now, on the same clock): a chord attempt that hasn't come together is a mistake */
+  | { type: "expire"; time: number }
   | { type: "next"; prompt: ReadingPrompt }
   | { type: "skip"; prompt: ReadingPrompt };
 
 export function initialReading(prompt: ReadingPrompt): ReadingState {
-  return { prompt, index: 0, struck: [], status: "waiting", played: null, missed: false, finished: null, answered: 0, firstTry: 0 };
+  return { prompt, index: 0, struck: [], attemptAt: null, status: "waiting", played: null, missed: false, finished: null,
+           answered: 0, firstTry: 0 };
 }
 
+/** A chord attempt whose notes didn't all come within CHORD_WINDOW_MS: a mistake, played again from the start */
+const apart = (s: ReadingState): ReadingState =>
+  ({ ...s, struck: [], attemptAt: null, status: "wrong", played: null, missed: true });
+
 /**
- * Each note-on is judged against the current step: one of its notes (at the exact pitch) counts towards it, and the
- * step is done once all are struck; any other note is a mistake and the step waits (what was struck still counts).
- * A note of the step just finished, within CHORD_SPILL_MS of finishing it, is ignored: playing a whole chord again
- * finishes it on its first new note, and the others follow a moment later.
+ * Each note-on is judged against the current step at the exact pitch. A chord's notes must come together: all
+ * within CHORD_WINDOW_MS of the first (in any order, rolled or at once); one that comes later starts a new attempt,
+ * and the one that fell apart is a mistake. Any note not in the step is a mistake and the step waits. A note of the
+ * step just finished, within CHORD_SPILL_MS of finishing it, is ignored: playing a whole chord again finishes it on
+ * its first new note, and the others follow a moment later.
  */
 export function reduceReading(s: ReadingState, a: ReadingAction): ReadingState {
   switch (a.type) {
     case "play": {
       if (s.status === "correct") return s;   // done; ignore notes until the next line
       const step = s.prompt.steps[s.index];
+      const time = a.time ?? 0;
+      const late = s.attemptAt != null && time - s.attemptAt > CHORD_WINDOW_MS;
+      const cur = late ? apart(s) : s;
       if (!step.some(n => n.note === a.note)) {
         const spill = s.finished?.notes.includes(a.note) && a.time != null && a.time - s.finished.time <= CHORD_SPILL_MS;
-        return spill ? s : { ...s, status: "wrong", played: a.note, missed: true };
+        return spill ? cur : { ...cur, status: "wrong", played: a.note, missed: true };
       }
-      const struck = s.struck.includes(a.note) ? s.struck : [...s.struck, a.note];
-      if (struck.length < step.length) return { ...s, struck, played: a.note };
+      const struck = cur.struck.includes(a.note) ? cur.struck : [...cur.struck, a.note];
+      if (struck.length < step.length) return { ...cur, struck, attemptAt: cur.attemptAt ?? time };
+      s = cur;
       const index = s.index + 1;
       const finished = a.time == null ? null : { notes: step.map(n => n.note), time: a.time };
-      if (index < s.prompt.steps.length) return { ...s, index, struck: [], status: "waiting", played: a.note, finished };
-      return { ...s, index, struck: [], status: "correct", played: a.note, finished, answered: s.answered + 1,
-               firstTry: s.firstTry + (s.missed ? 0 : 1) };
+      const done = { struck: [], attemptAt: null, played: null, finished };
+      if (index < s.prompt.steps.length) return { ...s, ...done, index, status: "waiting" };
+      return { ...s, ...done, index, status: "correct", answered: s.answered + 1, firstTry: s.firstTry + (s.missed ? 0 : 1) };
     }
+    case "expire":
+      return s.status !== "correct" && s.attemptAt != null && a.time - s.attemptAt > CHORD_WINDOW_MS ? apart(s) : s;
     case "next":
-      return { ...s, prompt: a.prompt, index: 0, struck: [], status: "waiting", played: null, missed: false, finished: null };
+      return { ...s, prompt: a.prompt, index: 0, struck: [], attemptAt: null, status: "waiting", played: null, missed: false,
+               finished: null };
     case "skip":
       // A skipped line counts as answered, but not right first time
-      return { ...s, prompt: a.prompt, index: 0, struck: [], status: "waiting", played: null, missed: false, finished: null,
+      return { ...s, prompt: a.prompt, index: 0, struck: [], attemptAt: null, status: "waiting", played: null, missed: false,
+               finished: null,
                answered: s.status === "correct" ? s.answered : s.answered + 1 };
   }
 }

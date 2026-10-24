@@ -88,24 +88,37 @@ describe("playing it back", () => {
     expect(s).toMatchObject({ status: "correct", answered: 1, firstTry: 0 });
   });
 
-  it("takes a chord's notes in any order, keeping what was struck through a wrong note", () => {
+  it("takes a chord's notes together, in any order", () => {
     const chords: ReadingPrompt = { ...line, steps: [[{ note: 60, name: "C4" }, { note: 64, name: "E4" }, { note: 67, name: "G4" }], line.steps[1]] };
-    let s = reduceReading(initialReading(chords), { type: "play", note: 67 });
-    s = reduceReading(s, { type: "play", note: 67 });
+    let s = reduceReading(initialReading(chords), { type: "play", note: 67, time: 0 });
+    s = reduceReading(s, { type: "play", note: 67, time: 10 });
     expect(s).toMatchObject({ index: 0, struck: [67], status: "waiting" });
-    s = reduceReading(s, { type: "play", note: 65 });
-    expect(s).toMatchObject({ index: 0, struck: [67], status: "wrong" });
-    s = reduceReading(s, { type: "play", note: 60 });
-    s = reduceReading(s, { type: "play", note: 64 });
-    expect(s).toMatchObject({ index: 1, struck: [], status: "waiting" });
-    expect(sightReadingDisplay(reduceReading(s, { type: "play", note: 72 })).feedback).toBe("✗ That was C5. Try again");
+    s = reduceReading(s, { type: "play", note: 60, time: 40 });
+    s = reduceReading(s, { type: "play", note: 64, time: 120 });
+    expect(s).toMatchObject({ index: 1, struck: [], status: "waiting", missed: false });
+    expect(sightReadingDisplay(reduceReading(s, { type: "play", note: 72, time: 200 })).feedback).toBe("✗ That was C5. Try again");
+  });
+
+  it("doesn't take a chord one note at a time: notes too far apart are a mistake and start again", () => {
+    const chords: ReadingPrompt = { ...line, steps: [[{ note: 60, name: "C4" }, { note: 64, name: "E4" }], line.steps[1]] };
+    let s = reduceReading(initialReading(chords), { type: "play", note: 60, time: 0 });
+    // Nothing more in time: the attempt falls apart
+    expect(reduceReading(s, { type: "expire", time: 100 })).toBe(s);
+    const apart = reduceReading(s, { type: "expire", time: 300 });
+    expect(apart).toMatchObject({ status: "wrong", struck: [], missed: true, played: null });
+    expect(sightReadingDisplay(apart).feedback).toBe("✗ Play the chord's notes together");
+    // A note that comes too late starts a new attempt rather than finishing the old one
+    s = reduceReading(s, { type: "play", note: 64, time: 500 });
+    expect(s).toMatchObject({ index: 0, struck: [64], status: "wrong", missed: true });
+    s = reduceReading(s, { type: "play", note: 60, time: 550 });
+    expect(s).toMatchObject({ index: 1, status: "waiting" });
   });
 
   it("doesn't hold the rest of a chord played again against the next step", () => {
     const chords: ReadingPrompt = { ...line, steps: [[{ note: 60, name: "C4" }, { note: 64, name: "E4" }], [{ note: 67, name: "G4" }]] };
     let s = reduceReading(initialReading(chords), { type: "play", note: 60, time: 0 });
     s = reduceReading(s, { type: "play", note: 62, time: 500 });
-    expect(s).toMatchObject({ status: "wrong", struck: [60] });
+    expect(s).toMatchObject({ status: "wrong", struck: [] });
     // The whole chord again: E finishes it, and C a moment later is still that chord
     s = reduceReading(s, { type: "play", note: 64, time: 1000 });
     s = reduceReading(s, { type: "play", note: 60, time: 1020 });

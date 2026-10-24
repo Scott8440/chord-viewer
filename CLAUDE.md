@@ -151,7 +151,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 346 tests (54 voicings) should pass
+npm test           # Vitest: 347 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -382,13 +382,16 @@ Replaced note practice. Two sources, chosen by **Level** (`ReadingOptions.level`
 
 **Playing back** (`reduceReading`, `ReadingState` in `src/exercises/sightReading.ts`): a prompt is `steps`, each the
 notes struck at one moment (one note, or a chord across voices and both hands; a tied-over note isn't struck again).
-Each note-on is judged against the current step at the exact pitch: one of its notes counts (a chord's in any order,
-rolled or together, `struck`), and the step is done when all are; any other note is a mistake and holds the step
-(what was struck still counts). A note of the step just finished within `CHORD_SPILL_MS` (300 ms) of finishing it is
+Each note-on is judged against the current step at the exact pitch. **A chord's notes must come together:** all
+within `CHORD_WINDOW_MS` (200 ms) of its first (any order; `struck`, `attemptAt`), not one by one. An attempt that
+doesn't come together is a mistake ("Play the chord's notes together"; the chord turns red and is played again from
+the start): the mode sends `expire` once the window has passed, and a note that comes later starts a new attempt.
+Any note not in the step is a mistake and holds the step. A note of the step just finished within `CHORD_SPILL_MS` (300 ms) of finishing it is
 ignored, not wrong: playing a whole chord again after a mistake finishes it on its first new note, and the rest of it
-follows a moment later (note-on times come from `onPlayerInput`). Played notes turn green, a chord's notes as they're struck; after a mistake the
+follows a moment later (note-on times come from `onPlayerInput`). Played notes turn green (a chord's as they're struck within its attempt); after a mistake the
 current step's other notes turn red (a generated line draws the wrong note red just right of the step). Feedback:
-"That was E4", ", not in this chord", or "Right note, wrong octave: too low". No timing yet. The held keys aren't
+"That was E4", ", not in this chord", "Right note, wrong octave: too low", or "Play the chord's notes
+together". No timing yet. The held keys aren't
 drawn (they'd cover the notes to read). Recorded as `drill: "reading"`, prompt "Songs, level 2" (melody), "Piano,
 right hand, level 2" … (detail: key, part, level, excerpt id, notes, chords as "C4+E4") or "4 notes, treble",
 charted as a 6th series (`--series-6`, the palette's green); old note-practice records (`"notes"`) still chart, as

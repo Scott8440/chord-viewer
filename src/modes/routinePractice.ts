@@ -29,7 +29,10 @@ export function startRoutinePractice(store: AppStore, views: {
     recorder.record(routineBody(s, session, routine.order, latencyMs, i => itemExercise(s.items[i], s.base), toWallTime));
   }
   // The staff shows the notes of the item in progress, a page at a time, in its key
-  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.current.exercise.keyValue), () => exerciseRow(state.current));
+  /** Where the player last played (a run's base pitch), to draw the next item there before it starts */
+  let lastAnchor: number | null = null;
+  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.current.exercise.keyValue),
+    () => exerciseRow(state.current, lastAnchor));
 
   const render = () => {
     views.practice.render(routineDisplay(state, store.getState().settings.promptStyle));
@@ -48,6 +51,8 @@ export function startRoutinePractice(store: AppStore, views: {
     const prev = state;
     state = reduceRoutine(state, action);
     if (state === prev) return;
+    if (prev.current.anchor != null) lastAnchor = prev.current.anchor;
+    if (state.current.anchor != null) lastAnchor = state.current.anchor;
     // An item's run finished: record it, as part of this session
     const finished = state.outcomes.length > prev.outcomes.length ? state.outcomes[prev.outcomes.length] : null;
     if (finished && finished !== "skipped") {

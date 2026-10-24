@@ -17,7 +17,9 @@ export function startSequencePractice(store: AppStore, views: {
   const build = () => PRESCRIPTIVE[id].build(store.getState().settings.exercise);
   let state: SequenceState = initialSequence(build(), heldNotes(store.getState()), timingGrid(store.getState()));
   // The staff shows the notes to play, a page at a time, in the exercise's key (exercises never use the header key)
-  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.exercise.keyValue), () => exerciseRow(state));
+  /** Where the player last played (a run's base pitch), to draw the next run there before it starts */
+  let lastAnchor: number | null = null;
+  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.exercise.keyValue), () => exerciseRow(state, lastAnchor));
 
   const render = () => {
     views.practice.render(sequenceDisplay(state, store.getState().settings.promptStyle));
@@ -27,6 +29,7 @@ export function startSequencePractice(store: AppStore, views: {
     const prev = state;
     state = reduceSequence(state, action);
     if (state === prev) return;
+    if (state.anchor != null) lastAnchor = state.anchor;
     if (state.status === "done" && prev.status !== "done") {
       const { exercise, latencyMs } = store.getState().settings;
       recorder.record(runBody(id, state.exercise, exercise, latencyMs, state.result!));

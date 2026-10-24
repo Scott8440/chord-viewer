@@ -152,7 +152,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 363 tests (54 voicings) should pass
+npm test           # Vitest: 364 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -261,7 +261,9 @@ the exercise and runs it again and again; each run is measured.
   grand staff (the wider row staff) shows the exercise's steps a page of `PAGE_STEPS` (16) at a time, as quarter notes (`StaffRow`), the
   page holding the step being played: played steps green, the current one amber (`current`), red after a wrong
   attempt; the last page all green once a run is done. Note steps sit in the run's octave once the first note has
-  set it, else in one keeping the exercise between G3 and C6; each keeps the exercise's spelling (`names`,
+  set it; before that, in the octave (C to B) the player last played in (the last run, or the routine's last item:
+  `inOctaveOf`; so a routine stays in one register from key to key instead of jumping staves when a run starts);
+  with nothing played yet, in one keeping the exercise between G3 and C6; each keeps the exercise's spelling (`names`,
   `spelledAs`: the chromatic scale's flats coming down). Chord steps are drawn in root position, close, above their
   root (`StaffRow` notes take a chord). The held keys aren't drawn (they'd sit on the notes to read).
 

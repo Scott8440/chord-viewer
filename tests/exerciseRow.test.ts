@@ -5,7 +5,7 @@ import { scaleExercise } from "../src/exercises/scales";
 import { initialSequence, reduceSequence } from "../src/exercises/sequence";
 import { chromaticExercise } from "../src/exercises/technique";
 import { buildKey } from "../src/theory";
-import { exerciseRow, PAGE_STEPS } from "../src/views/exerciseRow";
+import { exerciseRow, inOctaveOf, PAGE_STEPS } from "../src/views/exerciseRow";
 
 const play = (s: ReturnType<typeof initialSequence>, notes: number[]) =>
   notes.reduce((st, note, i) => reduceSequence(st, { type: "noteOn", note, time: i * 100 }), s);
@@ -45,5 +45,18 @@ describe("exerciseRow", () => {
     const row = exerciseRow(initialSequence(diatonicChordsExercise(buildKey("F:major")!, { sevenths: false, rootPosition: true })));
     expect(row.notes[0]).toMatchObject({ midi: [65, 69, 72], names: ["F", "A", "C"] });
     expect(row.notes[1]).toMatchObject({ midi: [67, 70, 74], names: ["G", "Bb", "D"] });
+  });
+});
+
+describe("exerciseRow before a run, after playing", () => {
+  it("draws the next exercise in the octave last played in, not where it would sit by itself", () => {
+    // G major over two octaves would start on G3 by itself (G6 is far above the staff) …
+    const g2 = initialSequence(scaleExercise(buildKey("G:major")!, "natural", 2));
+    expect(firsts(exerciseRow(g2))[0]).toBe(55);
+    // … but after a scale from F♯4, it starts on G4, where the player will start it
+    expect(firsts(exerciseRow(g2, 66))[0]).toBe(67);
+    // Round the circle: G after C4 is G4, not G3
+    expect(firsts(exerciseRow(initialSequence(scaleExercise(buildKey("G:major")!, "natural", 1)), 60))[0]).toBe(67);
+    expect(inOctaveOf(11, 50)).toBe(59);   // B3: the octave of D3
   });
 });

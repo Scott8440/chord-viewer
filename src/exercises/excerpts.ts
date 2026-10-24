@@ -92,6 +92,8 @@ export interface Excerpt {
   staves: ExcerptStaff[];
   /** Measured for each part it can be read as (a melody: "voice"; piano: whichever hands have enough to play) */
   parts: Partial<Record<ReadingPart, ExcerptFeatures>>;
+  /** Not as written: "bass" is a song's melody in the right hand with a simple bass added in the left */
+  arranged?: "bass";
 }
 
 export interface ExcerptSource {

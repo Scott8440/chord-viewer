@@ -151,7 +151,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 347 tests (54 voicings) should pass
+npm test           # Vitest: 350 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -407,7 +407,7 @@ notes**: excerpts keep every note value, dot, tie, rest, tuplet, chord and voice
   `git clone --depth 1 --filter=blob:none --sparse https://github.com/OpenScore/Lieder corpus/lieder`, then
   `git -C corpus/lieder sparse-checkout set --no-cone '/scores/**/*.mscx' '/LICENSE.txt'` (about 500 MB).
 - **Import:** `node scripts/corpus/import.ts` (Node 24 runs the TypeScript directly; about 20 s) writes
-  `public/reading/lieder.json` (melodies; 8 MB, 0.5 MB gzipped) and `public/reading/lieder-piano.json` (15.5 MB,
+  `public/reading/lieder.json` (melodies; 8 MB, 0.5 MB gzipped) and `public/reading/lieder-piano.json` (15.9 MB,
   0.9 MB gzipped), both committed, and prints, per part, how the excerpts spread over the levels, which single limit
   holds most back from levels 1–3, and the main measures. `scripts/corpus/xml.ts` is a small XML parser.
   `mscx.ts` reads the voice part's staff and the piano's two staves (each staff's clef from its `defaultClef` or the
@@ -426,6 +426,14 @@ notes**: excerpts keep every note value, dot, tie, rest, tuplet, chord and voice
   stop), when every bar of both is clean, the right hand in treble and the left in bass throughout (a hand in the
   other clef is left out: a reader expects them there); offered as the right hand or left hand when
   it has at least 4 strikes, and both when each hand has 2. Duplicates (strophic verses) are dropped.
+  **Arranged easy pieces** (`scripts/corpus/arrange.ts`, `bassFor`): the songs' accompaniments are rarely easy, so
+  each melody excerpt also becomes a both-hands piece: the melody in the right hand, and a left hand of one bass note
+  on beats 1 and 3 (half notes in 4/4 and 2/2; a half on 1 in 2/4, a dotted half on 1 in 3/4; compound and other
+  times left out; a pickup bar rests), each the root of the chord in the key (I ii iii IV V vi, and the relative
+  minor's major V when the melody has its raised note) that best covers the melody sounding over it (weighted by
+  length, more for a note sounding as the bass starts; leaning to I/vi at the start and end and to staying put), in
+  the octave nearest the last, F2–G3. Kept only when it comes out at piano level 1 (508 now), with `arranged: "bass"`
+  and id `<melody id>+bass`; the credit then reads "melody from OpenScore Lieder, bass added".
   `scripts/corpus/import.ts` isn't typechecked (no Node types); the rest is, and tested in `tests/corpus.test.ts`.
 - **Format** (version 2, `src/exercises/excerpts.ts`, shared): an `Excerpt` is key (fifths), time, `staves` (one for
   a melody; right and left hand for piano), each a clef and `voices[voice][bar]` of `ExcerptEvent`s
@@ -445,8 +453,9 @@ notes**: excerpts keep every note value, dot, tie, rest, tuplet, chord and voice
   Piano (`PIANO_LEVELS`, wider ranges, plus chord size, span, voices and strikes a bar): 1 single notes, simple
   rhythm; 2 two-note chords; 3 triads, two voices; 4 fuller chords, triplets; 5 anything. The key signature isn't a
   limit: excerpts are transposed. Current counts (levels 1–5): melody 140 / 1,291 / 3,445 / 4,320 / 2,669 of 11,865;
-  right hand 12 / 317 / 1,604 / 2,049 / 2,881; left hand 51 / 728 / 1,355 / 1,665 / 2,754; both hands 0 / 116 / 828 /
-  1,604 / 4,429. Lieder accompaniments are rarely single notes, so piano level 1 is thin.
+  right hand 12 / 317 / 1,604 / 2,049 / 2,881; left hand 51 / 728 / 1,355 / 1,665 / 2,754; both hands 508 / 116 / 828 /
+  1,604 / 4,429 (level 1 is all arranged pieces). Lieder accompaniments are rarely single notes, so the hands alone
+  are thin at level 1.
 - **Transposing** (`transposeStaves`): all staves by the same interval, by key signature (fifths), respelling each
   tpc, in the octave with the fewest ledger lines over all of them (then the smallest move); null if a note would
   need more than a double sharp/flat. `tupletGroups` splits a bar's tuplet runs into brackets.

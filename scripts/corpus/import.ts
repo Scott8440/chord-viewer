@@ -10,7 +10,8 @@ import {
   fitsLevel, levelsFor, readingLevel, type Excerpt, type ExcerptFeatures, type ExcerptFile, type ExcerptSource,
   type ReadingPart,
 } from "../../src/exercises/excerpts.ts";
-import { asMelody, cutExcerpts, cutPianoExcerpts } from "./excerpts.ts";
+import { bassFor } from "./arrange.ts";
+import { asMelody, cutExcerpts, cutPianoExcerpts, measure } from "./excerpts.ts";
 import { readMscx } from "./mscx.ts";
 
 const ROOT = "corpus/lieder/scores";
@@ -74,6 +75,15 @@ for (const path of scores(ROOT)) {
   if (!cut.length) skip("no clean melody excerpt");
   melodies.add(source, cut);
   piano.add(source, cutPianoExcerpts(song));
+  // Easy both-hands pieces: a melody with a simple bass added, kept when it comes out at piano level 1 (the songs'
+  // own accompaniments are rarely that easy)
+  piano.add(source, cut.flatMap(e => {
+    const lh = bassFor(e);
+    if (!lh) return [];
+    const staves = [e.staves[0], lh];
+    const both = measure(staves, e.key, e.time);
+    return readingLevel(both, "both") === 1 ? [{ id: `${e.id}+bass`, key: e.key, time: e.time, staves, parts: { both }, arranged: "bass" as const }] : [];
+  }));
 }
 
 mkdirSync("public/reading", { recursive: true });

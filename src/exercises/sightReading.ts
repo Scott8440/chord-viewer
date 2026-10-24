@@ -94,6 +94,8 @@ export interface ReadingMusic {
   staves: ExcerptStaff[];
   /** The step that strikes each event (`[staff][voice][bar][event]`; −1 for rests) */
   stepOf: number[][][][];
+  /** Not as written: the song's melody with a simple bass added */
+  arranged?: boolean;
 }
 
 /** A key's signature in fifths: 2 for D major or B minor, −3 for E♭ major or C minor */
@@ -112,7 +114,7 @@ export function makeExcerptPrompt(e: Excerpt, source: ExcerptSource, part: Readi
   return {
     keyValue, range: staves.length > 1 ? "grand" : staves[0].clef,
     steps: steps.map(s => s.notes.map(n => ({ note: n.p, name: writtenName(n.p, n.s) }))),
-    music: { id: e.id, source, part, level, time: e.time, staves, stepOf },
+    music: { id: e.id, source, part, level, time: e.time, staves, stepOf, ...(e.arranged ? { arranged: true } : {}) },
   };
 }
 

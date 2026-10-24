@@ -43,7 +43,7 @@ export function sightReadingDisplay(s: ReadingState): PracticeDisplay {
     const part = m.part === "voice" ? "" : ` · ${READING_PARTS[m.part].replace("Piano, ", "")}`;
     return {
       label: single ? "Play this, note by note, at this pitch" : "Play this, note by note and chord by chord, at this pitch",
-      promptHtml: `<div class="seqTitle">${esc(m.source.title)}</div><div class="excerptBy">${esc(m.source.composer)} · from OpenScore Lieder</div>`,
+      promptHtml: `<div class="seqTitle">${esc(m.source.title)}</div><div class="excerptBy">${esc(m.source.composer)} · ${m.arranged ? "melody from OpenScore Lieder, bass added" : "from OpenScore Lieder"}</div>`,
       size: "sequence",
       sub: `${withRelative(key)}${part} · level ${m.level} · ${progress}`,
       status: s.status, feedback, score,

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   asMelody, cutExcerpts, cutPianoExcerpts, excerptRanges, measure, phrases, restsFor,
 } from "../scripts/corpus/excerpts";
+import { bassFor } from "../scripts/corpus/arrange";
 import { readMscx } from "../scripts/corpus/mscx";
 import { parseXml } from "../scripts/corpus/xml";
 import {
@@ -311,5 +312,34 @@ describe("levels", () => {
     expect(eventLength({ v: "q", d: 1 })).toBeCloseTo(3 / 8);
     expect(eventLength({ v: "8", t: [3, 2] })).toBeCloseTo(1 / 12);
     expect([14, 20, 12, 13, 19, 7].map(tpcName)).toEqual(["C", "F#", "Bb", "F", "B", "Cb"]);
+  });
+});
+
+describe("arranging a bass under a melody", () => {
+  const q = (p: number, s: number): ExcerptEvent => ({ v: "q", n: [{ p, s }] });
+  const melody = (bars: ExcerptEvent[][], time: [number, number] = [4, 4], key = 0) =>
+    ({ key, time, staves: [{ clef: "treble" as const, voices: [bars] }] });
+
+  it("puts the root of the best-fitting chord on beats 1 and 3, near the last bass note, ending on the tonic", () => {
+    // C major: C E | F A | G B | C
+    const lh = bassFor(melody([
+      [q(60, 14), q(64, 18), q(65, 13), q(69, 17)],
+      [q(67, 15), q(71, 19), { v: "h", n: [{ p: 72, s: 14 }] }],
+    ]))!;
+    expect(lh.clef).toBe("bass");
+    expect(lh.voices[0].map(bar => bar.map(e => [e.v, e.n![0].p]))).toEqual([[["h", 48], ["h", 53]], [["h", 55], ["h", 48]]]);
+  });
+
+  it("spells the bass in the key, and plays once a bar in 3/4, a pickup bar resting", () => {
+    // F major (1 flat), 3/4: pickup C | B♭ D F | A C F
+    const lh = bassFor(melody([[q(72, 14)], [q(70, 12), q(74, 16), q(77, 13)], [q(69, 17), q(72, 14), q(77, 13)]], [3, 4], -1))!;
+    expect(lh.voices[0][0]).toEqual([{ v: "q" }]);
+    expect(lh.voices[0][1]).toEqual([{ v: "h", d: 1, n: [{ p: 46, s: 12 }] }]);   // B♭2: IV
+    expect(lh.voices[0][2][0].n![0].s).toBe(13);                                   // F: I
+  });
+
+  it("leaves out compound time and bass-clef melodies", () => {
+    expect(bassFor(melody([[{ v: "q", d: 1, n: [{ p: 60, s: 14 }] }, { v: "q", d: 1, n: [{ p: 60, s: 14 }] }]], [6, 8]))).toBeNull();
+    expect(bassFor({ key: 0, time: [4, 4], staves: [{ clef: "bass", voices: [[[{ v: "w", n: [{ p: 48, s: 14 }] }]]] }] })).toBeNull();
   });
 });

@@ -27,8 +27,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      # The build is one self-contained file; serve it as the site's index
-      - run: mkdir site && cp dist/chord-display.html site/index.html
+      # The build is one file, served as the site's index, plus the sight-reading excerpts it fetches
+      - run: mkdir site && cp dist/chord-display.html site/index.html && cp -r dist/reading site/reading
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

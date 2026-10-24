@@ -9,7 +9,10 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": ["src", "tests", "scripts", "vite.config.ts"],
+  // The importer's runner uses Node's file APIs, which have no types here (no @types/node); the parts it runs are checked
+  "exclude": ["scripts/corpus/import.ts"]
 }

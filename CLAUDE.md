@@ -150,7 +150,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 312 tests (54 voicings) should pass
+npm test           # Vitest: 327 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -161,7 +161,9 @@ argument means panic) and `getState()`.
 - **tonal 6.5.1**: note, interval, key and scale primitives only. Chord recognition is our own.
 - **VexFlow 4.2.5** (Bravura build): staff rendering.
 
-Both are bundled into the single output file so the app never touches the network. Keep that property: no server, no telemetry, works offline.
+Both are bundled into the single output file. **Offline is no longer a requirement** (decided by the user, Oct 2026):
+the app may fetch its own static data, such as the sight-reading excerpts (`public/reading/`, copied next to the
+page on GitHub Pages). Still no server of our own and no telemetry.
 
 ## Behavior and decisions so far
 - **MIDI:** Web MIDI, all inputs on by default, with a per-input toggle chip in the header. Note-on with velocity 0
@@ -367,7 +369,39 @@ melodies): played notes turn green; a wrong one holds the step and is drawn red 
 Options saved as `Settings.reading`. Recorded as `drill: "reading"`, prompt "4 notes, treble" (the notes in
 `detail.notes`), charted as a 6th series (`--series-6`, the palette's green); old note-practice records (`"notes"`)
 still chart, as "Note names (old)".
-**Next:** accidentals outside the key, rhythm, both hands at once, a time limit per note.
+**Next:** real music instead of generated lines, with written rhythm (see "Sight-reading excerpts").
+
+## Sight-reading excerpts (built; not used by the app yet)
+Phrases from real songs, rhythm as written, for sight reading to move on to (the generated lines above are
+quarter notes for now). **Not all rhythm is quarter notes**: excerpts keep every note value, dot, tie, rest and
+tuplet, and drawing them must show them.
+- **Source:** the OpenScore Lieder corpus (CC0; https://github.com/OpenScore/Lieder; credit asked, not required:
+  `credit` in the file). The Essen folksong collection was ruled out: its licence is personal single-user use only, no
+  redistribution or teaching materials. Fetch the corpus (not committed, `corpus/` is git-ignored) with
+  `git clone --depth 1 --filter=blob:none --sparse https://github.com/OpenScore/Lieder corpus/lieder`, then
+  `git -C corpus/lieder sparse-checkout set --no-cone '/scores/**/*.mscx' '/LICENSE.txt'` (about 500 MB).
+- **Import:** `node scripts/corpus/import.ts` (Node 24 runs the TypeScript directly) writes
+  `public/reading/lieder.json` (committed; about 7 MB, 0.4 MB gzipped) and prints how the excerpts spread over each
+  measure and level. `scripts/corpus/xml.ts` is a small XML parser; `mscx.ts` reads the voice part of a MuseScore
+  2 or 3 score (`<voice>` wrappers or `<track>`; tuplets by id or open until `<endTuplet/>`; ties as `<Tie>` or a
+  Tie spanner with `<next>`; grace notes left out) into bars, flagging what can't be used (a chord, a second voice, a
+  time jump, a bar that doesn't add up); `excerpts.ts` cuts phrases (runs of notes ended by a rest; one cut short by
+  an unusable bar or a key/time/clef change is dropped), takes each phrase and each neighbouring pair within 4 bars
+  and with at least 4 notes, turns a neighbour's notes in the same bars into tidy rests (`restsFor`: on the beat,
+  dotted only in compound time, never across the middle of 4/4), writes tenor parts as written (treble, an octave
+  up), measures each excerpt and drops duplicates (strophic verses). `scripts/corpus/import.ts` isn't typechecked
+  (no Node types); the rest is, and tested in `tests/corpus.test.ts`.
+- **Format** (`src/exercises/excerpts.ts`, shared): an `Excerpt` is key (fifths), time, clef and bars of
+  `ExcerptEvent`s `{v: "w"|"h"|"q"|"8"|…, d?: dots, t?: [actual, normal], p?: MIDI, s?: tpc spelling, tie?, bar?}`,
+  plus `features` (notes, bars, key accidentals, chromatic notes, range, ledger notes, widest leap, share of steps,
+  note values, shortest value, dotted, ties, tuplets, rests inside, syncopations, compound time).
+- **Levels** (`READING_LEVELS`, `readingLevel`: the first level whose limits an excerpt fits, worked out in the app so
+  the cut-offs can change without re-importing): 1 steps, simple rhythm; 2 small leaps, dotted notes; 3 wider
+  range, compound time; 4 accidentals, triplets; 5 anything. The key signature isn't a limit: the plan is to
+  transpose excerpts to the key the player picks. With the current limits: 140 / 1,239 / 3,361 / 4,278 / 2,605
+  of 11,623 excerpts from 1,160 songs.
+- Nearly every voice part is in treble clef (76 bass excerpts), so bass and both-staves reading needs the piano
+  parts (next, with chords).
 
 ## Practice history
 Everything practised is recorded, and the **Progress** page charts it.

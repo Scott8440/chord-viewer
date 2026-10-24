@@ -91,7 +91,7 @@ describe("circleSvg", () => {
 
   it("shows routine progress and a centre with the direction", () => {
     const m: CircleModel = { progress: { "C:major": "done", "G:major": "flawed", "D:major": "skipped", "A:major": "current" },
-                             center: { text: "4 / 12", direction: "flats" } };
+                             center: { text: "4 / 12", order: "flats" } };
     expect(["C", "G", "D", "A", "E"].map(l => find(m, l).classes.join(" "))).toEqual(["done", "flawed", "skipped", "current", ""]);
     expect(circleSvg(m)).toContain(">4 / 12</text><text class=\"c2\" x=\"0\" y=\"12\">↺</text>");
   });

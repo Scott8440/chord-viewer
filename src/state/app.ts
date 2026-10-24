@@ -167,7 +167,7 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
     }
     case "setRoutineOptions": {
       const routine = sanitizeRoutineOptions({ ...s.settings.routine, ...a.options });
-      return routine.id === s.settings.routine.id && routine.direction === s.settings.routine.direction ? s
+      return routine.id === s.settings.routine.id && routine.order === s.settings.routine.order ? s
         : { ...s, settings: { ...s.settings, routine } };
     }
     case "setEarOptions": {

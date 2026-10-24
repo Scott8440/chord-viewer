@@ -14,7 +14,7 @@ export function startRoutinePractice(store: AppStore, views: {
 }, recorder: Recorder = noRecorder): Mode {
   const fresh = (): RoutineState => {
     const s = store.getState();
-    return initialRoutine(routineById(s.settings.routine.id)!, s.settings.routine.direction, s.settings.exercise, heldNotes(s),
+    return initialRoutine(routineById(s.settings.routine.id)!, s.settings.routine.order, s.settings.exercise, heldNotes(s),
                           timingGrid(s));
   };
   let state = fresh();
@@ -26,7 +26,7 @@ export function startRoutinePractice(store: AppStore, views: {
     if (state.startTime == null) return;   // nothing played
     const { routine, latencyMs } = store.getState().settings;
     const s = state;
-    recorder.record(routineBody(s, session, routine.direction, latencyMs, i => itemExercise(s.items[i], s.base), toWallTime));
+    recorder.record(routineBody(s, session, routine.order, latencyMs, i => itemExercise(s.items[i], s.base), toWallTime));
   }
   // The staff shows the notes of the item in progress, a page at a time, in its key
   const drawer = createPerformanceDrawer(store, views, () => buildKey(state.current.exercise.keyValue), () => exerciseRow(state.current));
@@ -41,7 +41,7 @@ export function startRoutinePractice(store: AppStore, views: {
       neighbours: false,
       progress: Object.fromEntries(progress.map(g => [g.keyValue, g.state])),
       center: { text: state.status === "done" ? "Done" : `${at + 1} / ${progress.length}`,
-                direction: store.getState().settings.routine.direction },
+                order: store.getState().settings.routine.order },
     });
   };
   function apply(action: RoutineAction) {
@@ -73,7 +73,7 @@ export function startRoutinePractice(store: AppStore, views: {
   });
   const offGrid = onTimingGrid(store, grid => apply({ type: "setGrid", grid }));
   const offSettings = store.subscribe((s, prev) => {
-    // Another routine or direction starts over; other exercise settings apply from the item in progress on
+    // Another routine or order starts over; other exercise settings apply from the item in progress on
     if (s.settings.routine !== prev.settings.routine) restart();
     else if (s.settings.exercise !== prev.settings.exercise) apply({ type: "setBase", base: s.settings.exercise });
     if (s.settings.promptStyle !== prev.settings.promptStyle) render();

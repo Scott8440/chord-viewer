@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_EXERCISE_OPTIONS, type ExerciseOptions } from "../src/exercises/prescriptive";
 import {
-  circleOfFifths, eachKey, initialRoutine, itemExercise, reduceRoutine, routineById, routineSummary, ROUTINES,
+  circleOfFifths, eachKey, keysInOrder, initialRoutine, itemExercise, reduceRoutine, routineById, routineSummary, ROUTINES,
   sanitizeRoutineOptions, type RoutineAction, type RoutineState,
 } from "../src/exercises/routines";
 import type { SequenceExercise } from "../src/exercises/sequence";
@@ -32,10 +32,18 @@ function playExercise(ex: SequenceExercise, gap = 200, mistakeAt = -1): RoutineA
 }
 const playCurrent = (s: RoutineState, mistakeAt = -1) => run(s, ...playExercise(s.current.exercise, 200, mistakeAt));
 
-describe("circle of fifths", () => {
-  it("goes sharps first or flats first, starting on C", () => {
-    expect(circleOfFifths("sharps").map(k => k.split(":")[0]).join(" ")).toBe("C G D A E B F# Db Ab Eb Bb F");
-    expect(circleOfFifths("flats").map(k => k.split(":")[0]).join(" ")).toBe("C F Bb Eb Ab Db F# B E A D G");
+describe("key orders", () => {
+  const tonics = (keys: string[]) => keys.map(k => k.split(":")[0]).join(" ");
+
+  it("go round the circle of fifths sharps first or flats first, starting on C", () => {
+    expect(tonics(circleOfFifths("sharps"))).toBe("C G D A E B F# Db Ab Eb Bb F");
+    expect(tonics(circleOfFifths("flats"))).toBe("C F Bb Eb Ab Db F# B E A D G");
+    expect(keysInOrder("flats")).toEqual(circleOfFifths("flats"));
+  });
+
+  it("or chromatically up or down from C", () => {
+    expect(tonics(keysInOrder("chromaticUp"))).toBe("C Db D Eb E F F# G Ab A Bb B");
+    expect(tonics(keysInOrder("chromaticDown"))).toBe("C B Bb A Ab G F# F E Eb D Db");
   });
 });
 
@@ -140,11 +148,15 @@ describe("routineDisplay", () => {
 });
 
 describe("routine settings", () => {
-  it("default to the first routine, sharps first, and ignore bad values", () => {
-    expect(createAppState().settings.routine).toEqual({ id: "scales-circle", direction: "sharps" });
-    expect(sanitizeRoutineOptions({ id: "nope", direction: "sideways" })).toEqual({ id: "scales-circle", direction: "sharps" });
-    const s = reduceApp(createAppState(), { type: "setRoutineOptions", options: { direction: "flats" } });
-    expect(s.settings.routine).toEqual({ id: "scales-circle", direction: "flats" });
-    expect(reduceApp(s, { type: "setRoutineOptions", options: { direction: "flats" } })).toBe(s);
+  it("default to the first routine, chromatically up, and ignore bad values", () => {
+    expect(createAppState().settings.routine).toEqual({ id: "scales-circle", order: "chromaticUp" });
+    expect(sanitizeRoutineOptions({ id: "nope", order: "sideways" })).toEqual({ id: "scales-circle", order: "chromaticUp" });
+    const s = reduceApp(createAppState(), { type: "setRoutineOptions", options: { order: "flats" } });
+    expect(s.settings.routine).toEqual({ id: "scales-circle", order: "flats" });
+    expect(reduceApp(s, { type: "setRoutineOptions", options: { order: "flats" } })).toBe(s);
+  });
+
+  it("keep a direction saved before there were chromatic orders", () => {
+    expect(sanitizeRoutineOptions({ id: "triads-circle", direction: "flats" })).toEqual({ id: "triads-circle", order: "flats" });
   });
 });

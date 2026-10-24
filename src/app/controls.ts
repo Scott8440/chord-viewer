@@ -4,7 +4,7 @@ import { CHORD_KEYS } from "../exercises/chordPractice";
 import type { PromptStyle } from "../exercises/chordPrompt";
 import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTraining";
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
-import { ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
+import { ROUTINES, routineById, type RoutineOrder } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
 import type { ArpeggioInversion } from "../exercises/technique";
 import { levelsFor, type ReadingPart } from "../exercises/excerpts";
@@ -103,8 +103,8 @@ export function bindControls(store: AppStore) {
   bindSelect($("readingKey"), s => s.reading.key, key => setReading({ key }));
   for (const r of ROUTINES) $("routineSel").append(new Option(r.name, r.id));
   bindSelect($("routineSel"), s => s.routine.id, id => ({ type: "setRoutineOptions", options: { id } }));
-  bindSelect($("routineDir"), s => s.routine.direction,
-    direction => ({ type: "setRoutineOptions", options: { direction: direction as CircleDirection } }));
+  bindSelect($("routineOrder"), s => s.routine.order,
+    order => ({ type: "setRoutineOptions", options: { order: order as RoutineOrder } }));
 }
 
 const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRESCRIPTIVE;
@@ -116,7 +116,7 @@ const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRES
 function exercisesOf(s: Settings): { ids: PrescriptiveId[]; keys: string[]; ownKey: boolean } {
   if (isPrescriptive(s.mode)) return { ids: [s.mode], keys: [s.exercise.key], ownKey: true };
   if (s.mode !== "routines") return { ids: [], keys: [], ownKey: false };
-  const items = routineById(s.routine.id)!.items(s.routine.direction);
+  const items = routineById(s.routine.id)!.items(s.routine.order);
   return { ids: [...new Set(items.map(i => i.exercise))], keys: items.map(i => i.options.key ?? s.exercise.key), ownKey: false };
 }
 

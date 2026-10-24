@@ -1,14 +1,30 @@
-// Routines: a set of prescriptive exercises played one after another, e.g. every major scale round the circle of
-// fifths. A routine is data pointing at exercises in PRESCRIPTIVE; the runner wraps the sequence reducer and moves on
+// Routines: a set of prescriptive exercises played one after another, e.g. every major scale, the keys in an order
+// the player picks (chromatically, or round the circle of fifths). A routine is data pointing at exercises in PRESCRIPTIVE; the runner wraps the sequence reducer and moves on
 // to the next item each time an item's run finishes (mistakes allowed; they are recorded).
-import { buildKey, CIRCLE_OF_FIFTHS_MAJOR } from "../theory";
+import { buildKey, CIRCLE_OF_FIFTHS_MAJOR, KEY_MAJORS } from "../theory";
 import { sanitizeExerciseOptions, PRESCRIPTIVE, type ExerciseOptions, type PrescriptiveId } from "./prescriptive";
 import type { TimingGrid } from "../timing/grid";
 import { initialSequence, reduceSequence, type RunResult, type SequenceAction, type SequenceExercise, type SequenceState } from "./sequence";
 
-export const CIRCLE_DIRECTIONS = ["sharps", "flats"] as const;
 /** sharps: C G D … (up by fifths); flats: C F B♭ … (down by fifths, i.e. up by fourths) */
-export type CircleDirection = typeof CIRCLE_DIRECTIONS[number];
+export type CircleDirection = "sharps" | "flats";
+
+/** The order a routine goes through the keys: chromatically up or down from C, or round the circle of fifths
+ *  ("sharps" and "flats", the values saved before chromatic orders existed) */
+export const ROUTINE_ORDERS = ["chromaticUp", "chromaticDown", "sharps", "flats"] as const;
+export type RoutineOrder = typeof ROUTINE_ORDERS[number];
+export const DEFAULT_ROUTINE_ORDER: RoutineOrder = "chromaticUp";
+/** Short labels, for tables */
+export const ORDER_LABELS: Record<RoutineOrder, string> = {
+  chromaticUp: "↑ chromatic", chromaticDown: "↓ chromatic", sharps: "↻ sharps", flats: "↺ flats",
+};
+
+/** Major key values in the order, starting on C: C D♭ D … up, C B B♭ … down, or round the circle */
+export function keysInOrder(order: RoutineOrder): string[] {
+  if (order === "sharps" || order === "flats") return circleOfFifths(order);
+  const up = KEY_MAJORS.map(t => `${t}:major`);
+  return order === "chromaticUp" ? up : [up[0], ...up.slice(1).reverse()];
+}
 
 /** Major key values in circle-of-fifths order, starting on C. */
 export function circleOfFifths(direction: CircleDirection): string[] {
@@ -25,8 +41,8 @@ export interface RoutineItem {
 export interface Routine {
   id: string;
   name: string;
-  /** The items, in order; a routine that goes round the circle depends on the direction */
-  items(direction: CircleDirection): RoutineItem[];
+  /** The items, in order; a routine that goes through the keys depends on the order */
+  items(order: RoutineOrder): RoutineItem[];
 }
 
 /** For each key, the given exercises in order (e.g. its scale, then its triads). */
@@ -35,14 +51,15 @@ export const eachKey = (keys: readonly string[], exercises: readonly Prescriptiv
 
 /** The curated routines (deliberately a list, not a builder). */
 export const ROUTINES: readonly Routine[] = [
-  { id: "scales-circle", name: "Major scales, circle of fifths",
-    items: d => eachKey(circleOfFifths(d), ["scales"]) },
-  { id: "triads-circle", name: "Diatonic chords, circle of fifths",
-    items: d => eachKey(circleOfFifths(d), ["diatonic"]) },
-  { id: "scale-triads-circle", name: "Scale, then diatonic chords, circle of fifths",
-    items: d => eachKey(circleOfFifths(d), ["scales", "diatonic"]) },
-  { id: "technique-circle", name: "Five-finger pattern, scale, arpeggio, broken chords, circle of fifths",
-    items: d => eachKey(circleOfFifths(d), ["fiveFinger", "scales", "arpeggios", "brokenChords"]) },
+  // Ids from when every routine went round the circle; kept, since settings and history refer to them
+  { id: "scales-circle", name: "Major scales",
+    items: o => eachKey(keysInOrder(o), ["scales"]) },
+  { id: "triads-circle", name: "Diatonic chords",
+    items: o => eachKey(keysInOrder(o), ["diatonic"]) },
+  { id: "scale-triads-circle", name: "Scale, then diatonic chords",
+    items: o => eachKey(keysInOrder(o), ["scales", "diatonic"]) },
+  { id: "technique-circle", name: "Five-finger pattern, scale, arpeggio, broken chords",
+    items: o => eachKey(keysInOrder(o), ["fiveFinger", "scales", "arpeggios", "brokenChords"]) },
 ];
 
 export const routineById = (id: string): Routine | undefined => ROUTINES.find(r => r.id === id);
@@ -81,9 +98,9 @@ export type RoutineAction =
   /** The player's exercise settings changed: rebuild the item in progress (later items are built when reached) */
   | { type: "setBase"; base: ExerciseOptions };
 
-export function initialRoutine(routine: Routine, direction: CircleDirection, base: ExerciseOptions, held: number[] = [],
+export function initialRoutine(routine: Routine, order: RoutineOrder, base: ExerciseOptions, held: number[] = [],
                                grid: TimingGrid | null = null): RoutineState {
-  const items = routine.items(direction);
+  const items = routine.items(order);
   return { routine, items, base, index: 0, current: initialSequence(itemExercise(items[0], base), held, grid),
            outcomes: [], previous: null, startTime: null, endTime: null, status: "playing" };
 }
@@ -194,16 +211,18 @@ export function keyProgress(r: RoutineState): KeyProgress[] {
 /** Whether the routine mixes different exercises (then each item's exercise is worth labelling). */
 export const mixesExercises = (s: RoutineState) => new Set(s.items.map(i => i.exercise)).size > 1;
 
-/** Routine settings: which routine, and which way round the circle. */
+/** Routine settings: which routine, and the order of the keys. */
 export interface RoutineOptions {
   id: string;
-  direction: CircleDirection;
+  order: RoutineOrder;
 }
 
 export function sanitizeRoutineOptions(raw: unknown): RoutineOptions {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
     id: typeof o.id === "string" && routineById(o.id) ? o.id : ROUTINES[0].id,
-    direction: (CIRCLE_DIRECTIONS as readonly unknown[]).includes(o.direction) ? o.direction as CircleDirection : "sharps",
+    // Saved before chromatic orders: `direction`, sharps or flats round the circle
+    order: (ROUTINE_ORDERS as readonly unknown[]).includes(o.order) ? o.order as RoutineOrder
+      : (ROUTINE_ORDERS as readonly unknown[]).includes(o.direction) ? o.direction as RoutineOrder : DEFAULT_ROUTINE_ORDER,
   };
 }

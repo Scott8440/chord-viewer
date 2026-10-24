@@ -9,7 +9,7 @@ import type { NotePrompt } from "../exercises/notePractice";
 import type { ExerciseOptions, PrescriptiveId } from "../exercises/prescriptive";
 import type { ProgressionPrompt } from "../exercises/progressions";
 import { READING_PARTS, READING_RANGES, type ReadingPrompt } from "../exercises/sightReading";
-import type { CircleDirection, ItemOutcome, RoutineState } from "../exercises/routines";
+import type { ItemOutcome, RoutineOrder, RoutineState } from "../exercises/routines";
 import type { RunResult, SequenceExercise } from "../exercises/sequence";
 import { templateById } from "../theory";
 import type { Strictness, Subdivision, TimingSummary } from "../timing/grid";
@@ -70,7 +70,8 @@ export interface RoutineBody {
   session: string;
   routine: string;
   name: string;
-  direction: CircleDirection;
+  /** The order of the keys (the name is from when it could only be "sharps" or "flats" round the circle) */
+  direction: RoutineOrder;
   /** UTC ms of the first note */
   startedAt: number;
   /** First note to last note of the last finished item */
@@ -126,7 +127,7 @@ const itemOutcome = (exercise: PrescriptiveId, ex: SequenceExercise, o: ItemOutc
  * A routine session from its state. `exerciseOf(i)` builds item i's exercise (as played); `toWall` turns a
  * performance.now() time into UTC ms.
  */
-export function routineBody(r: RoutineState, session: string, direction: CircleDirection, latencyMs: number,
+export function routineBody(r: RoutineState, session: string, direction: RoutineOrder, latencyMs: number,
                             exerciseOf: (index: number) => SequenceExercise, toWall: (perfMs: number) => number): RoutineBody {
   const items = r.outcomes.map((o, i) => itemOutcome(r.items[i].exercise, exerciseOf(i), o));
   return {

@@ -1,6 +1,6 @@
 // Circle of fifths: major keys on the outer ring, their relative minors on the inner ring, C at the top.
 // `circleSvg` is pure (model in, SVG out); `createCircleView` shows it, or hides it when a mode has nothing to show.
-import type { CircleDirection, KeyProgressState } from "../exercises/routines";
+import type { KeyProgressState, RoutineOrder } from "../exercises/routines";
 import {
   buildKey, circlePosition, CIRCLE_OF_FIFTHS_MAJOR, CIRCLE_OF_FIFTHS_MINOR, keySignature, matchTemplate, prettyAcc,
   templateById, type Analysis,
@@ -16,8 +16,9 @@ export interface CircleModel {
   chord?: { rootPc: number; minor: boolean } | null;
   /** Routine progress by key value; keys not listed are drawn plainly */
   progress?: Record<string, KeyProgressState>;
-  /** Routine progress shown in the middle, e.g. "4 / 12", with the direction of travel */
-  center?: { text: string; direction?: CircleDirection };
+  /** Routine progress shown in the middle, e.g. "4 / 12", with the direction of travel round the circle (none for a
+   *  chromatic order, which jumps across it) */
+  center?: { text: string; order?: RoutineOrder };
 }
 
 const R_OUT = 96, R_MID = 64, R_IN = 38;
@@ -89,7 +90,7 @@ export function circleSvg(model: CircleModel): string {
   // Middle: routine progress, or the focused key and its signature
   let center = "";
   if (model.center) {
-    const arrow = model.center.direction === "flats" ? "↺" : model.center.direction === "sharps" ? "↻" : "";
+    const arrow = model.center.order === "flats" ? "↺" : model.center.order === "sharps" ? "↻" : "";
     center = `<text class="c1" x="0" y="-2">${esc(model.center.text)}</text>` +
              (arrow ? `<text class="c2" x="0" y="12">${arrow}</text>` : "");
   } else if (focus) {

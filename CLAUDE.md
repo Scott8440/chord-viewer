@@ -26,7 +26,7 @@ mode and views subscribe to the store.
   - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (the header key, which
     is for free play only; pedal-notes-count option; active mode; chord types, prompt style and inversions for chord
     practice; `exercise`, the `ExerciseOptions` shared by the prescriptive exercises; `routine`, which routine
-    and which way round the circle of fifths; `latencyMs`; and `latencyCalibrated`) + `transport` (where the beats are, while a clock
+    and the order of its keys; `latencyMs`; and `latencyCalibrated`) + `transport` (where the beats are, while a clock
     runs; see "Metronome") + `page` ("practice" or "progress"; not saved). `createAppState(saved)`
     takes saved settings and validates each one; `reduceApp` over `AppAction`s.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed. A subscriber
@@ -81,7 +81,7 @@ mode and views subscribe to the store.
   `diatonicChords.ts` builds `diatonicChordsExercise`; `technique.ts` builds the technique exercises
   (`fiveFingerExercise`, `arpeggioExercise`, `brokenChordExercise`, `chromaticExercise`); `prescriptive.ts` is the registry (`PRESCRIPTIVE`: how each
   exercise builds its sequence from the shared `ExerciseOptions`, which options it uses, a short name and whether it
-  has chord steps). `routines.ts`: routines (see "Routines" below): `circleOfFifths(direction)`, `eachKey`, the
+  has chord steps). `routines.ts`: routines (see "Routines" below): `keysInOrder(order)` and `circleOfFifths(direction)`, `eachKey`, the
   curated `ROUTINES`, the runner `reduceRoutine` (wraps `reduceSequence`), `routineSummary`, and `keyProgress`
   (state per key, shared by the routine row and the circle).
 - `src/timing/`: pure. `transport.ts` (`Transport`, `beatAt`, `timeOfBeat`, `retempo`), `grid.ts` (judging a
@@ -134,7 +134,7 @@ mode and views subscribe to the store.
   `sequencePractice.ts` runs any exercise in `PRESCRIPTIVE` (modes "scales", "diatonic", "fiveFinger", "arpeggios", "brokenChords", "chromatic"): builds it from the
   shared exercise options, feeds note-ons and held keys with their times to the sequence reducer, and swaps in a
   fresh exercise when the options change. `routinePractice.ts` runs a routine (mode "routines"): restarts when the
-  routine or direction changes, applies other exercise settings from the item in progress on; Skip skips an item
+  routine or order changes, applies other exercise settings from the item in progress on; Skip skips an item
   (and starts again at the end), Restart routine starts over.
 - `src/main.ts`: wiring only: creates the store, views, modes and input sources and connects them. The larger
   pieces of wiring live in `src/app/`: `storage.ts` (settings loaded into `createAppState` and saved on every
@@ -152,7 +152,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 361 tests (54 voicings) should pass
+npm test           # Vitest: 363 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -323,7 +323,7 @@ mode switch and modes that use it draw it.
   diminished, augmented and sus chords aren't on the circle), and colour routine progress by key with a centre
   text and direction arrow. Labels use the circle's fixed spelling (F♯, E♭m), so E♭ minor's VI shows as B.
 - **Where:** free play with a header key (the key, its neighbourhood and the chord being played); scale and
-  diatonic chord exercises (the exercise's key); routines (progress, current key, "4 / 12" and ↻/↺). Not in note,
+  diatonic chord exercises (the exercise's key); routines (progress, current key, "4 / 12", and ↻/↺ when going round the circle). Not in note,
   chord or progression practice: the numerals would give answers away.
 
 ## Routines
@@ -332,8 +332,12 @@ A set of prescriptive exercises played one after another, e.g. every major scale
   Items set only what defines them (the key); every other option comes from the player's exercise settings, so
   "2 octaves" applies to the whole routine. `eachKey(keys, exercises)` builds the usual "for each key, these
   exercises" shape. Routines are a curated list (`ROUTINES`), not a user builder.
-- **Order:** `circleOfFifths("sharps")` = C G D A E B F♯ D♭ A♭ E♭ B♭ F; `"flats"` = C F B♭ E♭ A♭ D♭ F♯ B E A D G
-  (a setting). F♯ stands in for G♭, as in the key lists. Major keys only, for now.
+- **Order** (the Order setting after the routine, `RoutineOptions.order`, `keysInOrder`): chromatically up from C
+  (the default: C D♭ D E♭ …), chromatically down (C B B♭ …), or round the circle of fifths, sharps first
+  (`circleOfFifths("sharps")` = C G D A E B F♯ D♭ A♭ E♭ B♭ F) or flats first (C F B♭ E♭ A♭ D♭ F♯ B E A D G). The circle
+  orders keep the values "sharps" and "flats" from when they were the only ones (a setting saved as `direction`
+  still loads; routine records keep the field name `direction`; routine ids still end in "-circle"). F♯ stands in
+  for G♭, as in the key lists. Major keys only, for now.
 - **Running:** `reduceRoutine` forwards input to the item's `reduceSequence`; when the item's run finishes (mistakes
   allowed, and recorded) it moves on, carrying held keys over so a scale's last note doesn't count against the
   next item's chord. The previous item's result shows until the next one starts. Skip records "skipped".
@@ -488,7 +492,7 @@ Everything practised is recorded, and the **Progress** page charts it.
 - **Records, not stats:** plain JSON, only ever added. `run` (one per finished exercise run, alone or in a routine:
   exercise, `exerciseId` with the settings that change what's played, key, metronome settings or null, mistakes,
   duration, BPM, evenness, timing, routine session), `routine` (one per session, finished or left part-way: routine,
-  direction, start, first-to-last-note time, each item's outcome, total mistakes, metronome), `drill` (one per note,
+  order (`direction`), start, first-to-last-note time, each item's outcome, total mistakes, metronome), `drill` (one per note,
   chord or progression prompt answered or skipped: the prompt as asked, grouping details such as chord type and
   inversion, firstTry/corrected/skipped, time to answer). Charts are worked out from these, so new charts don't need
   new records.

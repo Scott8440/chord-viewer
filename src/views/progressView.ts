@@ -5,6 +5,7 @@ import {
   DRILLS, dailyMedian, dayStart, dayOf, drillsPerDay, exerciseOptions, exerciseRuns, practicePerDay, routineOptions,
   routineSessions, since, summary, weakestPrompts,
 } from "../progress/stats";
+import { ORDER_LABELS, type RoutineOrder } from "../exercises/routines";
 import { prettyAcc } from "../theory";
 import { mountChart, type ChartModel, type TimeRange } from "./charts";
 import { esc } from "./html";
@@ -100,8 +101,8 @@ export function createProgressView(el: HTMLElement, actions: {
               series: [{ name: "Time", color: SERIES[0], points: point(s => s.durationMs / 60_000) }] }, "Time to complete each session", "Time to complete")}</div>` +
           `<div>${chart("pvRoutineMistakes", { kind: "line", range, format: v => String(Math.round(v)),
               series: [{ name: "Mistakes", color: SERIES[0], points: point(s => s.mistakes) }] }, "Mistakes per session", "Mistakes")}</div></div>` +
-          table(["Date", "Time", "Mistakes", "Direction", "Metronome"],
-            sessions.map(s => [longDate(s.at), clock(s.durationMs), String(s.mistakes), s.direction === "sharps" ? "↻ sharps" : "↺ flats", s.bpm ? `${s.bpm} BPM` : "off"])));
+          table(["Date", "Time", "Mistakes", "Order", "Metronome"],
+            sessions.map(s => [longDate(s.at), clock(s.durationMs), String(s.mistakes), ORDER_LABELS[s.direction as RoutineOrder] ?? s.direction, s.bpm ? `${s.bpm} BPM` : "off"])));
       } else routineCard = card("Routines", "", empty("Finish a routine to see your time and mistakes here."));
 
       // Exercise: mistakes per run, and timing (or evenness), with each run faint behind the daily median

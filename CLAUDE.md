@@ -42,7 +42,7 @@ mode and views subscribe to the store.
   note-on in any octave; tracks wrong attempts, answered and right-first-time counts; skip counts as answered; no
   mode uses `makeNotePrompt` any more, since sight reading replaced note practice).
   `sightReading.ts`: sight reading (see "Sight reading" below): `ReadingOptions`, `READING_RANGES`, `readingPool`,
-  `makeReadingPrompt`.
+  `makeReadingPrompt` (generated lines), `keyFifths` and `makeExcerptPrompt` (a song phrase in a key).
   `chordAttempt.ts`: the one place chords are judged from the held keys (`trackAttempt`): a match as soon as the
   held keys form the target (rolled, or legato with common tones held); a miss only when keys were newly pressed
   and then all released; letting go of keys already held is never an attempt. Used by chord practice,
@@ -150,7 +150,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 327 tests (54 voicings) should pass
+npm test           # Vitest: 336 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -359,22 +359,34 @@ degrees in `detail.melody`), charted as a 5th series. `tones.stopNotes()` cuts o
 intervals and chord qualities.
 
 ## Sight reading (mode "notes", `src/modes/sightReading.ts`)
-Replaced note practice (a note name, played in any octave). A line of N notes (Notes: 1–8, default 4) is drawn as quarter notes
-across the staff (`StaffRow`), in a key (any of the 24, or Random: a new key every `PROMPTS_PER_KEY` = 10 lines;
-default C major) and on a staff (Treble C4–A5, Bass E2–C4, or Both E2–A5). Notes are the key signature's only
-(natural minor), each a different note from the last and at most a 6th away, steps twice as likely as leaps; never
-the same line twice running. Play it back left to right at the exact pitch (`reduceMelody`, as ear-training
-melodies): played notes turn green; a wrong one holds the step and is drawn red just right of it ("That was E4", or
-"Right note, wrong octave: too low"). The held keys aren't drawn (they'd cover the notes to read; `heldAt: null`).
-Options saved as `Settings.reading`. Recorded as `drill: "reading"`, prompt "4 notes, treble" (the notes in
-`detail.notes`), charted as a 6th series (`--series-6`, the palette's green); old note-practice records (`"notes"`)
-still chart, as "Note names (old)".
-**Next:** real music instead of generated lines, with written rhythm (see "Sight-reading excerpts").
+Replaced note practice. Two sources, chosen by **Level** (`ReadingOptions.level`, saved in `Settings.reading`):
+- **Songs, levels 1–5 (default 1):** a phrase from a song's voice part (see "Sight-reading excerpts"), rhythm as
+  written, transposed into the Key (any of the 24, or Random: a new key every `PROMPTS_PER_KEY` = 10 lines; default C
+  major; a tune moves by signature, so G major also reads as E minor, and the sub says "G major / E minor"). Each
+  level's excerpts are dealt in a shuffled order, all before any repeats. The file is fetched the first time a level
+  asks for it (`src/app/excerpts.ts`, `reading/lieder.json` next to the page; the mode shows "Loading songs…", or
+  "Couldn't load the songs": choosing the level again retries). Drawn on one staff by `src/views/staffMusic.ts`
+  (clef, key and time signature, bars as written, beams by the time signature's default groups, dots, ties across
+  bars, tuplet brackets, rests, accidentals per bar via VexFlow's `applyAccidentals`), passed to the staff view as a
+  `StaffMusic` row (`"bars" in row`). Title and composer show as the prompt, with "from OpenScore Lieder" as the
+  credit. Still played note by note, no timing.
+- **Generated notes (level 0):** a line of N notes (Notes: 1–8, default 4) drawn as quarter notes across the grand
+  staff (`StaffRow`), on a staff (Treble C4–A5, Bass E2–C4, or Both E2–A5; Notes and Staff only show for this).
+  Notes are the key signature's only (natural minor), each a different note from the last and at most a 6th away,
+  steps twice as likely as leaps; never the same line twice running.
+Both are played back left to right at the exact pitch (`reduceMelody`, as ear-training melodies; a tied note is
+played once): played notes turn green; a wrong one holds the step and is drawn red ("That was E4", or "Right note,
+wrong octave: too low"; in a song the note it was meant for turns red, in a generated line the wrong note is drawn
+just right of it). The held keys aren't drawn (they'd cover the notes to read). Recorded as `drill: "reading"`,
+prompt "Songs, level 2" (detail: key, level, excerpt id, notes) or "4 notes, treble", charted as a 6th series
+(`--series-6`, the palette's green); old note-practice records (`"notes"`) still chart, as "Note names (old)".
+**One note at a time at every level:** voice parts are a single line. Chords and both hands need the songs' piano
+parts (next: importing them, judging chord steps with `chordAttempt`, drawing a grand staff).
+**Next:** also judging rhythm against the metronome.
 
-## Sight-reading excerpts (built; not used by the app yet)
-Phrases from real songs, rhythm as written, for sight reading to move on to (the generated lines above are
-quarter notes for now). **Not all rhythm is quarter notes**: excerpts keep every note value, dot, tie, rest and
-tuplet, and drawing them must show them.
+## Sight-reading excerpts (`src/exercises/excerpts.ts`, `scripts/corpus`)
+Phrases from real songs, rhythm as written. **Not all rhythm is quarter notes**: excerpts keep every note value, dot,
+tie, rest and tuplet, and the drawing shows them.
 - **Source:** the OpenScore Lieder corpus (CC0; https://github.com/OpenScore/Lieder; credit asked, not required:
   `credit` in the file). The Essen folksong collection was ruled out: its licence is personal single-user use only, no
   redistribution or teaching materials. Fetch the corpus (not committed, `corpus/` is git-ignored) with
@@ -397,9 +409,13 @@ tuplet, and drawing them must show them.
   note values, shortest value, dotted, ties, tuplets, rests inside, syncopations, compound time).
 - **Levels** (`READING_LEVELS`, `readingLevel`: the first level whose limits an excerpt fits, worked out in the app so
   the cut-offs can change without re-importing): 1 steps, simple rhythm; 2 small leaps, dotted notes; 3 wider
-  range, compound time; 4 accidentals, triplets; 5 anything. The key signature isn't a limit: the plan is to
-  transpose excerpts to the key the player picks. With the current limits: 140 / 1,239 / 3,361 / 4,278 / 2,605
-  of 11,623 excerpts from 1,160 songs.
+  range, compound time; 4 accidentals, triplets; 5 anything. The key signature isn't a limit: excerpts are
+  transposed. With the current limits: 140 / 1,239 / 3,361 / 4,278 / 2,605 of 11,623 excerpts from 1,160 songs
+  (level 1 is small, but every one goes into all 24 keys without a ledger line).
+- **Transposing** (`transposeExcerpt`): by key signature (fifths), respelling each tpc, in the octave with the fewest
+  ledger lines (then the smallest move); null if a note would need more than a double sharp/flat (a few dozen level
+  4–5 excerpts in 7♯/7♭). `excerptNotes` gives the notes to play (rests out, a tied note once, with the events it's
+  written as); `tupletGroups` splits a bar's tuplet runs into brackets.
 - Nearly every voice part is in treble clef (76 bass excerpts), so bass and both-staves reading needs the piano
   parts (next, with chords).
 

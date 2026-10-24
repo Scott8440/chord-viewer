@@ -103,6 +103,87 @@ export function tpcName(tpc: number): string {
 /** The alteration a tpc carries: −1 flat, 0 natural, 1 sharp … */
 export const tpcAlter = (tpc: number) => Math.floor((tpc + 1) / 7) - 2;
 
+const LETTERS = "CDEFGAB";
+const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
+const tpcLetter = (tpc: number) => "FCGDAEB"[((tpc + 1) % 7 + 7) % 7];
+
+/** A written note's staff step: C4 is 28, each letter one step */
+export function staffStep(p: number, tpc: number): number {
+  const letter = tpcLetter(tpc);
+  const octave = (p - tpcAlter(tpc) - LETTER_PC[LETTERS.indexOf(letter)]) / 12 - 1;
+  return LETTERS.indexOf(letter) + 7 * octave;
+}
+
+/** A written note's name with its octave: "F#4", "Bb3", "B#3" (the octave goes with the letter, as written) */
+export const writtenName = (p: number, tpc: number) => `${tpcName(tpc)}${Math.floor(staffStep(p, tpc) / 7)}`;
+
+/** The staff steps a clef holds without ledger lines, a step past the outer lines included (treble D4–G5, bass F2–B3) */
+export const LEDGER: Record<Excerpt["clef"], [number, number]> = { treble: [29, 39], bass: [17, 27] };
+
+/**
+ * An excerpt moved to another key signature (in fifths), spelled for it, in the octave that keeps it on the staff
+ * best (the fewest ledger lines, then the smallest move). Null when a note would need more than a double sharp or
+ * double flat. Features stay as measured: everything in them but the ledger lines is the same in any key.
+ */
+export function transposeExcerpt(e: Excerpt, fifths: number): Excerpt | null {
+  const shift = fifths - e.key;
+  const notes = e.bars.flat().filter(x => x.p != null);
+  if (notes.some(x => Math.abs(tpcAlter(x.s! + shift)) > 2)) return null;
+  const base = ((shift * 7) % 12 + 12) % 12;
+  const [low, high] = LEDGER[e.clef];
+  const offStaff = (step: number) => Math.max(0, low - step, step - high);
+  let best = 0, bestCost = Infinity;
+  for (const semitones of [base - 24, base - 12, base, base + 12]) {
+    const cost = notes.reduce((sum, x) => sum + offStaff(staffStep(x.p! + semitones, x.s! + shift)), 0);
+    if (cost < bestCost || (cost === bestCost && Math.abs(semitones) < Math.abs(best))) { best = semitones; bestCost = cost; }
+  }
+  if (!shift && !best) return e;
+  return { ...e, key: fifths, bars: e.bars.map(bar => bar.map(x => x.p == null ? x : { ...x, p: x.p + best, s: x.s! + shift })) };
+}
+
+/** A note to play: its pitch, spelling and the events it's written as (more than one when tied over) */
+export interface ExcerptNote {
+  p: number;
+  s: number;
+  /** [bar, event] */
+  events: [number, number][];
+}
+
+/** The notes to play, in order: rests left out, a tied note once */
+export function excerptNotes(e: Pick<Excerpt, "bars">): ExcerptNote[] {
+  const out: ExcerptNote[] = [];
+  let tiedOn = false;
+  e.bars.forEach((bar, b) => bar.forEach((x, i) => {
+    if (x.p == null) { tiedOn = false; return; }
+    const last = out[out.length - 1];
+    if (tiedOn && last.p === x.p) last.events.push([b, i]);
+    else out.push({ p: x.p, s: x.s!, events: [[b, i]] });
+    tiedOn = !!x.tie;
+  }));
+  return out;
+}
+
+/**
+ * A bar's tuplets, as [from, to) event ranges: runs of events with the same ratio, each closed once it fills a whole
+ * number of tuplet units (a triplet of 8ths, or a quarter and an 8th, is three 8ths).
+ */
+export function tupletGroups(bar: readonly ExcerptEvent[]): { from: number; to: number; t: [number, number] }[] {
+  const out: { from: number; to: number; t: [number, number] }[] = [];
+  let from = -1, sum = 0, smallest = Infinity;
+  const close = (to: number) => { out.push({ from, to, t: bar[from].t! }); from = -1; };
+  bar.forEach((e, i) => {
+    if (from >= 0 && (!e.t || e.t[0] !== bar[from].t![0] || e.t[1] !== bar[from].t![1])) close(i);
+    if (!e.t) return;
+    if (from < 0) { from = i; sum = 0; smallest = Infinity; }
+    sum += eventLength({ v: e.v, d: e.d });
+    smallest = Math.min(smallest, BASE[e.v]);
+    const units = sum / (e.t[0] * smallest);
+    if (Math.abs(units - Math.round(units)) < 1e-6) close(i + 1);
+  });
+  if (from >= 0) close(bar.length);
+  return out;
+}
+
 /**
  * The most each level allows; an excerpt's level is the first one it fits. Pitch and rhythm both get harder. The key
  * signature isn't part of it: an excerpt can be transposed to any key, so the key is a setting of its own.

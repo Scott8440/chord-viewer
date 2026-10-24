@@ -3,6 +3,7 @@
 import "./style.css";
 import { setUpCalibration } from "./app/calibration";
 import { bindControls, showControls } from "./app/controls";
+import { loadExcerpts } from "./app/excerpts";
 import { $ } from "./app/dom";
 import { openHistory } from "./app/history";
 import { deviceId, loadSettings, saveSettingsOnChange } from "./app/storage";
@@ -132,7 +133,7 @@ function startMode(id: View): Mode {
 }
 const startModeView = (id: View): Mode =>
   id === "free" ? startFreePlay(store, { staff, chordName, circle })
-  : id === "notes" ? startSightReading(store, practiceViews, history.recorder)
+  : id === "notes" ? startSightReading(store, practiceViews, history.recorder, loadExcerpts)
   : id === "chords" ? startChordPractice(store, practiceViews, history.recorder)
   : id === "progressions" ? startProgressionPractice(store, practiceViews, history.recorder)
   : id === "routines" ? startRoutinePractice(store, practiceViews, history.recorder)

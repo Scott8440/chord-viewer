@@ -3,7 +3,7 @@
 // covers, up to MAX_BARS, as long as every bar is clean: one voice, no chords, the same key, time and clef
 // throughout, and bars that add up.
 import {
-  eventLength, tpcAlter, type Excerpt, type ExcerptEvent, type ExcerptFeatures,
+  eventLength, LEDGER, staffStep, tpcAlter, type Excerpt, type ExcerptEvent, type ExcerptFeatures,
 } from "../../src/exercises/excerpts.ts";
 import type { LineBar, MelodyLine } from "./mscx.ts";
 
@@ -80,16 +80,6 @@ export function excerptRanges(bars: readonly LineBar[]): Phrase[] {
   return out;
 }
 
-const LETTERS = "CDEFGAB";
-const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
-
-/** A written note's staff step: C4 is 28, each letter one step */
-function staffStep(p: number, tpc: number): number {
-  const letter = "FCGDAEB"[((tpc + 1) % 7 + 7) % 7];
-  const octave = (p - tpcAlter(tpc) - LETTER_PC[LETTERS.indexOf(letter)]) / 12 - 1;
-  return LETTERS.indexOf(letter) + 7 * octave;
-}
-
 /** The alteration the key signature gives a letter */
 function signatureAlter(key: number, tpc: number): number {
   const letter = "FCGDAEB"[((tpc + 1) % 7 + 7) % 7];
@@ -97,9 +87,6 @@ function signatureAlter(key: number, tpc: number): number {
   if (key < 0) return "BEADGCF".indexOf(letter) < -key ? -1 : 0;
   return 0;
 }
-
-/** Ledger-line notes: beyond a step past the staff's outer lines (treble E4–F5, bass G2–A3) */
-const LEDGER: Record<Excerpt["clef"], [number, number]> = { treble: [29, 39], bass: [17, 27] };
 
 export function measure(bars: readonly ExcerptEvent[][], key: number, time: [number, number], clef: Excerpt["clef"]): ExcerptFeatures {
   const compound = time[1] === 8 && time[0] % 3 === 0 && time[0] > 3;

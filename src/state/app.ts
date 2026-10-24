@@ -179,7 +179,7 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
     case "setReadingOptions": {
       const reading = sanitizeReadingOptions({ ...s.settings.reading, ...a.options });
       const r = s.settings.reading;
-      return reading.length === r.length && reading.range === r.range && reading.key === r.key ? s
+      return reading.level === r.level && reading.length === r.length && reading.range === r.range && reading.key === r.key ? s
         : { ...s, settings: { ...s.settings, reading } };
     }
     case "setLatency": {

@@ -156,10 +156,17 @@ export function noteDrillBody(p: NotePrompt, answered: boolean, missed: boolean,
   return { kind: "drill", drill: "notes", prompt: p.name, detail: { pc: p.pc }, outcome: outcomeOf(answered, missed), ms: Math.round(ms) };
 }
 
-/** A line of sight reading, judged as a whole; grouped by length and staff ("4 notes, treble"), since lines rarely
- *  repeat */
+/** A line of sight reading, judged as a whole; grouped by level for songs ("Songs, level 2"), by length and staff
+ *  for generated lines ("4 notes, treble"), since lines rarely repeat */
 export function readingDrillBody(p: ReadingPrompt, answered: boolean, missed: boolean, ms: number): DrillBody {
   const length = p.notes.length;
+  if (p.music) {
+    return {
+      kind: "drill", drill: "reading", prompt: `Songs, level ${p.music.level}`,
+      detail: { key: p.keyValue, level: p.music.level, excerpt: p.music.excerpt.id, length, notes: p.notes.map(n => n.name).join(" ") },
+      outcome: outcomeOf(answered, missed), ms: Math.round(ms),
+    };
+  }
   return {
     kind: "drill", drill: "reading", prompt: `${length} note${length === 1 ? "" : "s"}, ${READING_RANGES[p.range].label.toLowerCase()}`,
     detail: { key: p.keyValue, range: p.range, length, notes: p.notes.map(n => n.name).join(" ") },

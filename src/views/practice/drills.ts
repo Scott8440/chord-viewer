@@ -14,24 +14,49 @@ import type { PracticeDisplay } from "./view";
 
 const scoreText = (s: { answered: number; firstTry: number }) => s.answered ? `${s.firstTry} / ${s.answered} right first time` : "";
 
-/** Sight reading: the notes are on the staff, so no prompt here; a wrong note is named, and an octave out says which
- *  way */
+/** A key with its relative: a song moved to a signature may be in either */
+const withRelative = (k: KeyContext) =>
+  prettyAcc(k.mode === "major" ? `${k.label} / ${k.scale[5]} minor` : `${k.label} / ${k.scale[2]} major`);
+
+/** Sight reading: the notes are on the staff, so no prompt here, except a song's title and composer; a wrong note is
+ *  named, and an octave out says which way */
 export function sightReadingDisplay(s: MelodyState<ReadingPrompt>): PracticeDisplay {
   const key = buildKey(s.prompt.keyValue)!;
+  const m = s.prompt.music;
+  const n = s.prompt.notes.length;
   let feedback = "";
-  if (s.status === "correct") feedback = "✓ " + s.prompt.notes.map(n => prettyAcc(n.name)).join(" ");
+  if (s.status === "correct") feedback = m ? `✓ All ${n} notes` : "✓ " + s.prompt.notes.map(n => prettyAcc(n.name)).join(" ");
   else if (s.status === "wrong" && s.played != null) {
     const target = s.prompt.notes[s.index].note;
     feedback = s.played % 12 === target % 12
       ? `✗ Right note, wrong octave: ${s.played < target ? "too low" : "too high"}`
       : `✗ That was ${prettyAcc(noteName(s.played, key))}. Try again`;
   }
-  const n = s.prompt.notes.length;
+  const progress = `note ${Math.min(s.index + 1, n)} of ${n}`;
+  const score = s.answered ? `${s.firstTry} / ${s.answered} lines right first time` : "";
+  if (m) {
+    return {
+      label: "Play this phrase, note by note, at this pitch",
+      promptHtml: `<div class="seqTitle">${esc(m.source.title)}</div><div class="excerptBy">${esc(m.source.composer)} · from OpenScore Lieder</div>`,
+      size: "sequence",
+      sub: `${withRelative(key)} · level ${m.level} · ${progress}`,
+      status: s.status, feedback, score,
+    };
+  }
   return {
     label: n === 1 ? "Play this note, at this pitch" : "Play these notes, left to right, at this pitch",
     promptHtml: "", size: "note",
-    sub: `${prettyAcc(key.label)} · ${READING_RANGES[s.prompt.range].label.toLowerCase()} · note ${Math.min(s.index + 1, n)} of ${n}`,
-    status: s.status, feedback, score: s.answered ? `${s.firstTry} / ${s.answered} lines right first time` : "",
+    sub: `${prettyAcc(key.label)} · ${READING_RANGES[s.prompt.range].label.toLowerCase()} · ${progress}`,
+    status: s.status, feedback, score,
+  };
+}
+
+/** Sight reading while the songs load, or when they couldn't */
+export function readingLoadingDisplay(failed: boolean): PracticeDisplay {
+  return {
+    label: failed ? "Couldn't load the songs" : "Loading songs…", promptHtml: "", size: "note",
+    sub: failed ? "Check the connection and choose the level again, or choose Generated notes" : "",
+    status: "waiting", feedback: "", score: "",
   };
 }
 

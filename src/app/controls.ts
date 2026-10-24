@@ -6,7 +6,10 @@ import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTra
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
 import { ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
-import { READING_KEYS, READING_LENGTHS, READING_RANGES, type ReadingOptions, type ReadingRange } from "../exercises/sightReading";
+import { READING_LEVELS } from "../exercises/excerpts";
+import {
+  READING_KEYS, READING_LENGTHS, READING_LEVEL_CHOICES, READING_RANGES, type ReadingOptions, type ReadingRange,
+} from "../exercises/sightReading";
 import { pageSetup, viewOf } from "../modes/page";
 import type { AppStore } from "../modes/performance";
 import type { AppAction, AppState, ModeId, Settings } from "../state/app";
@@ -77,6 +80,10 @@ export function bindControls(store: AppStore) {
   bindSelect($("melodyLength"), s => String(s.ear.melodyLength),
     v => ({ type: "setEarOptions", options: { melodyLength: Number(v) } }));
   const setReading = (options: Partial<ReadingOptions>): AppAction => ({ type: "setReadingOptions", options });
+  for (const l of READING_LEVEL_CHOICES) {
+    $("readingLevel").append(new Option(l ? `${l} · ${READING_LEVELS[l - 1].name}` : "Generated notes", String(l)));
+  }
+  bindSelect($("readingLevel"), s => String(s.reading.level), v => setReading({ level: Number(v) }));
   for (const n of READING_LENGTHS) $("readingLength").append(new Option(String(n), String(n)));
   bindSelect($("readingLength"), s => String(s.reading.length), v => setReading({ length: Number(v) }));
   for (const [id, r] of Object.entries(READING_RANGES)) $("readingRange").append(new Option(r.label, id));
@@ -125,6 +132,8 @@ export function showControls(state: AppState) {
   $<HTMLSelectElement>("chordKey").options[0].text = s.promptStyle === "roman" ? "None (a new key every prompt)" : "None (any chord)";
   $("routineOptions").hidden = id !== "routines";
   $("readingOptions").hidden = id !== "notes";
+  // Songs come as written; only generated lines have a length and a staff to choose
+  $("readingLengthPick").hidden = $("readingRangePick").hidden = s.reading.level !== 0;
   // Both ear-training modes share their options; melodies have no drone, so the tonic is just the key
   const ear = id === "ear" || id === "earMelody";
   $("earOptions").hidden = $("practiceReplay").hidden = !ear;

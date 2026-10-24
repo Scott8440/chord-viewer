@@ -193,6 +193,8 @@ main {
 }
 #practicePrompt.sequence { font-size: clamp(22px, 2.6vw, 30px); }
 #practicePrompt .seqTitle { font-size: 1.6em; line-height: 1.1; margin-bottom: .35em; }
+/* Sight reading: a song's composer and source under its title */
+#practicePrompt .excerptBy { font-size: .6em; color: var(--muted); }
 #practicePrompt .seqRow { display: flex; flex-wrap: wrap; gap: .15em .45em; }
 #practicePrompt .seqRow .step .other { font-size: .5em; }
 #practicePrompt .routineRow { display: flex; flex-wrap: wrap; gap: .1em .5em; font-size: .75em; margin-bottom: .7em; }

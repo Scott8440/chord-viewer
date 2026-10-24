@@ -1,6 +1,7 @@
 // Grand staff rendering (VexFlow).
 import * as VF from "vexflow/bravura";
 import { spellNote, type Analysis, type KeyContext, type SpelledNote } from "../theory";
+import { drawMusic, type StaffMusic } from "./staffMusic";
 
 const STAFF_W = 300;
 const LINE_SP = 10;
@@ -61,7 +62,8 @@ export interface StaffRow {
 }
 
 export interface StaffView {
-  render(notes: number[], result: Analysis | null, key: KeyContext | null, pedalOnly: ReadonlySet<number>, row?: StaffRow | null): void;
+  /** With a row, a melody across the grand staff; with music, a phrase as written on one staff instead */
+  render(notes: number[], result: Analysis | null, key: KeyContext | null, pedalOnly: ReadonlySet<number>, row?: StaffRow | StaffMusic | null): void;
 }
 
 const GREY = { fillStyle: "#9a968c", strokeStyle: "#9a968c" };
@@ -75,6 +77,7 @@ const ROW_PAD = 12, ROW_END_PAD = 30;
 export function createStaffView(el: HTMLElement): StaffView {
   return {
     render(notes, result, key, pedalOnly, row) {
+      if (row && "bars" in row) { drawMusic(el, row, key); return; }
       el.innerHTML = "";
       const spelled: (SpelledNote & { grey: boolean; style?: keyof typeof ROW_STYLES })[] =
         notes.map(n => ({ ...spellNote(n, result, key), grey: pedalOnly.has(n) }));

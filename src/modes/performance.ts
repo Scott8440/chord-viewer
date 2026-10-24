@@ -5,6 +5,7 @@ import type { Store } from "../state/store";
 import { analyze, type KeyContext } from "../theory";
 import type { TimingGrid } from "../timing/grid";
 import type { StaffRow, StaffView } from "../views/staff";
+import type { StaffMusic } from "../views/staffMusic";
 
 export interface Mode {
   stop(): void;
@@ -48,8 +49,9 @@ export const heldNotes = (s: AppState) => [...s.perf.held.keys()].sort((a, b) =>
  */
 export function createPerformanceDrawer(store: AppStore, views: { staff: StaffView },
                                         keyOf: () => KeyContext | null = () => store.getState().settings.key,
-                                        /** A melody to draw left to right, with the held notes at its next step */
-                                        rowOf: () => StaffRow | null = () => null) {
+                                        /** A melody to draw left to right, with the held notes at its next step;
+                                         *  or written music, drawn as it is (no held notes) */
+                                        rowOf: () => StaffRow | StaffMusic | null = () => null) {
   let frameQueued = false, frame = 0;
   function schedule() {
     if (frameQueued) return;

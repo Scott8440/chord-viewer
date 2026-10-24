@@ -146,7 +146,8 @@ export function dailyMedian<T extends { at: number }>(points: readonly T[], valu
     .map(([day, vs]) => ({ day, at: dayStart(day) + 12 * 3600_000, value: median(vs), n: vs.length }));
 }
 
-export const DRILLS: readonly DrillKind[] = ["notes", "chords", "progressions", "ear", "melody"];
+/** In series order: a drill keeps its colour, so new ones go at the end */
+export const DRILLS: readonly DrillKind[] = ["notes", "chords", "progressions", "ear", "melody", "reading"];
 
 /** Per day and drill: the share of prompts right first time (skips count against), and how many there were */
 export function drillsPerDay(records: readonly ProgressRecord[]): Record<DrillKind, { day: string; at: number; firstTry: number; n: number }[]> {

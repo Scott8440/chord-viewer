@@ -8,6 +8,7 @@ import type { EarPrompt, MelodyPrompt } from "../exercises/earTraining";
 import type { NotePrompt } from "../exercises/notePractice";
 import type { ExerciseOptions, PrescriptiveId } from "../exercises/prescriptive";
 import type { ProgressionPrompt } from "../exercises/progressions";
+import { READING_RANGES, type ReadingPrompt } from "../exercises/sightReading";
 import type { CircleDirection, ItemOutcome, RoutineState } from "../exercises/routines";
 import type { RunResult, SequenceExercise } from "../exercises/sequence";
 import { templateById } from "../theory";
@@ -83,7 +84,8 @@ export interface RoutineBody {
   tempo: TempoSettings | null;
 }
 
-export type DrillKind = "notes" | "chords" | "progressions" | "ear" | "melody";
+/** "notes" is the old note practice (one note name, any octave), kept for its history; sight reading replaced it */
+export type DrillKind = "reading" | "notes" | "chords" | "progressions" | "ear" | "melody";
 
 /** One prompt of a drill (note, chord, progression practice or ear training), answered or skipped. */
 export interface DrillBody {
@@ -152,6 +154,17 @@ const outcomeOf = (answered: boolean, missed: boolean): DrillBody["outcome"] =>
 
 export function noteDrillBody(p: NotePrompt, answered: boolean, missed: boolean, ms: number): DrillBody {
   return { kind: "drill", drill: "notes", prompt: p.name, detail: { pc: p.pc }, outcome: outcomeOf(answered, missed), ms: Math.round(ms) };
+}
+
+/** A line of sight reading, judged as a whole; grouped by length and staff ("4 notes, treble"), since lines rarely
+ *  repeat */
+export function readingDrillBody(p: ReadingPrompt, answered: boolean, missed: boolean, ms: number): DrillBody {
+  const length = p.notes.length;
+  return {
+    kind: "drill", drill: "reading", prompt: `${length} note${length === 1 ? "" : "s"}, ${READING_RANGES[p.range].label.toLowerCase()}`,
+    detail: { key: p.keyValue, range: p.range, length, notes: p.notes.map(n => n.name).join(" ") },
+    outcome: outcomeOf(answered, missed), ms: Math.round(ms),
+  };
 }
 
 export function chordDrillBody(p: ChordPrompt, answered: boolean, missed: boolean, ms: number): DrillBody {

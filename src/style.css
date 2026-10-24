@@ -95,7 +95,7 @@ button {
 button:hover { border-color: var(--muted); }
 
 /* Chart series (the reference palette's first five dark steps, in its fixed order) */
-:root { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; }
+:root { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; --series-6: #008300; }
 
 main {
   flex: 1; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
@@ -212,7 +212,7 @@ main {
 #practicePrompt .acc { font-size: .8em; }
 #practicePrompt .ext { font-size: .55em; vertical-align: .55em; }
 #practiceSub { margin-top: 10px; color: var(--muted); font-size: 16px; min-height: 1.4em; }
-#chordOptions, #exerciseOptions, #routineOptions, #earOptions { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+#chordOptions, #exerciseOptions, #routineOptions, #earOptions, #readingOptions { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font-size: 13px; color: var(--muted); }
 #chordOptions details, #earOptions details { flex-basis: 100%; }
 #practicePrompt .fig {
   display: inline-flex; flex-direction: column; font-size: .4em; line-height: .95;

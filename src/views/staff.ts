@@ -1,6 +1,6 @@
 // Grand staff rendering (VexFlow).
 import * as VF from "vexflow/bravura";
-import { spellNote, type Analysis, type KeyContext } from "../theory";
+import { spellNote, type Analysis, type KeyContext, type SpelledNote } from "../theory";
 
 const STAFF_W = 300;
 const LINE_SP = 10;
@@ -48,11 +48,16 @@ export function staffCorner(): StaffCorner {
 
 /**
  * A melody drawn left to right instead of one chord: a note per step (MIDI; `dim` ones greyed, e.g. a hint not yet
- * played), out of `slots` steps; the held notes are drawn at the next step.
+ * played; `done` green, `wrong` red), out of `slots` steps. A note's `at` puts it at another step, fractions
+ * allowed (default its index). The held notes are drawn at step `heldAt`, or nowhere when null (default: the step
+ * after the last note that isn't dim). `duration` is the row's note value: "w" (whole notes, the default) or "q"
+ * (quarter notes, stems up or down by position).
  */
 export interface StaffRow {
-  notes: readonly { midi: number; dim?: boolean }[];
+  notes: readonly { midi: number; dim?: boolean; style?: "done" | "wrong"; at?: number }[];
   slots: number;
+  heldAt?: number | null;
+  duration?: "w" | "q";
 }
 
 export interface StaffView {
@@ -60,6 +65,10 @@ export interface StaffView {
 }
 
 const GREY = { fillStyle: "#9a968c", strokeStyle: "#9a968c" };
+const ROW_STYLES = {
+  done: { fillStyle: "#2e8b57", strokeStyle: "#2e8b57" },
+  wrong: { fillStyle: "#c8553d", strokeStyle: "#c8553d" },
+};
 /** Row mode: room kept clear at the row's start and end (viewBox units, from the note start) */
 const ROW_PAD = 12, ROW_END_PAD = 30;
 
@@ -67,7 +76,8 @@ export function createStaffView(el: HTMLElement): StaffView {
   return {
     render(notes, result, key, pedalOnly, row) {
       el.innerHTML = "";
-      const spelled = notes.map(n => ({ ...spellNote(n, result, key), grey: pedalOnly.has(n) }));
+      const spelled: (SpelledNote & { grey: boolean; style?: keyof typeof ROW_STYLES })[] =
+        notes.map(n => ({ ...spellNote(n, result, key), grey: pedalOnly.has(n) }));
 
       const renderer = new VF.Renderer(el as HTMLDivElement, VF.Renderer.Backends.SVG);
       renderer.resize(VIEW_W, VIEW_H);
@@ -93,13 +103,13 @@ export function createStaffView(el: HTMLElement): StaffView {
       new VF.StaveConnector(tStave, bStave).setType("singleRight").setContext(ctx).draw();
 
       /** Draws notes as one column at x (from the note start): treble from middle C up, bass below; grey ones greyed */
-      const column = (list: typeof spelled, x: number) => {
+      const column = (list: typeof spelled, x: number, duration: "w" | "q" = "w") => {
         const tc = new VF.TickContext();
         const built: VF.StaveNote[] = [];
         const makeChord = (part: typeof spelled, clef: string, stave: VF.Stave) => {
           if (!part.length) return;
           const note = new VF.StaveNote({
-            clef, duration: "w",
+            clef, duration, auto_stem: true,
             keys: part.map(n => `${n.letter.toLowerCase()}${n.acc}/${n.octave}`),
           });
           part.forEach((n, i) => {
@@ -107,6 +117,7 @@ export function createStaffView(el: HTMLElement): StaffView {
             const sig = key ? (key.sigAlter[n.letter] || 0) : 0;
             if (n.alter !== sig) note.addModifier(new VF.Accidental(n.alter === 0 ? "n" : n.acc), i);
             if (n.grey) note.setKeyStyle(i, GREY);
+            else if (n.style) note.setKeyStyle(i, ROW_STYLES[n.style]);
           });
           note.setStave(stave).setContext(ctx);
           note.addToModifierContext(new VF.ModifierContext());
@@ -124,9 +135,10 @@ export function createStaffView(el: HTMLElement): StaffView {
       if (!row) { column(spelled, NOTE_X); return; }
       // A melody: one step per slot across the staff, and the held notes at the next step
       const step = (STAVE_X + STAFF_W - startX - ROW_PAD - ROW_END_PAD) / Math.max(1, row.slots - 1);
-      row.notes.forEach((n, i) => column([{ ...spellNote(n.midi, null, key), grey: !!n.dim }], ROW_PAD + i * step));
-      const next = row.notes.filter(n => !n.dim).length;
-      if (next < row.slots) column(spelled, ROW_PAD + next * step);
+      row.notes.forEach((n, i) =>
+        column([{ ...spellNote(n.midi, null, key), grey: !!n.dim, style: n.style }], ROW_PAD + (n.at ?? i) * step, row.duration));
+      const heldAt = row.heldAt === undefined ? row.notes.filter(n => !n.dim).length : row.heldAt;
+      if (heldAt != null && heldAt < row.slots) column(spelled, ROW_PAD + heldAt * step);
     },
   };
 }

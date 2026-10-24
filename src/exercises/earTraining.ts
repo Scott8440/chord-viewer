@@ -145,8 +145,13 @@ export function makeMelodyPrompt(rng: Rng, tonic: string, degrees: readonly stri
   }
 }
 
-export interface MelodyState {
-  prompt: MelodyPrompt;
+/** Anything played back note by note, in order, at the exact pitch: a melody here, a line of sight reading */
+export interface PlaybackPrompt {
+  notes: readonly { note: number }[];
+}
+
+export interface MelodyState<P extends PlaybackPrompt = MelodyPrompt> {
+  prompt: P;
   /** How many notes have been played back so far */
   index: number;
   /** waiting: playing it back; wrong: the last note was wrong (the step waits for the right one); correct: all played */
@@ -159,16 +164,16 @@ export interface MelodyState {
   firstTry: number;
 }
 
-export type MelodyAction =
+export type MelodyAction<P extends PlaybackPrompt = MelodyPrompt> =
   | { type: "play"; note: number }
-  | { type: "next"; prompt: MelodyPrompt }
-  | { type: "skip"; prompt: MelodyPrompt };
+  | { type: "next"; prompt: P }
+  | { type: "skip"; prompt: P };
 
-export function initialMelody(prompt: MelodyPrompt): MelodyState {
+export function initialMelody<P extends PlaybackPrompt>(prompt: P): MelodyState<P> {
   return { prompt, index: 0, status: "waiting", played: null, missed: false, answered: 0, firstTry: 0 };
 }
 
-export function reduceMelody(s: MelodyState, a: MelodyAction): MelodyState {
+export function reduceMelody<P extends PlaybackPrompt>(s: MelodyState<P>, a: MelodyAction<P>): MelodyState<P> {
   switch (a.type) {
     case "play": {
       if (s.status === "correct") return s;   // done; ignore notes until the next melody

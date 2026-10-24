@@ -39,7 +39,10 @@ mode and views subscribe to the store.
   `roman.ts` (`romanFor`), re-exported from `index.ts`.
 - `src/exercises/`: exercises as pure data and functions. `notePractice.ts`: `makeNotePrompt` (random pitch class,
   never the same twice; spelled from the key, else sharp or flat at random) and `reduceNotePractice` (judges each
-  note-on in any octave; tracks wrong attempts, answered and right-first-time counts; skip counts as answered).
+  note-on in any octave; tracks wrong attempts, answered and right-first-time counts; skip counts as answered; no
+  mode uses `makeNotePrompt` any more, since sight reading replaced note practice).
+  `sightReading.ts`: sight reading (see "Sight reading" below): `ReadingOptions`, `READING_RANGES`, `readingPool`,
+  `makeReadingPrompt`.
   `chordAttempt.ts`: the one place chords are judged from the held keys (`trackAttempt`): a match as soon as the
   held keys form the target (rolled, or legato with common tones held); a miss only when keys were newly pressed
   and then all released; letting go of keys already held is never an attempt. Used by chord practice,
@@ -95,7 +98,7 @@ mode and views subscribe to the store.
   `practice/` (the practice panel, one file per job: `view.ts` renders a `PracticeDisplay`; `drills.ts`,
   `sequence.ts` and `routine.ts` are the presenters that turn exercise state into one; `chords.ts` holds chord
   notation and corrections, `steps.ts` the step rows, `text.ts` small helpers; `index.ts` re-exports the public
-  names. `notePracticeDisplay` and `chordPracticeDisplay` turn exercise state into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
+  names. `sightReadingDisplay` and `chordPracticeDisplay` turn exercise state into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
   answered and add the played chord's numeral; inversions show as slash chords or figured bass (V⁶₅, I⁶₄, V⁴₂), and
   a wrong bass gets "Right notes, wrong bass. Put E in the bass"; rows of steps share `stepHtml` and
   `chordStepHtml` (green when done, current underlined, a chord in the prompt's notation with the other one
@@ -109,7 +112,7 @@ mode and views subscribe to the store.
 - `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
   card; each returns `{stop, skip?}`. `performance.ts` holds what modes share: `createPerformanceDrawer` (subscribes
   itself and redraws the staff once per frame, in the key the mode gives it: free play the header
-  key; note and chord-name practice none; Roman numeral and progression prompts the prompt's key; exercises the
+  key; chord-name practice none (or its Key option's key); sight reading the line's key; Roman numeral and progression prompts the prompt's key; exercises the
   exercise's key), `onPlayerInput` (each note-on with its time, then each change of the held keys with the time of
   the event behind it), `timingGrid`/`onTimingGrid` (the grid timed exercises are judged on), `onIdle` (idle after a wait with no input and nothing sounding; active on any input) and
   `heldNotes`.
@@ -120,8 +123,8 @@ mode and views subscribe to the store.
   fades to "Play something" over 2 s (it owns how that looks); any input brings the chord straight back.
   **Exercises never use the header key**, and the header Key picker is hidden outside free play: a key is either
   part of the prompt ("V7 in G major") or chosen inside the exercise (the scale selector).
-  `freePlay.ts` adds the chord name with the 40 ms debounce. `notePractice.ts` feeds each new note-on from the
-  history to the exercise reducer and moves to the next prompt 700 ms after a correct answer. `chordPractice.ts`
+  `freePlay.ts` adds the chord name with the 40 ms debounce. `sightReading.ts` (mode id "notes") feeds each new
+  note-on to `reduceMelody` and moves to the next line 900 ms after its last note. `chordPractice.ts`
   feeds the held keys to its reducer (900 ms before the next prompt) and asks again if the filter rules out the
   current chord. `progressionPractice.ts` feeds the held keys to the progression reducer and starts a new
   progression 1.2 s after the last chord. The chord filter, the prompt style (chord names or Roman numerals, shared
@@ -147,7 +150,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 303 tests (54 voicings) should pass
+npm test           # Vitest: 312 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -353,6 +356,19 @@ degrees in `detail.melody`), charted as a 5th series. `tones.stopNotes()` cuts o
 **Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,
 intervals and chord qualities.
 
+## Sight reading (mode "notes", `src/modes/sightReading.ts`)
+Replaced note practice (a note name, played in any octave). A line of N notes (Notes: 1–8, default 4) is drawn as quarter notes
+across the staff (`StaffRow`), in a key (any of the 24, or Random: a new key every `PROMPTS_PER_KEY` = 10 lines;
+default C major) and on a staff (Treble C4–A5, Bass E2–C4, or Both E2–A5). Notes are the key signature's only
+(natural minor), each a different note from the last and at most a 6th away, steps twice as likely as leaps; never
+the same line twice running. Play it back left to right at the exact pitch (`reduceMelody`, as ear-training
+melodies): played notes turn green; a wrong one holds the step and is drawn red just right of it ("That was E4", or
+"Right note, wrong octave: too low"). The held keys aren't drawn (they'd cover the notes to read; `heldAt: null`).
+Options saved as `Settings.reading`. Recorded as `drill: "reading"`, prompt "4 notes, treble" (the notes in
+`detail.notes`), charted as a 6th series (`--series-6`, the palette's green); old note-practice records (`"notes"`)
+still chart, as "Note names (old)".
+**Next:** accidentals outside the key, rhythm, both hands at once, a time limit per note.
+
 ## Practice history
 Everything practised is recorded, and the **Progress** page charts it.
 - **Records, not stats:** plain JSON, only ever added. `run` (one per finished exercise run, alone or in a routine:
@@ -408,7 +424,7 @@ Everything practised is recorded, and the **Progress** page charts it.
      template-plus-scoring recognizer** whose weights live in a data table, so it can handle omissions, voicing
      matching and explaining why a reading won. Keep tonal for primitives.
    - **Views and modes:** subscribe to state. Free play is just one mode.
-3. **Started:** note practice (name a note, play it in any octave) and chord practice (a chord name or a Roman
+3. **Started:** sight reading (a line of notes on the staff, played back at pitch) and chord practice (a chord name or a Roman
    numeral in a key, from a filtered set of types, played in any voicing or a required inversion) and progression
    practice (a popular progression in a key, chord by chord), all with right/wrong feedback and a first-try score.
    Prescriptive exercises (above): scales and diatonic chords, and routines of them round the circle of fifths.

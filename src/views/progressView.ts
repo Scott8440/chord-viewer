@@ -27,7 +27,7 @@ export interface ProgressView {
 }
 
 /** Series colours: the reference palette's first five dark steps, in its fixed order */
-const SERIES = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)", "var(--series-5)"];
+const SERIES = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)", "var(--series-5)", "var(--series-6)"];
 const DAY = 86_400_000;
 
 const minutes = (ms: number) => {
@@ -37,7 +37,10 @@ const minutes = (ms: number) => {
 const clock = (ms: number) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const longDate = (ms: number) => new Date(ms).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-const DRILL_NAMES = { notes: "Notes", chords: "Chords", progressions: "Progressions", ear: "Ear: degrees", melody: "Ear: melodies" } as const;
+const DRILL_NAMES = {
+  notes: "Note names (old)", chords: "Chords", progressions: "Progressions", ear: "Ear: degrees", melody: "Ear: melodies",
+  reading: "Sight reading",
+} as const;
 
 function table(head: string[], rows: string[][]): string {
   if (!rows.length) return "";

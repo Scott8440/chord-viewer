@@ -6,6 +6,7 @@ import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTra
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
 import { ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
+import { READING_KEYS, READING_LENGTHS, READING_RANGES, type ReadingOptions, type ReadingRange } from "../exercises/sightReading";
 import { pageSetup, viewOf } from "../modes/page";
 import type { AppStore } from "../modes/performance";
 import type { AppAction, AppState, ModeId, Settings } from "../state/app";
@@ -75,6 +76,15 @@ export function bindControls(store: AppStore) {
   for (const n of MELODY_LENGTHS) $("melodyLength").append(new Option(String(n), String(n)));
   bindSelect($("melodyLength"), s => String(s.ear.melodyLength),
     v => ({ type: "setEarOptions", options: { melodyLength: Number(v) } }));
+  const setReading = (options: Partial<ReadingOptions>): AppAction => ({ type: "setReadingOptions", options });
+  for (const n of READING_LENGTHS) $("readingLength").append(new Option(String(n), String(n)));
+  bindSelect($("readingLength"), s => String(s.reading.length), v => setReading({ length: Number(v) }));
+  for (const [id, r] of Object.entries(READING_RANGES)) $("readingRange").append(new Option(r.label, id));
+  bindSelect($("readingRange"), s => s.reading.range, v => setReading({ range: v as ReadingRange }));
+  for (const k of READING_KEYS) {
+    $("readingKey").append(new Option(k === "random" ? `Random (new key every ${PROMPTS_PER_KEY})` : prettyAcc(buildKey(k)!.label), k));
+  }
+  bindSelect($("readingKey"), s => s.reading.key, key => setReading({ key }));
   for (const r of ROUTINES) $("routineSel").append(new Option(r.name, r.id));
   bindSelect($("routineSel"), s => s.routine.id, id => ({ type: "setRoutineOptions", options: { id } }));
   bindSelect($("routineDir"), s => s.routine.direction,
@@ -114,6 +124,7 @@ export function showControls(state: AppState) {
   // With no key, chord names are any chord, and Roman numerals get a key of their own each time
   $<HTMLSelectElement>("chordKey").options[0].text = s.promptStyle === "roman" ? "None (a new key every prompt)" : "None (any chord)";
   $("routineOptions").hidden = id !== "routines";
+  $("readingOptions").hidden = id !== "notes";
   // Both ear-training modes share their options; melodies have no drone, so the tonic is just the key
   const ear = id === "ear" || id === "earMelody";
   $("earOptions").hidden = $("practiceReplay").hidden = !ear;

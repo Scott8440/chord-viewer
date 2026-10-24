@@ -14,7 +14,7 @@
   <label class="pick">Mode
     <select id="modeSel">
       <option value="free">Free play</option>
-      <option value="notes">Note practice</option>
+      <option value="notes">Sight reading</option>
       <option value="chords">Chord practice</option>
       <option value="progressions">Progression practice</option>
       <option value="scales">Scale practice</option>
@@ -61,6 +61,17 @@
           <summary id="earFilterSummary"></summary>
           <div id="earFilterBody"></div>
         </details>
+      </div>
+      <div id="readingOptions" hidden>
+        <label class="pick">Notes
+          <select id="readingLength"></select>
+        </label>
+        <label class="pick">Staff
+          <select id="readingRange"></select>
+        </label>
+        <label class="pick">Key
+          <select id="readingKey"></select>
+        </label>
       </div>
       <div id="chordOptions" hidden>
         <label class="pick">Prompts

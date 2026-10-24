@@ -1,11 +1,11 @@
-// Presenters for the drills: note, chord and progression practice, and ear training.
+// Presenters for the drills: sight reading, chord and progression practice, and ear training.
 
 import type { ChordPracticeState } from "../../exercises/chordPractice";
 import type { PromptStyle } from "../../exercises/chordPrompt";
 import { degreeName, type EarState, type MelodyState } from "../../exercises/earTraining";
-import type { NotePracticeState } from "../../exercises/notePractice";
 import type { ProgressionState } from "../../exercises/progressions";
-import { buildKey, chromaOf, FLAT, prettyAcc, SHARP, templateById, type KeyContext } from "../../theory";
+import { noteName, READING_RANGES, type ReadingPrompt } from "../../exercises/sightReading";
+import { buildKey, chromaOf, prettyAcc, templateById, type KeyContext } from "../../theory";
 import { chordSymbolHtml } from "../chordName";
 import { esc } from "../html";
 import { chordStepHtml, describeMiss, inversionName, romanHtml } from "./chords";
@@ -14,18 +14,24 @@ import type { PracticeDisplay } from "./view";
 
 const scoreText = (s: { answered: number; firstTry: number }) => s.answered ? `${s.firstTry} / ${s.answered} right first time` : "";
 
-export function notePracticeDisplay(s: NotePracticeState, key: KeyContext | null): PracticeDisplay {
+/** Sight reading: the notes are on the staff, so no prompt here; a wrong note is named, and an octave out says which
+ *  way */
+export function sightReadingDisplay(s: MelodyState<ReadingPrompt>): PracticeDisplay {
+  const key = buildKey(s.prompt.keyValue)!;
   let feedback = "";
-  if (s.status === "correct") feedback = "✓ Correct";
+  if (s.status === "correct") feedback = "✓ " + s.prompt.notes.map(n => prettyAcc(n.name)).join(" ");
   else if (s.status === "wrong" && s.played != null) {
-    // Spell the wrong note the same way the prompt is spelled
-    const pc = s.played % 12;
-    const name = key ? key.spell[pc] : (s.prompt.name.includes("b") ? FLAT : SHARP)[pc];
-    feedback = `✗ That was ${prettyAcc(name)} — try again`;
+    const target = s.prompt.notes[s.index].note;
+    feedback = s.played % 12 === target % 12
+      ? `✗ Right note, wrong octave: ${s.played < target ? "too low" : "too high"}`
+      : `✗ That was ${prettyAcc(noteName(s.played, key))}. Try again`;
   }
+  const n = s.prompt.notes.length;
   return {
-    label: "Play this note, in any octave", promptHtml: esc(prettyAcc(s.prompt.name)), size: "note", sub: "",
-    status: s.status, feedback, score: scoreText(s),
+    label: n === 1 ? "Play this note, at this pitch" : "Play these notes, left to right, at this pitch",
+    promptHtml: "", size: "note",
+    sub: `${prettyAcc(key.label)} · ${READING_RANGES[s.prompt.range].label.toLowerCase()} · note ${Math.min(s.index + 1, n)} of ${n}`,
+    status: s.status, feedback, score: s.answered ? `${s.firstTry} / ${s.answered} lines right first time` : "",
   };
 }
 

@@ -18,7 +18,7 @@ import { startEarMelody } from "./modes/earMelody";
 import { startEarTraining } from "./modes/earTraining";
 import { startFreePlay } from "./modes/freePlay";
 import { startMetronome } from "./modes/metronome";
-import { startNotePractice } from "./modes/notePractice";
+import { startSightReading } from "./modes/sightReading";
 import { IDLE_MS, pageSetup, viewOf, type View } from "./modes/page";
 import { onIdle, type Mode } from "./modes/performance";
 import { selectProgress, startProgress } from "./modes/progress";
@@ -132,7 +132,7 @@ function startMode(id: View): Mode {
 }
 const startModeView = (id: View): Mode =>
   id === "free" ? startFreePlay(store, { staff, chordName, circle })
-  : id === "notes" ? startNotePractice(store, practiceViews, history.recorder)
+  : id === "notes" ? startSightReading(store, practiceViews, history.recorder)
   : id === "chords" ? startChordPractice(store, practiceViews, history.recorder)
   : id === "progressions" ? startProgressionPractice(store, practiceViews, history.recorder)
   : id === "routines" ? startRoutinePractice(store, practiceViews, history.recorder)

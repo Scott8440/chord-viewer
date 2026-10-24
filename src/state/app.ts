@@ -2,6 +2,7 @@
 import { DEFAULT_CHORD_TYPES, sanitizeChordKey, sanitizeChordTypes } from "../exercises/chordPractice";
 import { PROMPT_STYLES, type PromptStyle } from "../exercises/chordPrompt";
 import { sanitizeEarOptions, type EarOptions } from "../exercises/earTraining";
+import { sanitizeReadingOptions, type ReadingOptions } from "../exercises/sightReading";
 import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/prescriptive";
 import { sanitizeRoutineOptions, type RoutineOptions } from "../exercises/routines";
 import type { InputEvent } from "../input/events";
@@ -36,6 +37,8 @@ export interface Settings {
   readonly routine: RoutineOptions;
   /** Ear training (both modes): the tonic (or random), which scale degrees it asks for, and the melody length */
   readonly ear: EarOptions;
+  /** Sight reading (mode "notes"): how many notes, which staff, which key (or random) */
+  readonly reading: ReadingOptions;
   /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
   readonly latencyMs: number;
   /** The latency has been dealt with: calibrated, set by hand, or calibration declined. Until it is, starting the
@@ -55,6 +58,7 @@ export interface SavedSettings {
   exercise?: unknown;
   routine?: unknown;
   ear?: unknown;
+  reading?: unknown;
   latencyMs?: unknown;
   latencyCalibrated?: unknown;
 }
@@ -90,6 +94,7 @@ export type AppAction =
   | { type: "setExerciseOptions"; options: Partial<ExerciseOptions> }
   | { type: "setRoutineOptions"; options: Partial<RoutineOptions> }
   | { type: "setEarOptions"; options: Partial<EarOptions> }
+  | { type: "setReadingOptions"; options: Partial<ReadingOptions> }
   /** Calibrated or typed in: either way, the latency counts as dealt with */
   | { type: "setLatency"; ms: number }
   /** Calibration declined */
@@ -121,6 +126,7 @@ export function createAppState(saved: SavedSettings = {}): AppState {
       exercise: sanitizeExerciseOptions(saved.exercise),
       routine: sanitizeRoutineOptions(saved.routine),
       ear: sanitizeEarOptions(saved.ear),
+      reading: sanitizeReadingOptions(saved.reading),
       latencyMs: sanitizeLatency(saved.latencyMs),
       // A latency saved before this flag existed was calibrated or typed in, unless it's the default 0
       latencyCalibrated: saved.latencyCalibrated === true || sanitizeLatency(saved.latencyMs) !== 0,
@@ -169,6 +175,12 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return ear.tonic === s.settings.ear.tonic && ear.degrees.join() === s.settings.ear.degrees.join() &&
         ear.melodyLength === s.settings.ear.melodyLength ? s
         : { ...s, settings: { ...s.settings, ear } };
+    }
+    case "setReadingOptions": {
+      const reading = sanitizeReadingOptions({ ...s.settings.reading, ...a.options });
+      const r = s.settings.reading;
+      return reading.length === r.length && reading.range === r.range && reading.key === r.key ? s
+        : { ...s, settings: { ...s.settings, reading } };
     }
     case "setLatency": {
       const latencyMs = sanitizeLatency(a.ms);

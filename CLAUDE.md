@@ -545,7 +545,7 @@ Everything practised is recorded, and the **Progress** page charts it.
 3. **Started:** sight reading (a line of notes on the staff, played back at pitch) and chord practice (a chord name or a Roman
    numeral in a key, from a filtered set of types, played in any voicing or a required inversion) and progression
    practice (a popular progression in a key, chord by chord), all with right/wrong feedback and a first-try score.
-   Prescriptive exercises (above): scales and diatonic chords, and routines of them round the circle of fifths.
+   Prescriptive exercises (above): scales and diatonic chords, and routines of them through every key, in a chosen order.
    **Exercises as data:** a prompt generator, a matcher with configurable tolerances (any voicing or a specific
    inversion, octave sensitivity, timing window) and feedback.
 4. **Audio:** the metronome is **built** (see "Metronome"), and ear training's synthesised drone and notes (see

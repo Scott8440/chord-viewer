@@ -252,8 +252,8 @@ export function cutExcerpts(melody: readonly StaffBar[], scoreId: string): Omit<
   return out;
 }
 
-/** Piano clefs: plain treble and bass only */
-const PIANO_CLEFS: Record<string, Clef> = { G: "treble", F: "bass" };
+/** Piano clefs: the right hand in treble, the left in bass, as a reader expects (a hand in the other clef is left out) */
+const PIANO_CLEFS: [string, Clef][] = [["G", "treble"], ["F", "bass"]];
 
 /**
  * The piano part's excerpts: its two staves over the same bars as each melody excerpt (the song's phrases make
@@ -275,8 +275,8 @@ export function cutPianoExcerpts(song: ScoreParts): Omit<Excerpt, "source">[] {
     if (hands.some(h => h.some((bar, i) => i && !sameSetting(h[i - 1], bar)))) continue;
     const [r0, l0] = [hands[0][0], hands[1][0]];
     if (r0.key !== l0.key || r0.time.join() !== l0.time.join() || r0.time.join() !== melody[a].time.join()) continue;
-    const clefs = hands.map(h => PIANO_CLEFS[h[0].clef]);
-    if (!clefs[0] || !clefs[1]) continue;
+    if (hands.some((h, i) => h[0].clef !== PIANO_CLEFS[i][0])) continue;
+    const clefs = PIANO_CLEFS.map(([, clef]) => clef);
     const staves: ExcerptStaff[] = hands.map((h, i) => {
       const most = Math.max(...h.map(bar => bar.voices.length));
       return { clef: clefs[i], voices: Array.from({ length: most }, (_, v) => h.map(bar => bar.voices[v] ?? [])) };

@@ -212,6 +212,15 @@ describe("cutting piano excerpts", () => {
       [START + note("half", 43, 15, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")]), "4")!;
     expect(cutPianoExcerpts(song)).toEqual([]);
   });
+
+  it("leaves out bars where the right hand isn't in treble or the left hand isn't in bass", () => {
+    const toBass = "<Clef><concertClefType>F</concertClefType></Clef>";
+    const song = readMscx(v3(melody, "",
+      [START + toBass + note("half", 48, 14, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")],
+      [START + note("half", 43, 15, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")]), "4")!;
+    expect(song.piano![0][0].clef).toBe("F");
+    expect(cutPianoExcerpts(song)).toEqual([]);
+  });
 });
 
 describe("measuring", () => {

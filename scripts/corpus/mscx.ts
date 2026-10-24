@@ -75,7 +75,7 @@ function readStaff(staff: XmlElement, defaultClef: string): StaffBar[] {
 
   for (const measure of kids(staff, "Measure")) {
     const problems: string[] = [];
-    const startClef = clef;
+    let startClef = clef;
     // Version 3 wraps each voice in <voice>; version 2 lists everything in the bar, voices told apart by <track>
     // (track mod 4); only its first voice is read, since the others are placed by absolute ticks
     const v3 = kids(measure, "voice");
@@ -99,6 +99,8 @@ function readStaff(staff: XmlElement, defaultClef: string): StaffBar[] {
             // One at the end of a bar is for the next; one in the middle can't be drawn here
             const barLength = fraction(measure.attrs.len) ?? time[0] / time[1];
             if (filled > EPS && filled < barLength - EPS) problems.push("clef change");
+            // One before the first note is this bar's clef
+            else if (filled <= EPS) startClef = clef;
             break;
           }
           case "Tuplet": {

@@ -6,6 +6,7 @@ import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTra
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
 import { ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
+import type { ArpeggioInversion } from "../exercises/technique";
 import { levelsFor, type ReadingPart } from "../exercises/excerpts";
 import {
   READING_KEYS, READING_LENGTHS, READING_LEVEL_CHOICES, READING_PARTS, READING_RANGES, type ReadingOptions, type ReadingRange,
@@ -64,6 +65,7 @@ export function bindControls(store: AppStore) {
   const setExercise = (options: Partial<ExerciseOptions>): AppAction => ({ type: "setExerciseOptions", options });
   bindSelect($("exKey"), s => s.exercise.key, key => setExercise({ key }));
   bindSelect($("exOctaves"), s => String(s.exercise.octaves), v => setExercise({ octaves: Number(v) as ScaleOctaves }));
+  bindSelect($("exInversion"), s => String(s.exercise.inversion), v => setExercise({ inversion: Number(v) as ArpeggioInversion }));
   bindSelect($("exMinorForm"), s => s.exercise.minorForm, v => setExercise({ minorForm: v as MinorForm }));
   bindSelect($("exChords"), s => s.exercise.sevenths ? "sevenths" : "triads", v => setExercise({ sevenths: v === "sevenths" }));
   bindCheckbox($("exRootPosition"), s => s.exercise.rootPosition, rootPosition => setExercise({ rootPosition }));

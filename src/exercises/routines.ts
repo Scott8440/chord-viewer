@@ -41,6 +41,8 @@ export const ROUTINES: readonly Routine[] = [
     items: d => eachKey(circleOfFifths(d), ["diatonic"]) },
   { id: "scale-triads-circle", name: "Scale, then diatonic chords, circle of fifths",
     items: d => eachKey(circleOfFifths(d), ["scales", "diatonic"]) },
+  { id: "technique-circle", name: "Five-finger pattern, scale, arpeggio, broken chords, circle of fifths",
+    items: d => eachKey(circleOfFifths(d), ["fiveFinger", "scales", "arpeggios", "brokenChords"]) },
 ];
 
 export const routineById = (id: string): Routine | undefined => ROUTINES.find(r => r.id === id);

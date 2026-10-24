@@ -12,7 +12,7 @@ import { initialPerformance, reducePerformance, type PerformanceState } from "./
 
 export const HISTORY_LIMIT = 512;
 
-export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "routines", "ear", "earMelody"] as const;
+export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "fiveFinger", "arpeggios", "brokenChords", "chromatic", "routines", "ear", "earMelody"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {

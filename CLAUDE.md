@@ -78,7 +78,8 @@ mode and views subscribe to the store.
   analyzes back to its chords and numerals.
   **Prescriptive exercises** (see "Prescriptive exercises" below): `sequence.ts` is the generic sequence matcher
   (note steps and chord steps; `reduceSequence`, `runResult`, `bestRun`); `scales.ts` builds `scaleExercise`;
-  `diatonicChords.ts` builds `diatonicChordsExercise`; `prescriptive.ts` is the registry (`PRESCRIPTIVE`: how each
+  `diatonicChords.ts` builds `diatonicChordsExercise`; `technique.ts` builds the technique exercises
+  (`fiveFingerExercise`, `arpeggioExercise`, `brokenChordExercise`, `chromaticExercise`); `prescriptive.ts` is the registry (`PRESCRIPTIVE`: how each
   exercise builds its sequence from the shared `ExerciseOptions`, which options it uses, a short name and whether it
   has chord steps). `routines.ts`: routines (see "Routines" below): `circleOfFifths(direction)`, `eachKey`, the
   curated `ROUTINES`, the runner `reduceRoutine` (wraps `reduceSequence`), `routineSummary`, and `keyProgress`
@@ -130,7 +131,7 @@ mode and views subscribe to the store.
   current chord. `progressionPractice.ts` feeds the held keys to the progression reducer and starts a new
   progression 1.2 s after the last chord. The chord filter, the prompt style (chord names or Roman numerals, shared
   by chord and progression practice) and the "Specific inversions" option are saved in localStorage.
-  `sequencePractice.ts` runs any exercise in `PRESCRIPTIVE` (modes "scales" and "diatonic"): builds it from the
+  `sequencePractice.ts` runs any exercise in `PRESCRIPTIVE` (modes "scales", "diatonic", "fiveFinger", "arpeggios", "brokenChords", "chromatic"): builds it from the
   shared exercise options, feeds note-ons and held keys with their times to the sequence reducer, and swaps in a
   fresh exercise when the options change. `routinePractice.ts` runs a routine (mode "routines"): restarts when the
   routine or direction changes, applies other exercise settings from the item in progress on; Skip skips an item
@@ -151,7 +152,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 350 tests (54 voicings) should pass
+npm test           # Vitest: 357 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -234,15 +235,24 @@ the exercise and runs it again and again; each run is measured.
   to the metronome). Playing the first step again starts the next run; Restart abandons one. The session keeps
   every run and shows the best (fewest mistakes, then most on time if timed, else most even). Results show tempo and
   evenness (or timing), not how long the run took.
-- **Options and registry:** the exercises share `ExerciseOptions` (key, minor form, octaves, sevenths, root
-  position, and the metronome: on/off, BPM, notes per beat, strictness), with one Key selector inside the exercise. `PRESCRIPTIVE` lists each exercise's builder and the options
+- **Options and registry:** the exercises share `ExerciseOptions` (key, minor form, octaves, arpeggio start
+  (inversion), sevenths, root position, and the metronome: on/off, BPM, notes per beat, strictness), with one Key selector inside the exercise. `PRESCRIPTIVE` lists each exercise's builder and the options
   it uses; the UI shows just those. Adding an exercise is a builder, a registry entry, a mode id and a menu item.
 - **Scales (built):** any of the 24 keys, up and back down, 1 or 2 octaves; minor scales offer natural, harmonic
   or melodic (melodic comes down natural). The prompt names it ("Play E♭ harmonic minor up and back down…").
   Its steps show as dots, not note names: knowing the notes is the exercise. Wrong notes still name the expected one.
 - **Diatonic chords (built):** the key's triads or seventh chords in order, I up to vii° and back to I (minor:
   harmonic minor's V and vii°), in root position or any voicing; shown as chord names or Roman numerals.
-- **Next, on the same matcher:** arpeggios and broken chords (note steps, optionally ending on a chord step); hands together (steps with two notes); fingering
+- **Technique (built, `src/exercises/technique.ts`), the staples of exams and warm-up books, all note steps:**
+  **five-finger patterns** (the key's first five notes up and down, 1 2 3 4 5 4 3 2 1, minor with ♭3, then the tonic
+  chord in root position as a chord step); **arpeggios** (the tonic triad up and back down, 1 or 2 octaves, from the
+  root, 3rd or 5th: the "Start from" option, `ExerciseOptions.inversion`); **broken chords** (the exam pattern: the
+  tonic triad in each position in turn, low–middle–high–middle, C E G E, E G C G, G C E C …, up 1 or 2 octaves to the
+  root and back the same way); **chromatic scale** (from the key's tonic, 1 or 2 octaves, sharps up and flats down,
+  the tonic keeping its own name). Shown as dots, like scales. Progress labels them ("G major arpeggio, first
+  inversion, 2 octaves").
+- **Next, on the same matcher:** cadences (I–IV–V7–I with set voicings); hands together (steps with two notes,
+  played together as in sight reading); Hanon patterns; a tempo ladder; fingering
   hints; keeping best runs (step 5); drawing the target notes on the staff.
 
 ## Metronome
@@ -317,7 +327,8 @@ A set of prescriptive exercises played one after another, e.g. every major scale
   next item's chord. The previous item's result shows until the next one starts. Skip records "skipped".
 - **End:** `routineSummary`: played, clean, mistakes, total time, skipped, and the weakest items (most mistakes,
   then least even; at most three, never clean ones).
-- **Built:** major scales; diatonic chords; scale then diatonic chords; each round the circle.
+- **Built:** major scales; diatonic chords; scale then diatonic chords; technique (five-finger pattern, scale,
+  arpeggio, broken chords per key); each round the circle.
 
 ## Ear training (mode "ear", `src/modes/earTraining.ts`)
 First mode: scale degrees over a drone. A drone sounds the tonic (an octave below, plus the octave above it), the

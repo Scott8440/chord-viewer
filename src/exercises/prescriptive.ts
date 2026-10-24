@@ -5,6 +5,9 @@ import { STRICTNESS, SUBDIVISIONS, type Strictness, type Subdivision } from "../
 import { diatonicChordsExercise } from "./diatonicChords";
 import { MINOR_FORMS, SCALE_OCTAVES, scaleExercise, type MinorForm, type ScaleOctaves } from "./scales";
 import type { SequenceExercise } from "./sequence";
+import {
+  ARPEGGIO_INVERSIONS, arpeggioExercise, brokenChordExercise, chromaticExercise, fiveFingerExercise, type ArpeggioInversion,
+} from "./technique";
 
 /** Options shared by the prescriptive exercises; each exercise uses some of them. */
 export interface ExerciseOptions {
@@ -12,8 +15,10 @@ export interface ExerciseOptions {
   key: string;
   /** Scales: which minor scale in minor keys */
   minorForm: MinorForm;
-  /** Scales: how many octaves */
+  /** Scales, arpeggios, broken chords, chromatic: how many octaves */
   octaves: ScaleOctaves;
+  /** Arpeggios: start from the root, 3rd or 5th */
+  inversion: ArpeggioInversion;
   /** Diatonic chords: seventh chords instead of triads */
   sevenths: boolean;
   /** Diatonic chords: every chord in root position */
@@ -33,7 +38,7 @@ export type ExerciseOption = keyof ExerciseOptions;
 export const BPM_RANGE = { min: 30, max: 240 } as const;
 
 export const DEFAULT_EXERCISE_OPTIONS: ExerciseOptions = {
-  key: "C:major", minorForm: "natural", octaves: 1, sevenths: false, rootPosition: true,
+  key: "C:major", minorForm: "natural", octaves: 1, inversion: 0, sevenths: false, rootPosition: true,
   metronome: false, bpm: 80, subdivision: 1, strictness: "strict",
 };
 
@@ -45,6 +50,7 @@ export function sanitizeExerciseOptions(raw: unknown): ExerciseOptions {
     key: typeof o.key === "string" && isKeyValue(o.key) ? o.key : d.key,
     minorForm: (MINOR_FORMS as readonly unknown[]).includes(o.minorForm) ? o.minorForm as MinorForm : d.minorForm,
     octaves: (SCALE_OCTAVES as readonly unknown[]).includes(o.octaves) ? o.octaves as ScaleOctaves : d.octaves,
+    inversion: (ARPEGGIO_INVERSIONS as readonly unknown[]).includes(o.inversion) ? o.inversion as ArpeggioInversion : d.inversion,
     sevenths: typeof o.sevenths === "boolean" ? o.sevenths : d.sevenths,
     rootPosition: typeof o.rootPosition === "boolean" ? o.rootPosition : d.rootPosition,
     metronome: typeof o.metronome === "boolean" ? o.metronome : d.metronome,
@@ -79,6 +85,30 @@ export const PRESCRIPTIVE = {
     chords: true,
     build: o => diatonicChordsExercise(buildKey(o.key)!, { sevenths: o.sevenths, rootPosition: o.rootPosition }),
     options: ["key", "sevenths", "rootPosition", "metronome"],
+  },
+  fiveFinger: {
+    short: "five-finger",
+    chords: false,
+    build: o => fiveFingerExercise(buildKey(o.key)!),
+    options: ["key", "metronome"],
+  },
+  arpeggios: {
+    short: "arpeggio",
+    chords: false,
+    build: o => arpeggioExercise(buildKey(o.key)!, o.octaves, o.inversion),
+    options: ["key", "octaves", "inversion", "metronome"],
+  },
+  brokenChords: {
+    short: "broken chords",
+    chords: false,
+    build: o => brokenChordExercise(buildKey(o.key)!, o.octaves),
+    options: ["key", "octaves", "metronome"],
+  },
+  chromatic: {
+    short: "chromatic",
+    chords: false,
+    build: o => chromaticExercise(buildKey(o.key)!, o.octaves),
+    options: ["key", "octaves", "metronome"],
   },
 } satisfies Record<string, PrescriptiveExercise>;
 

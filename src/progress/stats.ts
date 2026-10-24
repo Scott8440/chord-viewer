@@ -1,6 +1,7 @@
 // What the Progress view charts, worked out from the records. Pure: records (and the time zone's day boundaries,
 // via `dayOf`) in, plain series out.
 import type { DrillKind, ProgressRecord, RoutineBody, RunBody, DrillBody, RecordMeta } from "./records";
+import { INVERSION_NAMES } from "../exercises/technique";
 
 type Run = RunBody & RecordMeta;
 type Routine = RoutineBody & RecordMeta;
@@ -94,6 +95,12 @@ export function exerciseLabel(r: Pick<RunBody, "exercise" | "exerciseId" | "titl
     return `${r.title} scale, ${octaves} octave${octaves > 1 ? "s" : ""}`;
   }
   if (r.exercise === "diatonic") return `${r.title}${parts[parts.length - 1] === "any" ? ", any voicing" : ""}`;
+  const octaves = (n: string) => `${n} octave${n === "2" ? "s" : ""}`;
+  if (r.exercise === "arpeggios") {
+    const inversion = Number(parts[3]);
+    return `${r.title}${inversion ? `, ${INVERSION_NAMES[inversion]}` : ""}, ${octaves(parts[4])}`;
+  }
+  if (r.exercise === "brokenChords" || r.exercise === "chromatic") return `${r.title}, ${octaves(parts[parts.length - 1])}`;
   return r.title;
 }
 

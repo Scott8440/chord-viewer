@@ -7,7 +7,8 @@ const MIN_PX = 110;
 /** Clear space kept between the element and the notes or the treble staff (px) */
 const GAP_PX = 10;
 
-/** Keeps `el` (absolutely positioned at `inset` px from the card's top-right) sized to the corner. Returns stop. */
+/** Keeps `el` (absolutely positioned at `inset` px from the card's top-right) sized to the corner of whichever layout
+ *  the staff is drawn in (a chord, or the wider row of notes). Returns stop. */
 export function fitToStaffCorner(el: HTMLElement, card: HTMLElement, staffEl: HTMLElement, inset = 12): () => void {
   function fit() {
     const svg = staffEl.querySelector("svg");
@@ -15,7 +16,7 @@ export function fitToStaffCorner(el: HTMLElement, card: HTMLElement, staffEl: HT
     const s = svg.getBoundingClientRect(), c = card.getBoundingClientRect();
     if (!s.width) return;
     // The drawing is scaled to fit the svg's box and centred in it (a short window letterboxes it)
-    const corner = staffCorner(), scale = Math.min(s.width / corner.viewWidth, s.height / corner.viewHeight);
+    const corner = staffCorner(svg.dataset.layout === "row"), scale = Math.min(s.width / corner.viewWidth, s.height / corner.viewHeight);
     const left = s.left + (s.width - corner.viewWidth * scale) / 2, top = s.top + (s.height - corner.viewHeight * scale) / 2;
     // Room to the right of the note column, and above the treble staff
     const wide = c.right - inset - (left + corner.left * scale) - GAP_PX;
@@ -24,8 +25,12 @@ export function fitToStaffCorner(el: HTMLElement, card: HTMLElement, staffEl: HT
   }
   const observer = new ResizeObserver(fit);
   observer.observe(card);
-  // The staff's drawing appears (and is redrawn) after the card is laid out
-  const svgWatch = new MutationObserver(() => { if (!el.style.width) fit(); });
+  // The staff's drawing appears (and is redrawn) after the card is laid out; refit when its layout changes
+  let layout: string | undefined;
+  const svgWatch = new MutationObserver(() => {
+    const now = staffEl.querySelector("svg")?.dataset.layout;
+    if (!el.style.width || now !== layout) { layout = now; fit(); }
+  });
   svgWatch.observe(staffEl, { childList: true });
   fit();
   return () => { observer.disconnect(); svgWatch.disconnect(); };

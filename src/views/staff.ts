@@ -4,6 +4,8 @@ import { spelledAs, spellNote, type Analysis, type KeyContext, type SpelledNote 
 import { drawMusic, type StaffMusic } from "./staffMusic";
 
 const STAFF_W = 300;
+/** A row of notes (an exercise, a melody) gets a wider staff: 16 steps at about the spacing 8 had */
+const ROW_STAFF_W = 580;
 const LINE_SP = 10;
 // Both chords share one tick context pinned at a fixed x, so noteheads never
 // slide sideways (accidentals extend to the left of that point instead).
@@ -18,7 +20,9 @@ const BOTTOM = 34 + (18 - 5) * (LINE_SP / 2);
 const GAP = 72;
 const TREBLE_Y = TOP, BASS_Y = TREBLE_Y + 4 * LINE_SP + GAP;
 const VIEW_H = BASS_Y + 4 * LINE_SP + BOTTOM;
-const VIEW_W = STAFF_W + 40;
+const VIEW_W = STAFF_W + 40, ROW_VIEW_W = ROW_STAFF_W + 40;
+/** Room kept above the treble staff for a row's high notes (up to about three ledger lines), clear of the circle */
+const ROW_TOP_ROOM = 30;
 /** The note column's width from its x: a cluster puts seconds side by side (two whole-note heads), and ledger lines
  *  reach past them (measured in the browser) */
 const COLUMN_W = 48;
@@ -34,12 +38,14 @@ export interface StaffCorner {
 
 let corner: StaffCorner | null = null;
 /**
- * The top-right corner of the staff left free for the circle of fifths, in viewBox units: right of the note column
- * (with a cluster's displaced noteheads, and no key signature) and above the treble staff. A key signature moves the
- * column right, so very high notes (above the treble staff) in keys with many accidentals can reach into it; nothing
- * else does. The same for every key, so the circle keeps its size.
+ * The top-right corner of the staff left free for the circle of fifths, in viewBox units. Showing a chord: right of
+ * the note column (with a cluster's displaced noteheads, and no key signature) and above the treble staff. A key
+ * signature moves the column right, so very high notes (above the treble staff) in keys with many accidentals can
+ * reach into it; nothing else does. The same for every key, so the circle keeps its size. Showing a row of notes
+ * (the wider staff): the right half, above the room kept for the row's high notes.
  */
-export function staffCorner(): StaffCorner {
+export function staffCorner(row = false): StaffCorner {
+  if (row) return { viewWidth: ROW_VIEW_W, viewHeight: VIEW_H, left: STAVE_X + ROW_STAFF_W / 2, bottom: TREBLE_Y - ROW_TOP_ROOM };
   if (!corner) {
     const startX = Math.max(...["treble", "bass"].map(clef => new VF.Stave(STAVE_X, 0, STAFF_W).addClef(clef).getNoteStartX()));
     corner = { viewWidth: VIEW_W, viewHeight: VIEW_H, left: startX + NOTE_X + COLUMN_W, bottom: TREBLE_Y };
@@ -87,18 +93,21 @@ export function createStaffView(el: HTMLElement): StaffView {
         notes.map(n => ({ ...spellNote(n, result, key), grey: pedalOnly.has(n) }));
 
       const renderer = new VF.Renderer(el as HTMLDivElement, VF.Renderer.Backends.SVG);
-      renderer.resize(VIEW_W, VIEW_H);
+      const staffW = row ? ROW_STAFF_W : STAFF_W, viewW = staffW + 40;
+      renderer.resize(viewW, VIEW_H);
       const ctx = renderer.getContext();
       const svg = el.querySelector("svg")!;
-      svg.setAttribute("viewBox", `0 0 ${VIEW_W} ${VIEW_H}`);
+      svg.setAttribute("viewBox", `0 0 ${viewW} ${VIEW_H}`);
+      // Which layout this is, for the circle of fifths in the corner (staffCorner)
+      svg.dataset.layout = row ? "row" : "chord";
       svg.removeAttribute("width");
       svg.removeAttribute("height");
-      svg.style.width = "min(100%, 620px)";
+      svg.style.width = row ? "100%" : "min(100%, 620px)";
       svg.style.height = "auto";
 
       const opts = { space_above_staff_ln: 0, space_below_staff_ln: 0 };
-      const tStave = new VF.Stave(STAVE_X, TREBLE_Y, STAFF_W, opts).addClef("treble");
-      const bStave = new VF.Stave(STAVE_X, BASS_Y, STAFF_W, opts).addClef("bass");
+      const tStave = new VF.Stave(STAVE_X, TREBLE_Y, staffW, opts).addClef("treble");
+      const bStave = new VF.Stave(STAVE_X, BASS_Y, staffW, opts).addClef("bass");
       if (key) { tStave.addKeySignature(key.vfKey); bStave.addKeySignature(key.vfKey); }
       const startX = Math.max(tStave.getNoteStartX(), bStave.getNoteStartX());
       tStave.setNoteStartX(startX);
@@ -141,7 +150,7 @@ export function createStaffView(el: HTMLElement): StaffView {
 
       if (!row) { column(spelled, NOTE_X); return; }
       // A melody: one step per slot across the staff, and the held notes at the next step
-      const step = (STAVE_X + STAFF_W - startX - ROW_PAD - ROW_END_PAD) / Math.max(1, row.slots - 1);
+      const step = (STAVE_X + staffW - startX - ROW_PAD - ROW_END_PAD) / Math.max(1, row.slots - 1);
       row.notes.forEach((n, i) => {
         const midis = typeof n.midi === "number" ? [n.midi] : n.midi;
         const list = midis.map((m, j) => ({

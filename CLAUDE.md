@@ -178,7 +178,10 @@ page on GitHub Pages). Still no server of our own and no telemetry.
 - **Computer keyboard input** for testing: A–K plus W/E/T/Y/U, Z/X for octave, Space for pedal.
 - **Staff layout is fixed:** room is always reserved for the full A0–C8 range so the staff never moves. Both chords
   share one VexFlow `TickContext` pinned at a fixed x, so noteheads never shift sideways and accidentals extend
-  left. Treble/bass split is at middle C (≥ 60 goes on the treble staff).
+  left. Treble/bass split is at middle C (≥ 60 goes on the treble staff). A row of notes (`StaffRow`: exercises,
+  generated sight-reading lines, ear-training melodies) gets a wider staff (`ROW_STAFF_W` 580 viewBox units, not
+  300) drawn across the card's full width, so 16 steps keep about the spacing 8 had; the svg's `data-layout`
+  ("chord" or "row") tells the circle of fifths which corner to fill.
 - **Key selector (header, free play only):** None plus 12 major and 12 minor keys, saved in localStorage. A key adds
   a key signature, accidentals relative to it (including naturals), key-based spelling, scoring bias and Roman
   numerals. Hidden in practice modes, which name their key in the prompt or have their own selector.
@@ -255,7 +258,7 @@ the exercise and runs it again and again; each run is measured.
   played together as in sight reading); Hanon patterns; a tempo ladder; fingering
   hints; keeping best runs (step 5).
 - **The notes on the staff** (`src/views/exerciseRow.ts`, `exerciseRow`, used by sequence practice and routines): the
-  grand staff shows the exercise's steps a page of `PAGE_STEPS` (8) at a time, as quarter notes (`StaffRow`), the
+  grand staff (the wider row staff) shows the exercise's steps a page of `PAGE_STEPS` (16) at a time, as quarter notes (`StaffRow`), the
   page holding the step being played: played steps green, the current one amber (`current`), red after a wrong
   attempt; the last page all green once a run is done. Note steps sit in the run's octave once the first note has
   set it, else in one keeping the exercise between G3 and C6; each keeps the exercise's spelling (`names`,
@@ -311,6 +314,8 @@ mode switch and modes that use it draw it.
   above the treble staff. `fitToStaffCorner` (views/staffCorner.ts) converts it to pixels on every resize (allowing
   for the drawing being letterboxed in a short window) and sizes the circle to fill it, 10 px clear, at least 110 px.
   A key signature moves the note column right, so very high notes in keys with many accidentals can reach into it.
+  Over a row of notes (`staffCorner(true)`): the right half, above `ROW_TOP_ROOM` (room for about three ledger lines
+  above the treble staff); `fitToStaffCorner` refits whenever the staff's layout changes.
 - **Drawing:** `circleSvg(model)` is pure: majors on the outer ring, relative minors inside, C at the top, clockwise
   by fifths. The model can focus a key (amber, its name and signature in the middle), shade and number its
   neighbourhood (IV I V outside and ii vi iii inside for major; VI III VII and iv i v for minor; `neighbours: false`

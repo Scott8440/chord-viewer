@@ -7,7 +7,7 @@ import { templateById } from "../theory";
 import type { StaffRow } from "./staff";
 
 /** Steps on the staff at once */
-export const PAGE_STEPS = 8;
+export const PAGE_STEPS = 16;
 /** Before a run sets the octave: the exercise's lowest note no lower than this, and its highest no higher than TOP */
 const BOTTOM = 55, TOP = 84;
 

@@ -9,32 +9,36 @@ import { exerciseRow, PAGE_STEPS } from "../src/views/exerciseRow";
 
 const play = (s: ReturnType<typeof initialSequence>, notes: number[]) =>
   notes.reduce((st, note, i) => reduceSequence(st, { type: "noteOn", note, time: i * 100 }), s);
+const firsts = (row: ReturnType<typeof exerciseRow>) => row.notes.map(n => (n.midi as number[])[0]);
 
 describe("exerciseRow", () => {
   it("shows the first page before a run, the first step current, in an octave near the staves", () => {
     const row = exerciseRow(initialSequence(scaleExercise(buildKey("D:major")!, "natural", 1)));
     expect(row.slots).toBe(PAGE_STEPS);
-    expect(row.notes.map(n => n.midi)).toEqual([[62], [64], [66], [67], [69], [71], [73], [74]]);
-    expect(row.notes.map(n => n.names)).toEqual([["D"], ["E"], ["F#"], ["G"], ["A"], ["B"], ["C#"], ["D"]]);
-    expect(row.notes.map(n => n.style)).toEqual(["current", ...Array(7).fill(undefined)]);
+    // A one-octave scale fits on one page: 15 steps
+    expect(firsts(row)).toEqual([62, 64, 66, 67, 69, 71, 73, 74, 73, 71, 69, 67, 66, 64, 62]);
+    expect(row.notes.slice(0, 8).map(n => n.names)).toEqual([["D"], ["E"], ["F#"], ["G"], ["A"], ["B"], ["C#"], ["D"]]);
+    expect(row.notes.map(n => n.style)).toEqual(["current", ...Array(14).fill(undefined)]);
     expect(row.heldAt).toBeNull();
   });
 
-  it("follows the run's octave and turns the page with the step being played; a miss turns the step red", () => {
+  it("follows the run's octave; a miss turns the step red", () => {
     let s = play(initialSequence(scaleExercise(buildKey("C:major")!, "natural", 1)), [48, 50, 52, 53, 55, 57, 59, 60, 59]);
     const row = exerciseRow(s);
-    // Steps 8–14: B A G F E D C, with the B played
-    expect(row.notes.map(n => (n.midi as number[])[0])).toEqual([59, 57, 55, 53, 52, 50, 48]);
-    expect(row.notes.map(n => n.style)).toEqual(["done", "current", undefined, undefined, undefined, undefined, undefined]);
+    expect(firsts(row)).toEqual([48, 50, 52, 53, 55, 57, 59, 60, 59, 57, 55, 53, 52, 50, 48]);
+    expect(row.notes.map(n => n.style)).toEqual([...Array(9).fill("done"), "current", ...Array(5).fill(undefined)]);
     s = reduceSequence(s, { type: "noteOn", note: 61, time: 2000 });
-    expect(exerciseRow(s).notes[1].style).toBe("wrong");
+    expect(exerciseRow(s).notes[9].style).toBe("wrong");
   });
 
-  it("keeps a two-octave scale from climbing far above the staff, and spells as the exercise does", () => {
-    const row = exerciseRow(initialSequence(chromaticExercise(buildKey("B:major")!, 2)));
-    expect((row.notes[0].midi as number[])[0]).toBe(59);
-    const down = exerciseRow({ ...initialSequence(chromaticExercise(buildKey("C:major")!, 1)), index: 16 });
-    expect(down.notes.map(n => n.names![0])).toEqual(["Ab", "G", "Gb", "F", "E", "Eb", "D", "Db"]);
+  it("turns the page with the step being played, and spells as the exercise does", () => {
+    // The one-octave chromatic scale: 25 steps, so a second page from step 16
+    const s = { ...initialSequence(chromaticExercise(buildKey("C:major")!, 1)), status: "playing" as const, anchor: 60, index: 16 };
+    const row = exerciseRow(s);
+    expect(row.notes.map(n => n.names![0])).toEqual(["Ab", "G", "Gb", "F", "E", "Eb", "D", "Db", "C"]);
+    expect(row.notes[0].style).toBe("current");
+    // A two-octave scale from B starts low enough not to climb far above the staff
+    expect(firsts(exerciseRow(initialSequence(chromaticExercise(buildKey("B:major")!, 2))))[0]).toBe(59);
   });
 
   it("draws chord steps in root position, close, climbing with the key", () => {

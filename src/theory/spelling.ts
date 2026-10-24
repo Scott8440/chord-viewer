@@ -42,10 +42,15 @@ export function spellNote(midi: number, result: Analysis | null, key: KeyContext
     if (key) name = key.spell[pc];
     else name = ((result && result.flats) ? ROOT_MAJOR : SHARP)[pc];
   }
+  return spelledAs(midi, name);
+}
+
+/** A MIDI note spelled with a given name ("F#", "Bb", "B#"): the octave follows the letter, so B#3 is MIDI 60 */
+export function spelledAs(midi: number, name: string): SpelledNote {
   const letter = name[0];
   const accStr = name.slice(1);
   const alter = alterOf(accStr);
-  const octave = (midi - alter - LETTER_PC[letter]) / 12 - 1;
+  const octave = Math.round((midi - alter - LETTER_PC[letter]) / 12 - 1);
   return { letter, acc: accStr, alter, octave, step: LETTERS.indexOf(letter) + 7 * octave, midi };
 }
 

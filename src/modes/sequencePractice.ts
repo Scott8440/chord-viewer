@@ -7,6 +7,7 @@ import { runBody } from "../progress/records";
 import { buildKey } from "../theory";
 import type { CircleView } from "../views/circleOfFifths";
 import { sequenceDisplay, type PracticeView } from "../views/practice";
+import { exerciseRow } from "../views/exerciseRow";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, heldNotes, onPlayerInput, onTimingGrid, timingGrid, type AppStore, type Mode } from "./performance";
 
@@ -15,8 +16,8 @@ export function startSequencePractice(store: AppStore, views: {
 }, id: PrescriptiveId, recorder: Recorder = noRecorder): Mode {
   const build = () => PRESCRIPTIVE[id].build(store.getState().settings.exercise);
   let state: SequenceState = initialSequence(build(), heldNotes(store.getState()), timingGrid(store.getState()));
-  // The staff follows the exercise's key (exercises never use the header key)
-  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.exercise.keyValue));
+  // The staff shows the notes to play, a page at a time, in the exercise's key (exercises never use the header key)
+  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.exercise.keyValue), () => exerciseRow(state));
 
   const render = () => {
     views.practice.render(sequenceDisplay(state, store.getState().settings.promptStyle));
@@ -31,7 +32,7 @@ export function startSequencePractice(store: AppStore, views: {
       recorder.record(runBody(id, state.exercise, exercise, latencyMs, state.result!));
     }
     render();
-    if (state.exercise !== prev.exercise) drawer.schedule();
+    drawer.schedule();
   }
 
   const offInput = onPlayerInput(store, {

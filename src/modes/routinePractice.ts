@@ -5,6 +5,7 @@ import { routineBody, runBody } from "../progress/records";
 import { buildKey } from "../theory";
 import type { CircleView } from "../views/circleOfFifths";
 import { routineDisplay, type PracticeView } from "../views/practice";
+import { exerciseRow } from "../views/exerciseRow";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, heldNotes, onPlayerInput, onTimingGrid, timingGrid, type AppStore, type Mode } from "./performance";
 
@@ -27,8 +28,8 @@ export function startRoutinePractice(store: AppStore, views: {
     const s = state;
     recorder.record(routineBody(s, session, routine.direction, latencyMs, i => itemExercise(s.items[i], s.base), toWallTime));
   }
-  // The staff follows the key of the item in progress
-  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.current.exercise.keyValue));
+  // The staff shows the notes of the item in progress, a page at a time, in its key
+  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.current.exercise.keyValue), () => exerciseRow(state.current));
 
   const render = () => {
     views.practice.render(routineDisplay(state, store.getState().settings.promptStyle));
@@ -56,7 +57,7 @@ export function startRoutinePractice(store: AppStore, views: {
     }
     if (state.status === "done" && prev.status !== "done") recordRoutine();
     render();
-    if (state.current.exercise !== prev.current.exercise) drawer.schedule();
+    drawer.schedule();
   }
   function restart() {
     if (state.status !== "done") recordRoutine();

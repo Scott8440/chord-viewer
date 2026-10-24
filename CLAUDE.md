@@ -152,7 +152,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 357 tests (54 voicings) should pass
+npm test           # Vitest: 361 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -240,7 +240,7 @@ the exercise and runs it again and again; each run is measured.
   it uses; the UI shows just those. Adding an exercise is a builder, a registry entry, a mode id and a menu item.
 - **Scales (built):** any of the 24 keys, up and back down, 1 or 2 octaves; minor scales offer natural, harmonic
   or melodic (melodic comes down natural). The prompt names it ("Play E♭ harmonic minor up and back down…").
-  Its steps show as dots, not note names: knowing the notes is the exercise. Wrong notes still name the expected one.
+  Its steps show as dots in the practice panel. Wrong notes still name the expected one.
 - **Diatonic chords (built):** the key's triads or seventh chords in order, I up to vii° and back to I (minor:
   harmonic minor's V and vii°), in root position or any voicing; shown as chord names or Roman numerals.
 - **Technique (built, `src/exercises/technique.ts`), the staples of exams and warm-up books, all note steps:**
@@ -253,7 +253,14 @@ the exercise and runs it again and again; each run is measured.
   inversion, 2 octaves").
 - **Next, on the same matcher:** cadences (I–IV–V7–I with set voicings); hands together (steps with two notes,
   played together as in sight reading); Hanon patterns; a tempo ladder; fingering
-  hints; keeping best runs (step 5); drawing the target notes on the staff.
+  hints; keeping best runs (step 5).
+- **The notes on the staff** (`src/views/exerciseRow.ts`, `exerciseRow`, used by sequence practice and routines): the
+  grand staff shows the exercise's steps a page of `PAGE_STEPS` (8) at a time, as quarter notes (`StaffRow`), the
+  page holding the step being played: played steps green, the current one amber (`current`), red after a wrong
+  attempt; the last page all green once a run is done. Note steps sit in the run's octave once the first note has
+  set it, else in one keeping the exercise between G3 and C6; each keeps the exercise's spelling (`names`,
+  `spelledAs`: the chromatic scale's flats coming down). Chord steps are drawn in root position, close, above their
+  root (`StaffRow` notes take a chord). The held keys aren't drawn (they'd sit on the notes to read).
 
 ## Metronome
 Timed practice for the prescriptive exercises and routines. The click comes from the browser; the design leaves

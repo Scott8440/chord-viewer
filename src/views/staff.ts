@@ -1,6 +1,6 @@
 // Grand staff rendering (VexFlow).
 import * as VF from "vexflow/bravura";
-import { spellNote, type Analysis, type KeyContext, type SpelledNote } from "../theory";
+import { spelledAs, spellNote, type Analysis, type KeyContext, type SpelledNote } from "../theory";
 import { drawMusic, type StaffMusic } from "./staffMusic";
 
 const STAFF_W = 300;
@@ -48,14 +48,17 @@ export function staffCorner(): StaffCorner {
 }
 
 /**
- * A melody drawn left to right instead of one chord: a note per step (MIDI; `dim` ones greyed, e.g. a hint not yet
- * played; `done` green, `wrong` red), out of `slots` steps. A note's `at` puts it at another step, fractions
- * allowed (default its index). The held notes are drawn at step `heldAt`, or nowhere when null (default: the step
- * after the last note that isn't dim). `duration` is the row's note value: "w" (whole notes, the default) or "q"
- * (quarter notes, stems up or down by position).
+ * A melody drawn left to right instead of one chord: a note or chord per step (MIDI; `names` spells them, e.g.
+ * "F#", else the key does; `dim` ones greyed, e.g. a hint not yet played; `done` green, `current` amber, `wrong`
+ * red), out of `slots` steps. A note's `at` puts it at another step, fractions allowed (default its index). The held
+ * notes are drawn at step `heldAt`, or nowhere when null (default: the step after the last note that isn't dim).
+ * `duration` is the row's note value: "w" (whole notes, the default) or "q" (quarter notes, stems up or down by
+ * position).
  */
 export interface StaffRow {
-  notes: readonly { midi: number; dim?: boolean; style?: "done" | "wrong"; at?: number }[];
+  notes: readonly {
+    midi: number | readonly number[]; names?: readonly string[]; dim?: boolean; style?: "done" | "current" | "wrong"; at?: number;
+  }[];
   slots: number;
   heldAt?: number | null;
   duration?: "w" | "q";
@@ -69,6 +72,7 @@ export interface StaffView {
 const GREY = { fillStyle: "#9a968c", strokeStyle: "#9a968c" };
 const ROW_STYLES = {
   done: { fillStyle: "#2e8b57", strokeStyle: "#2e8b57" },
+  current: { fillStyle: "#b8862b", strokeStyle: "#b8862b" },
   wrong: { fillStyle: "#c8553d", strokeStyle: "#c8553d" },
 };
 /** Row mode: room kept clear at the row's start and end (viewBox units, from the note start) */
@@ -138,8 +142,13 @@ export function createStaffView(el: HTMLElement): StaffView {
       if (!row) { column(spelled, NOTE_X); return; }
       // A melody: one step per slot across the staff, and the held notes at the next step
       const step = (STAVE_X + STAFF_W - startX - ROW_PAD - ROW_END_PAD) / Math.max(1, row.slots - 1);
-      row.notes.forEach((n, i) =>
-        column([{ ...spellNote(n.midi, null, key), grey: !!n.dim, style: n.style }], ROW_PAD + (n.at ?? i) * step, row.duration));
+      row.notes.forEach((n, i) => {
+        const midis = typeof n.midi === "number" ? [n.midi] : n.midi;
+        const list = midis.map((m, j) => ({
+          ...(n.names?.[j] ? spelledAs(m, n.names[j]) : spellNote(m, null, key)), grey: !!n.dim, style: n.style,
+        }));
+        column(list, ROW_PAD + (n.at ?? i) * step, row.duration);
+      });
       const heldAt = row.heldAt === undefined ? row.notes.filter(n => !n.dim).length : row.heldAt;
       if (heldAt != null && heldAt < row.slots) column(spelled, ROW_PAD + heldAt * step);
     },

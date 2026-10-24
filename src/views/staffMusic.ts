@@ -1,18 +1,19 @@
-// A phrase of written music on one staff (VexFlow): clef, key and time signature, then its bars as written, with
-// rests, dots, ties, beams, tuplets and accidentals as the bar needs them. Used by sight reading in place of the
-// grand staff.
+// A passage of written music (VexFlow): one staff, or a grand staff for both hands. Clef, key and time signature,
+// then its bars as written: chords, a second voice (stems up and down), rests, dots, ties, beams, tuplets, and
+// accidentals as each bar needs them. Used by sight reading in place of the grand staff of held notes.
 import * as VF from "vexflow/bravura";
-import { staffStep, tpcName, tupletGroups, type ExcerptEvent } from "../exercises/excerpts";
+import {
+  excerptTimeline, staffStep, tpcName, tupletGroups, type Clef, type ExcerptEvent, type ExcerptStaff,
+} from "../exercises/excerpts";
 import type { KeyContext } from "../theory";
 
 export type MusicStyle = "done" | "wrong";
 
 export interface StaffMusic {
-  clef: "treble" | "bass";
+  staves: readonly ExcerptStaff[];
   time: [number, number];
-  bars: readonly (readonly ExcerptEvent[])[];
-  /** How to colour each event, in the same shape as `bars` (undefined: black) */
-  styles: readonly (readonly (MusicStyle | undefined)[])[];
+  /** How to colour each note: `[staff][voice][bar][event][note]` (undefined: black) */
+  styles: readonly (readonly (readonly (readonly (readonly (MusicStyle | undefined)[])[])[])[])[];
 }
 
 const STYLES: Record<MusicStyle, VF.ElementStyle> = {
@@ -20,86 +21,141 @@ const STYLES: Record<MusicStyle, VF.ElementStyle> = {
   wrong: { fillStyle: "#c8553d", strokeStyle: "#c8553d" },
 };
 
-/** The drawing's least width and its height (viewBox units); room above and below the staff for ledger lines,
- *  stems, beams and tuplet numbers, so the staff stays put from one phrase to the next */
-const MIN_W = 640, ABOVE = 80, BELOW = 80, STAFF_H = 40, VIEW_H = ABOVE + STAFF_H + BELOW, MARGIN = 8;
-/** Room a bar keeps after its notes, and before them in bars after the first */
+/** Room above and below the staves (viewBox units) for ledger lines, stems, beams and tuplet numbers, and between
+ *  the two staves of a grand staff; fixed, so the staff stays put from one passage to the next */
+const ABOVE = 80, BELOW = 80, STAFF_H = 40, GAP = 80, MIN_W = 640;
+/** Room either side; a grand staff's brace needs more on the left */
+const MARGIN = 8, BRACE = 14;
+/** Room a bar keeps after its notes */
 const BAR_PAD = 22;
 
-const REST_KEY = { treble: "b/4", bass: "d/3" };
+/** Where rests sit: centred alone; with two voices, the upper voice's high and the lower's low */
+const REST_KEYS: Record<Clef, string[]> = { treble: ["b/4", "e/5", "f/4", "e/5", "f/4"], bass: ["d/3", "g/3", "a/2", "g/3", "a/2"] };
 
-function staveNote(e: ExcerptEvent, clef: StaffMusic["clef"], style: MusicStyle | undefined): VF.StaveNote {
-  const rest = e.p == null;
+function makeNote(e: ExcerptEvent, clef: Clef, voice: number, voices: number,
+                  styles: readonly (MusicStyle | undefined)[] | undefined): VF.StemmableNote {
+  const dots = e.d ?? 0;
+  if (e.hide) return new VF.GhostNote({ duration: e.v, dots });
+  const stem = voices > 1 ? { stem_direction: voice % 2 ? -1 : 1 } : { auto_stem: true };
   const note = new VF.StaveNote({
-    clef, auto_stem: true, dots: e.d ?? 0,
-    duration: e.bar ? "wr" : e.v + (rest ? "r" : ""),
-    keys: [rest ? REST_KEY[clef] : `${tpcName(e.s!).toLowerCase()}/${Math.floor(staffStep(e.p!, e.s!) / 7)}`],
+    clef, dots, ...stem,
+    duration: e.bar ? "wr" : e.v + (e.n ? "" : "r"),
+    keys: e.n ? e.n.map(n => `${tpcName(n.s).toLowerCase()}/${Math.floor(staffStep(n.p, n.s) / 7)}`)
+      : [REST_KEYS[clef][voices > 1 ? voice + 1 : 0]],
     align_center: !!e.bar,
   });
-  for (let i = 0; i < (e.d ?? 0); i++) VF.Dot.buildAndAttach([note], { all: true });
-  if (style) note.setStyle(STYLES[style]);
+  for (let i = 0; i < dots; i++) VF.Dot.buildAndAttach([note], { all: true });
+  if (styles?.length) {
+    const first = styles[0];
+    // All one colour: the stem and flag too; otherwise just the noteheads
+    if (first && styles.every(s => s === first)) note.setStyle(STYLES[first]);
+    styles.forEach((s, i) => { if (s) note.setKeyStyle(i, STYLES[s]); });
+  }
   return note;
 }
 
 export function drawMusic(el: HTMLElement, m: StaffMusic, key: KeyContext | null) {
   el.innerHTML = "";
   const timeSpec = `${m.time[0]}/${m.time[1]}`;
-  const notes = m.bars.map((bar, b) => bar.map((e, i) => staveNote(e, m.clef, m.styles[b]?.[i])));
-  // Tuplets change their notes' lengths, so they come before the voices
-  const tuplets = m.bars.flatMap((bar, b) => tupletGroups(bar).map(g =>
-    new VF.Tuplet(notes[b].slice(g.from, g.to), { num_notes: g.t[0], notes_occupied: g.t[1] })));
-  // Soft: a pickup bar is shorter than the time signature, and a whole-bar rest is a whole note in any time
-  const voices = notes.map(list => new VF.Voice({ num_beats: m.time[0], beat_value: m.time[1] })
-    .setMode(VF.Voice.Mode.SOFT).addTickables(list));
-  voices.forEach(v => VF.Accidental.applyAccidentals([v], key?.vfKey ?? "C"));
-  const beams = notes.flatMap(list => VF.Beam.generateBeams(list, { groups: VF.Beam.getDefaultBeamGroups(timeSpec) }));
+  const barCount = m.staves[0].voices[0].length;
+  const keySpec = key?.vfKey ?? "C";
 
-  // Each bar as wide as its notes need, plus a share of what's left over
+  // Notes: [staff][voice][bar][event]; a voice missing from a bar has none there
+  const notes = m.staves.map((st, si) => st.voices.map((voice, vi) => voice.map((bar, b) => {
+    const voices = st.voices.filter(v => v[b]?.length).length;
+    const shown = st.voices.slice(0, vi).filter(v => v[b]?.length).length;
+    return bar.map((e, i) => makeNote(e, st.clef, shown, voices, m.styles[si]?.[vi]?.[b]?.[i]));
+  })));
+  const tuplets = m.staves.flatMap((st, si) => st.voices.flatMap((voice, vi) => voice.flatMap((bar, b) =>
+    tupletGroups(bar).map(g => new VF.Tuplet(notes[si][vi][b].slice(g.from, g.to), { num_notes: g.t[0], notes_occupied: g.t[1] })))));
+  // Each bar: a VexFlow voice per written voice there, per staff (soft: a pickup bar is short, a whole-bar rest is a
+  // whole note in any time, and a second voice may stop early)
+  const bars = Array.from({ length: barCount }, (_, b) => m.staves.map((st, si) => st.voices
+    .map((_, vi) => notes[si][vi][b])
+    .filter(list => list?.length)
+    .map(list => new VF.Voice({ num_beats: m.time[0], beat_value: m.time[1] }).setMode(VF.Voice.Mode.SOFT).addTickables(list))));
+  for (const bar of bars) for (const staffVoices of bar) VF.Accidental.applyAccidentals(staffVoices, keySpec);
+  // Beams within each voice, never across a space; stems stay as set when a staff has two voices
+  const beams = m.staves.flatMap((st, si) => st.voices.flatMap((voice, vi) => voice.flatMap((_, b) => {
+    const list = notes[si][vi][b];
+    const runs: VF.StemmableNote[][] = [[]];
+    for (const n of list) { if (n instanceof VF.GhostNote) runs.push([]); else runs[runs.length - 1].push(n); }
+    const multi = st.voices.filter(v => v[b]?.length).length > 1;
+    return runs.flatMap(run => run.length > 1 ? VF.Beam.generateBeams(run, {
+      groups: VF.Beam.getDefaultBeamGroups(timeSpec),
+      ...(multi ? { maintain_stem_directions: true } : {}),
+    }) : []);
+  })));
+
+  // Each bar as wide as its notes need (all staves together), plus a share of what's left over
   const opts = { space_above_staff_ln: 0, space_below_staff_ln: 0 };
-  const first = new VF.Stave(0, 0, 100, opts).addClef(m.clef);
-  if (key) first.addKeySignature(key.vfKey);
-  first.addTimeSignature(timeSpec);
-  const header = first.getNoteStartX();
+  const firstStave = (clef: Clef) => {
+    const s = new VF.Stave(0, 0, 100, opts).addClef(clef);
+    if (key) s.addKeySignature(key.vfKey);
+    return s.addTimeSignature(timeSpec);
+  };
+  const header = Math.max(...m.staves.map(st => firstStave(st.clef).getNoteStartX()));
   const plainHeader = new VF.Stave(0, 0, 100, opts).getNoteStartX();
-  const need = voices.map(v => new VF.Formatter().joinVoices([v]).preCalculateMinTotalWidth([v]) + BAR_PAD);
-  const fixed = header + (voices.length - 1) * plainHeader;
-  const total = Math.max(MIN_W - 2 * MARGIN, fixed + need.reduce((a, b) => a + b, 0));
-  const spare = total - fixed - need.reduce((a, b) => a + b, 0);
-  const sumNeed = need.reduce((a, b) => a + b, 0) || 1;
-  const viewW = total + 2 * MARGIN;
+  const formatters = bars.map(bar => {
+    const f = new VF.Formatter();
+    for (const staffVoices of bar) f.joinVoices(staffVoices);
+    return f;
+  });
+  const need = bars.map((bar, b) => formatters[b].preCalculateMinTotalWidth(bar.flat()) + BAR_PAD);
+  const sumNeed = need.reduce((a, x) => a + x, 0);
+  const fixed = header + (barCount - 1) * plainHeader;
+  const left = MARGIN + (m.staves.length > 1 ? BRACE : 0);
+  const total = Math.max(MIN_W - left - MARGIN, fixed + sumNeed);
+  const spare = total - fixed - sumNeed;
+  const viewW = left + total + MARGIN;
+  const staffY = m.staves.map((_, si) => ABOVE + si * (STAFF_H + GAP));
+  const viewH = staffY[staffY.length - 1] + STAFF_H + BELOW;
 
   const renderer = new VF.Renderer(el as HTMLDivElement, VF.Renderer.Backends.SVG);
-  renderer.resize(viewW, VIEW_H);
+  renderer.resize(viewW, viewH);
   const ctx = renderer.getContext();
   const svg = el.querySelector("svg")!;
-  svg.setAttribute("viewBox", `0 0 ${viewW} ${VIEW_H}`);
+  svg.setAttribute("viewBox", `0 0 ${viewW} ${viewH}`);
   svg.removeAttribute("width");
   svg.removeAttribute("height");
   svg.style.width = "100%";
   svg.style.height = "auto";
 
-  let x = MARGIN;
-  voices.forEach((voice, b) => {
-    const width = (b ? plainHeader : header) + need[b] + spare * need[b] / sumNeed;
-    const stave = new VF.Stave(x, ABOVE, width, opts);
-    if (!b) {
-      stave.addClef(m.clef);
-      if (key) stave.addKeySignature(key.vfKey);
-      stave.addTimeSignature(timeSpec);
+  let x = left;
+  bars.forEach((bar, b) => {
+    const width = (b ? plainHeader : header) + need[b] + spare * need[b] / (sumNeed || 1);
+    const staves = m.staves.map((st, si) => {
+      const stave = new VF.Stave(x, staffY[si], width, opts);
+      if (!b) {
+        stave.addClef(st.clef);
+        if (key) stave.addKeySignature(key.vfKey);
+        stave.addTimeSignature(timeSpec);
+      }
+      return stave;
+    });
+    // The notes start at the same x on both staves
+    const start = Math.max(...staves.map(s => s.getNoteStartX()));
+    staves.forEach(s => s.setNoteStartX(start).setContext(ctx).draw());
+    if (staves.length > 1) {
+      if (!b) new VF.StaveConnector(staves[0], staves[1]).setType("brace").setContext(ctx).draw();
+      new VF.StaveConnector(staves[0], staves[1]).setType("singleLeft").setContext(ctx).draw();
+      new VF.StaveConnector(staves[0], staves[1]).setType("singleRight").setContext(ctx).draw();
     }
-    stave.setContext(ctx).draw();
-    voice.setStave(stave);
-    new VF.Formatter().joinVoices([voice]).formatToStave([voice], stave);
-    voice.draw(ctx, stave);
+    bar.forEach((staffVoices, si) => staffVoices.forEach(v => v.setStave(staves[si])));
+    formatters[b].format(bar.flat(), staves[0].getNoteEndX() - start - 10);
+    bar.forEach((staffVoices, si) => staffVoices.forEach(v => v.draw(ctx, staves[si])));
     x += width;
   });
   beams.forEach(beam => beam.setContext(ctx).draw());
   tuplets.forEach(t => t.setContext(ctx).draw());
-  // Ties: from a tied note to the next note, across a bar line too
-  const flat = m.bars.flatMap((bar, b) => bar.map((e, i) => ({ e, note: notes[b][i] })));
-  flat.forEach(({ e, note }, k) => {
-    const next = flat[k + 1];
-    if (!e.tie || !next || next.e.p == null) return;
-    new VF.StaveTie({ first_note: note, last_note: next.note, first_indices: [0], last_indices: [0] }).setContext(ctx).draw();
-  });
+  // Ties: the same ones the steps use (into the same pitch starting as the note ends, across voices and bar lines)
+  for (const tie of excerptTimeline(m.staves, m.time).ties) {
+    const [fs, fv, fb, fi] = tie.from, [ts, tv, tb, ti] = tie.to;
+    const from = m.staves[fs].voices[fv][fb][fi].n!, to = m.staves[ts].voices[tv][tb][ti].n!;
+    new VF.StaveTie({
+      first_note: notes[fs][fv][fb][fi] as VF.StaveNote, last_note: notes[ts][tv][tb][ti] as VF.StaveNote,
+      first_indices: tie.pitches.map(p => from.findIndex(n => n.p === p)),
+      last_indices: tie.pitches.map(p => to.findIndex(n => n.p === p)),
+    }).setContext(ctx).draw();
+  }
 }

@@ -4,7 +4,7 @@ import type { ChordPracticeState } from "../../exercises/chordPractice";
 import type { PromptStyle } from "../../exercises/chordPrompt";
 import { degreeName, type EarState, type MelodyState } from "../../exercises/earTraining";
 import type { ProgressionState } from "../../exercises/progressions";
-import { noteName, READING_RANGES, type ReadingPrompt } from "../../exercises/sightReading";
+import { noteName, READING_PARTS, READING_RANGES, type ReadingState } from "../../exercises/sightReading";
 import { buildKey, chromaOf, prettyAcc, templateById, type KeyContext } from "../../theory";
 import { chordSymbolHtml } from "../chordName";
 import { esc } from "../html";
@@ -19,27 +19,31 @@ const withRelative = (k: KeyContext) =>
   prettyAcc(k.mode === "major" ? `${k.label} / ${k.scale[5]} minor` : `${k.label} / ${k.scale[2]} major`);
 
 /** Sight reading: the notes are on the staff, so no prompt here, except a song's title and composer; a wrong note is
- *  named, and an octave out says which way */
-export function sightReadingDisplay(s: MelodyState<ReadingPrompt>): PracticeDisplay {
+ *  named, and an octave out says which way (for a chord, when it's one of the chord's notes in another octave) */
+export function sightReadingDisplay(s: ReadingState): PracticeDisplay {
   const key = buildKey(s.prompt.keyValue)!;
   const m = s.prompt.music;
-  const n = s.prompt.notes.length;
+  const n = s.prompt.steps.length;
+  const single = s.prompt.steps.every(step => step.length === 1);
   let feedback = "";
-  if (s.status === "correct") feedback = m ? `✓ All ${n} notes` : "✓ " + s.prompt.notes.map(n => prettyAcc(n.name)).join(" ");
-  else if (s.status === "wrong" && s.played != null) {
-    const target = s.prompt.notes[s.index].note;
-    feedback = s.played % 12 === target % 12
-      ? `✗ Right note, wrong octave: ${s.played < target ? "too low" : "too high"}`
-      : `✗ That was ${prettyAcc(noteName(s.played, key))}. Try again`;
+  if (s.status === "correct") {
+    feedback = m ? `✓ All ${n} ${single ? "notes" : "notes and chords"}` : "✓ " + s.prompt.steps.map(step => prettyAcc(step[0].name)).join(" ");
+  } else if (s.status === "wrong" && s.played != null) {
+    const step = s.prompt.steps[s.index];
+    const near = step.filter(t => t.note % 12 === s.played! % 12 && !s.struck.includes(t.note));
+    feedback = near.length === 1
+      ? `✗ Right note, wrong octave: ${s.played < near[0].note ? "too low" : "too high"}`
+      : `✗ That was ${prettyAcc(noteName(s.played, key))}${step.length > 1 ? ", not in this chord" : ""}. Try again`;
   }
-  const progress = `note ${Math.min(s.index + 1, n)} of ${n}`;
+  const progress = `${single ? "note " : ""}${Math.min(s.index + 1, n)} of ${n}`;
   const score = s.answered ? `${s.firstTry} / ${s.answered} lines right first time` : "";
   if (m) {
+    const part = m.part === "voice" ? "" : ` · ${READING_PARTS[m.part].replace("Piano, ", "")}`;
     return {
-      label: "Play this phrase, note by note, at this pitch",
+      label: single ? "Play this, note by note, at this pitch" : "Play this, note by note and chord by chord, at this pitch",
       promptHtml: `<div class="seqTitle">${esc(m.source.title)}</div><div class="excerptBy">${esc(m.source.composer)} · from OpenScore Lieder</div>`,
       size: "sequence",
-      sub: `${withRelative(key)} · level ${m.level} · ${progress}`,
+      sub: `${withRelative(key)}${part} · level ${m.level} · ${progress}`,
       status: s.status, feedback, score,
     };
   }

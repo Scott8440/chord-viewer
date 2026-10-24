@@ -77,7 +77,7 @@ const ROW_PAD = 12, ROW_END_PAD = 30;
 export function createStaffView(el: HTMLElement): StaffView {
   return {
     render(notes, result, key, pedalOnly, row) {
-      if (row && "bars" in row) { drawMusic(el, row, key); return; }
+      if (row && "staves" in row) { drawMusic(el, row, key); return; }
       el.innerHTML = "";
       const spelled: (SpelledNote & { grey: boolean; style?: keyof typeof ROW_STYLES })[] =
         notes.map(n => ({ ...spellNote(n, result, key), grey: pedalOnly.has(n) }));

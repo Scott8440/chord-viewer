@@ -8,7 +8,7 @@ import type { EarPrompt, MelodyPrompt } from "../exercises/earTraining";
 import type { NotePrompt } from "../exercises/notePractice";
 import type { ExerciseOptions, PrescriptiveId } from "../exercises/prescriptive";
 import type { ProgressionPrompt } from "../exercises/progressions";
-import { READING_RANGES, type ReadingPrompt } from "../exercises/sightReading";
+import { READING_PARTS, READING_RANGES, type ReadingPrompt } from "../exercises/sightReading";
 import type { CircleDirection, ItemOutcome, RoutineState } from "../exercises/routines";
 import type { RunResult, SequenceExercise } from "../exercises/sequence";
 import { templateById } from "../theory";
@@ -159,17 +159,19 @@ export function noteDrillBody(p: NotePrompt, answered: boolean, missed: boolean,
 /** A line of sight reading, judged as a whole; grouped by level for songs ("Songs, level 2"), by length and staff
  *  for generated lines ("4 notes, treble"), since lines rarely repeat */
 export function readingDrillBody(p: ReadingPrompt, answered: boolean, missed: boolean, ms: number): DrillBody {
-  const length = p.notes.length;
+  const length = p.steps.length;
+  const notes = p.steps.map(step => step.map(n => n.name).join("+")).join(" ");
   if (p.music) {
+    const { part, level } = p.music;
     return {
-      kind: "drill", drill: "reading", prompt: `Songs, level ${p.music.level}`,
-      detail: { key: p.keyValue, level: p.music.level, excerpt: p.music.excerpt.id, length, notes: p.notes.map(n => n.name).join(" ") },
+      kind: "drill", drill: "reading", prompt: `${part === "voice" ? "Songs" : READING_PARTS[part]}, level ${level}`,
+      detail: { key: p.keyValue, part, level, excerpt: p.music.id, length, notes },
       outcome: outcomeOf(answered, missed), ms: Math.round(ms),
     };
   }
   return {
     kind: "drill", drill: "reading", prompt: `${length} note${length === 1 ? "" : "s"}, ${READING_RANGES[p.range].label.toLowerCase()}`,
-    detail: { key: p.keyValue, range: p.range, length, notes: p.notes.map(n => n.name).join(" ") },
+    detail: { key: p.keyValue, range: p.range, length, notes },
     outcome: outcomeOf(answered, missed), ms: Math.round(ms),
   };
 }

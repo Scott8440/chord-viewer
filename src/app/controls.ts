@@ -6,9 +6,9 @@ import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTra
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
 import { ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
-import { READING_LEVELS } from "../exercises/excerpts";
+import { levelsFor, type ReadingPart } from "../exercises/excerpts";
 import {
-  READING_KEYS, READING_LENGTHS, READING_LEVEL_CHOICES, READING_RANGES, type ReadingOptions, type ReadingRange,
+  READING_KEYS, READING_LENGTHS, READING_LEVEL_CHOICES, READING_PARTS, READING_RANGES, type ReadingOptions, type ReadingRange,
 } from "../exercises/sightReading";
 import { pageSetup, viewOf } from "../modes/page";
 import type { AppStore } from "../modes/performance";
@@ -80,9 +80,16 @@ export function bindControls(store: AppStore) {
   bindSelect($("melodyLength"), s => String(s.ear.melodyLength),
     v => ({ type: "setEarOptions", options: { melodyLength: Number(v) } }));
   const setReading = (options: Partial<ReadingOptions>): AppAction => ({ type: "setReadingOptions", options });
-  for (const l of READING_LEVEL_CHOICES) {
-    $("readingLevel").append(new Option(l ? `${l} · ${READING_LEVELS[l - 1].name}` : "Generated notes", String(l)));
-  }
+  for (const [part, label] of Object.entries(READING_PARTS)) $("readingPart").append(new Option(label, part));
+  bindSelect($("readingPart"), s => s.reading.part, v => setReading({ part: v as ReadingPart }));
+  for (const l of READING_LEVEL_CHOICES) $("readingLevel").append(new Option("", String(l)));
+  // The levels' names are the part's: a melody's and the piano's differ
+  const nameLevels = (part: ReadingPart) => [...$<HTMLSelectElement>("readingLevel").options].forEach(o => {
+    const l = Number(o.value);
+    o.text = l ? `${l} · ${levelsFor(part)[l - 1].name}` : "Generated notes";
+  });
+  nameLevels(store.getState().settings.reading.part);
+  store.subscribe((s, p) => { if (s.settings.reading.part !== p.settings.reading.part) nameLevels(s.settings.reading.part); });
   bindSelect($("readingLevel"), s => String(s.reading.level), v => setReading({ level: Number(v) }));
   for (const n of READING_LENGTHS) $("readingLength").append(new Option(String(n), String(n)));
   bindSelect($("readingLength"), s => String(s.reading.length), v => setReading({ length: Number(v) }));
@@ -134,6 +141,7 @@ export function showControls(state: AppState) {
   $("readingOptions").hidden = id !== "notes";
   // Songs come as written; only generated lines have a length and a staff to choose
   $("readingLengthPick").hidden = $("readingRangePick").hidden = s.reading.level !== 0;
+  $("readingPartPick").hidden = s.reading.level === 0;
   // Both ear-training modes share their options; melodies have no drone, so the tonic is just the key
   const ear = id === "ear" || id === "earMelody";
   $("earOptions").hidden = $("practiceReplay").hidden = !ear;

@@ -173,7 +173,7 @@ export function startSightReading(store: AppStore, views: {
     show(makePrompt(state?.prompt));
   }
 
-  const offInput = onPlayerInput(store, { noteOn: note => apply({ type: "play", note }) });
+  const offInput = onPlayerInput(store, { noteOn: (note, time) => apply({ type: "play", note, time }) });
   const offSettings = store.subscribe((s, p) => { if (s.settings.reading !== p.settings.reading) restart(s.settings.reading, p.settings.reading); });
   inKey++;
   show(makePrompt());

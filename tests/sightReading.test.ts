@@ -101,6 +101,19 @@ describe("playing it back", () => {
     expect(sightReadingDisplay(reduceReading(s, { type: "play", note: 72 })).feedback).toBe("✗ That was C5. Try again");
   });
 
+  it("doesn't hold the rest of a chord played again against the next step", () => {
+    const chords: ReadingPrompt = { ...line, steps: [[{ note: 60, name: "C4" }, { note: 64, name: "E4" }], [{ note: 67, name: "G4" }]] };
+    let s = reduceReading(initialReading(chords), { type: "play", note: 60, time: 0 });
+    s = reduceReading(s, { type: "play", note: 62, time: 500 });
+    expect(s).toMatchObject({ status: "wrong", struck: [60] });
+    // The whole chord again: E finishes it, and C a moment later is still that chord
+    s = reduceReading(s, { type: "play", note: 64, time: 1000 });
+    s = reduceReading(s, { type: "play", note: 60, time: 1020 });
+    expect(s).toMatchObject({ index: 1, status: "waiting", struck: [] });
+    // Later, a note of that chord is a mistake again
+    expect(reduceReading(s, { type: "play", note: 60, time: 1500 }).status).toBe("wrong");
+  });
+
   it("is recorded by length and staff", () => {
     expect(readingDrillBody(line, true, false, 2400)).toEqual({
       kind: "drill", drill: "reading", prompt: "2 notes, treble",

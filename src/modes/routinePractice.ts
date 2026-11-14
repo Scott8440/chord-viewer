@@ -1,5 +1,5 @@
 // Routine mode: plays a routine's exercises one after another, moving on whenever an item's run finishes.
-import { initialRoutine, itemExercise, keyProgress, reduceRoutine, routineById, type RoutineAction, type RoutineState } from "../exercises/routines";
+import { DIRECTION_NAMES, initialRoutine, itemExercise, keyProgress, reduceRoutine, routineById, type RoutineAction, type RoutineState } from "../exercises/routines";
 import { noRecorder, toWallTime, uuid, type Recorder } from "../progress/recorder";
 import { routineBody, runBody } from "../progress/records";
 import { buildKey } from "../theory";
@@ -41,7 +41,7 @@ export function startRoutinePractice(store: AppStore, views: {
       neighbours: false,
       progress: Object.fromEntries(progress.map(g => [g.keyValue, g.state])),
       center: { text: state.status === "done" ? "Done" : `${at + 1} / ${progress.length}`,
-                direction: store.getState().settings.routine.direction },
+                arrow: DIRECTION_NAMES[state.routine.order][store.getState().settings.routine.direction].arrow },
     });
   };
   function apply(action: RoutineAction) {

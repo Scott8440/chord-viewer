@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_EXERCISE_OPTIONS, type ExerciseOptions } from "../src/exercises/prescriptive";
 import {
-  circleOfFifths, eachKey, initialRoutine, itemExercise, reduceRoutine, routineById, routineSummary, ROUTINES,
+  chromaticKeys, circleOfFifths, DIRECTION_NAMES, eachKey, initialRoutine, itemExercise, reduceRoutine, routineById, routineSummary, ROUTINES,
   sanitizeRoutineOptions, type RoutineAction, type RoutineState,
 } from "../src/exercises/routines";
 import type { SequenceExercise } from "../src/exercises/sequence";
@@ -36,6 +36,22 @@ describe("circle of fifths", () => {
   it("goes sharps first or flats first, starting on C", () => {
     expect(circleOfFifths("sharps").map(k => k.split(":")[0]).join(" ")).toBe("C G D A E B F# Db Ab Eb Bb F");
     expect(circleOfFifths("flats").map(k => k.split(":")[0]).join(" ")).toBe("C F Bb Eb Ab Db F# B E A D G");
+  });
+
+  it("chromatic order: up or down by semitones from C, spelled as on the circle", () => {
+    expect(chromaticKeys("sharps").map(k => k.split(":")[0]).join(" ")).toBe("C Db D Eb E F F# G Ab A Bb B");
+    expect(chromaticKeys("flats").map(k => k.split(":")[0]).join(" ")).toBe("C B Bb A Ab G F# F E Eb D Db");
+    expect(chromaticKeys("sharps").every(k => k.endsWith(":major"))).toBe(true);
+  });
+
+  it("major scales chromatic: each major scale once, in chromatic order, its directions named up and down", () => {
+    const r = routineById("scales-chromatic")!;
+    expect(r.order).toBe("chromatic");
+    expect(r.items("sharps").map(i => [i.exercise, i.options.key]).slice(0, 3))
+      .toEqual([["scales", "C:major"], ["scales", "Db:major"], ["scales", "D:major"]]);
+    expect(r.items("flats")).toHaveLength(12);
+    expect(DIRECTION_NAMES[r.order].sharps.long).toBe("Up (C D♭ D …)");
+    expect(DIRECTION_NAMES[routineById("scales-circle")!.order].flats.arrow).toBe("↺");
   });
 });
 

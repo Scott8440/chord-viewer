@@ -7,12 +7,37 @@ import type { TimingGrid } from "../timing/grid";
 import { initialSequence, reduceSequence, type RunResult, type SequenceAction, type SequenceExercise, type SequenceState } from "./sequence";
 
 export const CIRCLE_DIRECTIONS = ["sharps", "flats"] as const;
-/** sharps: C G D … (up by fifths); flats: C F B♭ … (down by fifths, i.e. up by fourths) */
+/**
+ * Which way a routine goes through the keys. Round the circle of fifths, sharps: C G D … (up by fifths), flats:
+ * C F B♭ … (down by fifths). Chromatically, sharps is up (C D♭ D …) and flats down (C B B♭ …). Saved, so the values
+ * keep their names whatever the routine's order.
+ */
 export type CircleDirection = typeof CIRCLE_DIRECTIONS[number];
+
+/** The order a routine takes the keys in */
+export type KeyOrder = "circle" | "chromatic";
+
+/** How each order names the two directions: the direction picker's options, and short forms for history */
+export const DIRECTION_NAMES: Record<KeyOrder, Record<CircleDirection, { long: string; short: string; arrow: string }>> = {
+  circle: { sharps: { long: "Sharps first (C G D …)", short: "sharps", arrow: "↻" },
+            flats: { long: "Flats first (C F B♭ …)", short: "flats", arrow: "↺" } },
+  chromatic: { sharps: { long: "Up (C D♭ D …)", short: "up", arrow: "↑" },
+               flats: { long: "Down (C B B♭ …)", short: "down", arrow: "↓" } },
+};
 
 /** Major key values in circle-of-fifths order, starting on C. */
 export function circleOfFifths(direction: CircleDirection): string[] {
   const keys = direction === "sharps" ? CIRCLE_OF_FIFTHS_MAJOR : [CIRCLE_OF_FIFTHS_MAJOR[0], ...CIRCLE_OF_FIFTHS_MAJOR.slice(1).reverse()];
+  return keys.map(t => `${t}:major`);
+}
+
+/**
+ * Major key values a semitone apart, starting on C: up (C D♭ D E♭ …) or down (C B B♭ A …), spelled as on the circle
+ * (F♯ for the key six semitones up, as in the key lists). Position i on the circle is i fifths, 7i semitones, from C.
+ */
+export function chromaticKeys(direction: CircleDirection): string[] {
+  const up = CIRCLE_OF_FIFTHS_MAJOR.map((t, i) => ({ t, pc: (i * 7) % 12 })).sort((a, b) => a.pc - b.pc).map(k => k.t);
+  const keys = direction === "sharps" ? up : [up[0], ...up.slice(1).reverse()];
   return keys.map(t => `${t}:major`);
 }
 
@@ -25,7 +50,9 @@ export interface RoutineItem {
 export interface Routine {
   id: string;
   name: string;
-  /** The items, in order; a routine that goes round the circle depends on the direction */
+  /** The order it takes the keys in, which names its directions (`DIRECTION_NAMES`) */
+  order: KeyOrder;
+  /** The items, in order, which depend on the direction */
   items(direction: CircleDirection): RoutineItem[];
 }
 
@@ -35,13 +62,15 @@ export const eachKey = (keys: readonly string[], exercises: readonly Prescriptiv
 
 /** The curated routines (deliberately a list, not a builder). */
 export const ROUTINES: readonly Routine[] = [
-  { id: "scales-circle", name: "Major scales, circle of fifths",
+  { id: "scales-circle", name: "Major scales, circle of fifths", order: "circle",
     items: d => eachKey(circleOfFifths(d), ["scales"]) },
-  { id: "triads-circle", name: "Diatonic chords, circle of fifths",
+  { id: "scales-chromatic", name: "Major scales, chromatic", order: "chromatic",
+    items: d => eachKey(chromaticKeys(d), ["scales"]) },
+  { id: "triads-circle", name: "Diatonic chords, circle of fifths", order: "circle",
     items: d => eachKey(circleOfFifths(d), ["diatonic"]) },
-  { id: "scale-triads-circle", name: "Scale, then diatonic chords, circle of fifths",
+  { id: "scale-triads-circle", name: "Scale, then diatonic chords, circle of fifths", order: "circle",
     items: d => eachKey(circleOfFifths(d), ["scales", "diatonic"]) },
-  { id: "technique-circle", name: "Five-finger pattern, scale, arpeggio, broken chords, circle of fifths",
+  { id: "technique-circle", name: "Five-finger pattern, scale, arpeggio, broken chords, circle of fifths", order: "circle",
     items: d => eachKey(circleOfFifths(d), ["fiveFinger", "scales", "arpeggios", "brokenChords"]) },
 ];
 

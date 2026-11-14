@@ -4,7 +4,7 @@ import { CHORD_KEYS } from "../exercises/chordPractice";
 import type { PromptStyle } from "../exercises/chordPrompt";
 import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTraining";
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
-import { ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
+import { DIRECTION_NAMES, ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
 import type { ArpeggioInversion } from "../exercises/technique";
 import { levelsFor, type ReadingPart } from "../exercises/excerpts";
@@ -140,6 +140,9 @@ export function showControls(state: AppState) {
   // With no key, chord names are any chord, and Roman numerals get a key of their own each time
   $<HTMLSelectElement>("chordKey").options[0].text = s.promptStyle === "roman" ? "None (a new key every prompt)" : "None (any chord)";
   $("routineOptions").hidden = id !== "routines";
+  // The direction picker names the routine's own directions: round the circle, or up and down chromatically
+  const order = routineById(s.routine.id)!.order;
+  for (const o of $<HTMLSelectElement>("routineDir").options) o.text = DIRECTION_NAMES[order][o.value as CircleDirection].long;
   $("readingOptions").hidden = id !== "notes";
   // Songs come as written; only generated lines have a length and a staff to choose
   $("readingLengthPick").hidden = $("readingRangePick").hidden = s.reading.level !== 0;

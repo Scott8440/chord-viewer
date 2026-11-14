@@ -8,6 +8,10 @@ sustain pedal on Windows, and often routes MIDI through loopMIDI because Ableton
 v1 is feature complete. **The next goal is to turn it into a broader music theory learning and practice app.**
 Do the architecture refactor (below) before adding features.
 
+## Working conventions
+- **Work on `main`.** Commit and push straight to `main`; don't create a branch per feature (the user's preference,
+  Nov 2026). Run the typecheck and tests before each push.
+
 ## Current layout
 Vite + TypeScript, built to one self-contained offline file with `vite-plugin-singlefile`. The code is split into
 layers that only talk through data: input sources emit `InputEvent`s, a pure reducer turns them into state, and the
@@ -152,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 361 tests (54 voicings) should pass
+npm test           # Vitest: 363 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -332,15 +336,18 @@ A set of prescriptive exercises played one after another, e.g. every major scale
   Items set only what defines them (the key); every other option comes from the player's exercise settings, so
   "2 octaves" applies to the whole routine. `eachKey(keys, exercises)` builds the usual "for each key, these
   exercises" shape. Routines are a curated list (`ROUTINES`), not a user builder.
-- **Order:** `circleOfFifths("sharps")` = C G D A E B F♯ D♭ A♭ E♭ B♭ F; `"flats"` = C F B♭ E♭ A♭ D♭ F♯ B E A D G
-  (a setting). F♯ stands in for G♭, as in the key lists. Major keys only, for now.
+- **Order:** each routine has an `order`: `"circle"` (`circleOfFifths("sharps")` = C G D A E B F♯ D♭ A♭ E♭ B♭ F;
+  `"flats"` = C F B♭ E♭ A♭ D♭ F♯ B E A D G) or `"chromatic"` (`chromaticKeys`: up C D♭ D E♭ E F F♯ G A♭ A B♭ B, or down
+  C B B♭ A …). The direction is one setting with the saved values "sharps"/"flats"; `DIRECTION_NAMES[order]` names
+  them for the picker ("Sharps first …" / "Up …"), the circle's centre arrow (↻ ↺ ↑ ↓) and the Progress table. F♯
+  stands in for G♭, as in the key lists. Major keys only, for now.
 - **Running:** `reduceRoutine` forwards input to the item's `reduceSequence`; when the item's run finishes (mistakes
   allowed, and recorded) it moves on, carrying held keys over so a scale's last note doesn't count against the
   next item's chord. The previous item's result shows until the next one starts. Skip records "skipped".
 - **End:** `routineSummary`: played, clean, mistakes, total time, skipped, and the weakest items (most mistakes,
   then least even; at most three, never clean ones).
-- **Built:** major scales; diatonic chords; scale then diatonic chords; technique (five-finger pattern, scale,
-  arpeggio, broken chords per key); each round the circle.
+- **Built:** major scales round the circle, and chromatically; diatonic chords; scale then diatonic chords;
+  technique (five-finger pattern, scale, arpeggio, broken chords per key); each of the last three round the circle.
 
 ## Ear training (mode "ear", `src/modes/earTraining.ts`)
 First mode: scale degrees over a drone. A drone sounds the tonic (an octave below, plus the octave above it), the

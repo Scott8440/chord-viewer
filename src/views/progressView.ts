@@ -1,5 +1,6 @@
 // The Progress view: a filter row (date range, routine, exercise), summary tiles, and chart cards worked out from the
 // practice history (src/progress/stats.ts). Each chart has a table underneath for the exact values.
+import { DIRECTION_NAMES, routineById } from "../exercises/routines";
 import type { ProgressRecord } from "../progress/records";
 import {
   DRILLS, dailyMedian, dayStart, dayOf, drillsPerDay, exerciseOptions, exerciseRuns, practicePerDay, routineOptions,
@@ -37,6 +38,11 @@ const minutes = (ms: number) => {
 const clock = (ms: number) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const longDate = (ms: number) => new Date(ms).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+/** "↻ sharps", or for a chromatic routine "↑ up" (unknown routines and values read as round the circle) */
+function directionText(routine: string, direction: string): string {
+  const d = DIRECTION_NAMES[routineById(routine)?.order ?? "circle"][direction === "flats" ? "flats" : "sharps"];
+  return `${d.arrow} ${d.short}`;
+}
 const DRILL_NAMES = {
   notes: "Note names (old)", chords: "Chords", progressions: "Progressions", ear: "Ear: degrees", melody: "Ear: melodies",
   reading: "Sight reading",
@@ -101,7 +107,7 @@ export function createProgressView(el: HTMLElement, actions: {
           `<div>${chart("pvRoutineMistakes", { kind: "line", range, format: v => String(Math.round(v)),
               series: [{ name: "Mistakes", color: SERIES[0], points: point(s => s.mistakes) }] }, "Mistakes per session", "Mistakes")}</div></div>` +
           table(["Date", "Time", "Mistakes", "Direction", "Metronome"],
-            sessions.map(s => [longDate(s.at), clock(s.durationMs), String(s.mistakes), s.direction === "sharps" ? "↻ sharps" : "↺ flats", s.bpm ? `${s.bpm} BPM` : "off"])));
+            sessions.map(s => [longDate(s.at), clock(s.durationMs), String(s.mistakes), directionText(routine.id, s.direction), s.bpm ? `${s.bpm} BPM` : "off"])));
       } else routineCard = card("Routines", "", empty("Finish a routine to see your time and mistakes here."));
 
       // Exercise: mistakes per run, and timing (or evenness), with each run faint behind the daily median

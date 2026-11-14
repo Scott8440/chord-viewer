@@ -156,11 +156,53 @@ describe("routineDisplay", () => {
 });
 
 describe("routine settings", () => {
-  it("default to the first routine, sharps first, and ignore bad values", () => {
-    expect(createAppState().settings.routine).toEqual({ id: "scales-circle", direction: "sharps" });
-    expect(sanitizeRoutineOptions({ id: "nope", direction: "sideways" })).toEqual({ id: "scales-circle", direction: "sharps" });
+  it("default to the first routine, sharps first, starting on C, and ignore bad values", () => {
+    expect(createAppState().settings.routine).toEqual({ id: "scales-circle", direction: "sharps", start: "C:major" });
+    expect(sanitizeRoutineOptions({ id: "nope", direction: "sideways" })).toEqual({ id: "scales-circle", direction: "sharps", start: "C:major" });
     const s = reduceApp(createAppState(), { type: "setRoutineOptions", options: { direction: "flats" } });
-    expect(s.settings.routine).toEqual({ id: "scales-circle", direction: "flats" });
+    expect(s.settings.routine).toEqual({ id: "scales-circle", direction: "flats", start: "C:major" });
     expect(reduceApp(s, { type: "setRoutineOptions", options: { direction: "flats" } })).toBe(s);
   });
 });
+
+describe("major triads, up an octave", () => {
+  const triads = routineById("major-triads-octave")!;
+  const roots = (start: string, d: "sharps" | "flats" = "sharps") => triads.items(d, start).map(i => i.options.key!.split(":")[0]).join(" ");
+
+  it("walks the 13 major triads from the chosen root to its octave, up or down", () => {
+    expect(triads.startsOn).toBe(true);
+    expect(roots("E:major")).toBe("E F F# G Ab A Bb B C Db D Eb E");
+    expect(roots("E:major", "flats")).toBe("E Eb D Db C B Bb A Ab G F# F E");
+    expect(roots("C:major")).toBe("C Db D Eb E F F# G Ab A Bb B C");
+    expect(triads.items("sharps", "C:major").every(i => i.exercise === "triad")).toBe(true);
+  });
+
+  it("each item is one major triad, in root position or any voicing", () => {
+    const [first] = triads.items("sharps", "Bb:major");
+    const ex = itemExercise(first, base);
+    expect(ex).toMatchObject({ id: "triad:Bb:major:root", title: "Bb major triad", keyValue: "Bb:major" });
+    expect(ex.steps).toEqual([{ kind: "chord", chord: expect.objectContaining({ root: "Bb", type: "M", inversion: expect.objectContaining({ number: 0 }) }) }]);
+    const any = itemExercise(first, { ...base, rootPosition: false });
+    expect(any.id).toBe("triad:Bb:major:any");
+    expect((any.steps[0] as { chord: { inversion?: unknown } }).chord.inversion).toBeUndefined();
+  });
+
+  it("plays through: a triad held moves on to the next root", () => {
+    let r = initialRoutine(triads, { direction: "sharps", start: "D:major" }, base);
+    expect(r.current.exercise.title).toBe("D major triad");
+    r = reduceRoutine(r, { type: "held", notes: [62, 66, 69], time: 1000 });
+    expect(r.index).toBe(1);
+    expect(r.current.exercise.title).toBe("Eb major triad");
+  });
+
+  it("the start is a saved option: any of the 12 major keys, else C", () => {
+    expect(sanitizeRoutineOptions({ id: "major-triads-octave", start: "F#:major" }).start).toBe("F#:major");
+    expect(sanitizeRoutineOptions({ start: "Gb:major" }).start).toBe("C:major");
+    expect(sanitizeRoutineOptions({ start: "A:minor" }).start).toBe("C:major");
+    const s = createAppState();
+    const t = reduceApp(s, { type: "setRoutineOptions", options: { start: "G:major" } });
+    expect(t.settings.routine.start).toBe("G:major");
+    expect(reduceApp(t, { type: "setRoutineOptions", options: { start: "G:major" } })).toBe(t);
+  });
+});
+

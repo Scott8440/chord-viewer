@@ -31,15 +31,23 @@ export function circleOfFifths(direction: CircleDirection): string[] {
   return keys.map(t => `${t}:major`);
 }
 
+/** The 12 major tonics a semitone apart from C, spelled as on the circle: position i is i fifths, 7i semitones, up */
+export const CHROMATIC_TONICS = CIRCLE_OF_FIFTHS_MAJOR.map((t, i) => ({ t, pc: (i * 7) % 12 })).sort((a, b) => a.pc - b.pc).map(k => k.t);
+
 /**
- * Major key values a semitone apart, starting on C: up (C D♭ D E♭ …) or down (C B B♭ A …), spelled as on the circle
- * (F♯ for the key six semitones up, as in the key lists). Position i on the circle is i fifths, 7i semitones, from C.
+ * Major key values a semitone apart, starting on `from` (C by default): up (C D♭ D E♭ …) or down (C B B♭ A …),
+ * spelled as on the circle (F♯ for the key six semitones up, as in the key lists). With `octave`, the start again
+ * at the end: 13 keys, up or down an octave.
  */
-export function chromaticKeys(direction: CircleDirection): string[] {
-  const up = CIRCLE_OF_FIFTHS_MAJOR.map((t, i) => ({ t, pc: (i * 7) % 12 })).sort((a, b) => a.pc - b.pc).map(k => k.t);
+export function chromaticKeys(direction: CircleDirection, from = "C:major", octave = false): string[] {
+  const start = Math.max(0, CHROMATIC_TONICS.indexOf(from.split(":")[0]));
+  const up = [...CHROMATIC_TONICS.slice(start), ...CHROMATIC_TONICS.slice(0, start)];
   const keys = direction === "sharps" ? up : [up[0], ...up.slice(1).reverse()];
-  return keys.map(t => `${t}:major`);
+  return [...keys, ...(octave ? [keys[0]] : [])].map(t => `${t}:major`);
 }
+
+/** The key a routine starts on, when it lets the player choose (`Routine.startsOn`) */
+export const DEFAULT_START = "C:major";
 
 /** One exercise in a routine. Options it doesn't set (octaves, sevenths …) come from the player's exercise settings. */
 export interface RoutineItem {
@@ -52,8 +60,10 @@ export interface Routine {
   name: string;
   /** The order it takes the keys in, which names its directions (`DIRECTION_NAMES`) */
   order: KeyOrder;
-  /** The items, in order, which depend on the direction */
-  items(direction: CircleDirection): RoutineItem[];
+  /** The player chooses the key it starts on (`RoutineOptions.start`) */
+  startsOn?: boolean;
+  /** The items, in order, which depend on the direction (and the start, for routines that let you choose it) */
+  items(direction: CircleDirection, start?: string): RoutineItem[];
 }
 
 /** For each key, the given exercises in order (e.g. its scale, then its triads). */
@@ -66,6 +76,8 @@ export const ROUTINES: readonly Routine[] = [
     items: d => eachKey(circleOfFifths(d), ["scales"]) },
   { id: "scales-chromatic", name: "Major scales, chromatic", order: "chromatic",
     items: d => eachKey(chromaticKeys(d), ["scales"]) },
+  { id: "major-triads-octave", name: "Major triads, up an octave", order: "chromatic", startsOn: true,
+    items: (d, start = DEFAULT_START) => eachKey(chromaticKeys(d, start, true), ["triad"]) },
   { id: "triads-circle", name: "Diatonic chords, circle of fifths", order: "circle",
     items: d => eachKey(circleOfFifths(d), ["diatonic"]) },
   { id: "scale-triads-circle", name: "Scale, then diatonic chords, circle of fifths", order: "circle",
@@ -110,9 +122,13 @@ export type RoutineAction =
   /** The player's exercise settings changed: rebuild the item in progress (later items are built when reached) */
   | { type: "setBase"; base: ExerciseOptions };
 
-export function initialRoutine(routine: Routine, direction: CircleDirection, base: ExerciseOptions, held: number[] = [],
+/** Which way, and where to start (for routines that let you choose): a direction alone starts on the default */
+export type RoutineSetup = CircleDirection | Pick<RoutineOptions, "direction" | "start">;
+
+export function initialRoutine(routine: Routine, setup: RoutineSetup, base: ExerciseOptions, held: number[] = [],
                                grid: TimingGrid | null = null): RoutineState {
-  const items = routine.items(direction);
+  const { direction, start } = typeof setup === "string" ? { direction: setup, start: DEFAULT_START } : setup;
+  const items = routine.items(direction, start);
   return { routine, items, base, index: 0, current: initialSequence(itemExercise(items[0], base), held, grid),
            outcomes: [], previous: null, startTime: null, endTime: null, status: "playing" };
 }
@@ -227,6 +243,8 @@ export const mixesExercises = (s: RoutineState) => new Set(s.items.map(i => i.ex
 export interface RoutineOptions {
   id: string;
   direction: CircleDirection;
+  /** Major key value the routine starts on, for routines that let you choose (`Routine.startsOn`) */
+  start: string;
 }
 
 export function sanitizeRoutineOptions(raw: unknown): RoutineOptions {
@@ -234,5 +252,7 @@ export function sanitizeRoutineOptions(raw: unknown): RoutineOptions {
   return {
     id: typeof o.id === "string" && routineById(o.id) ? o.id : ROUTINES[0].id,
     direction: (CIRCLE_DIRECTIONS as readonly unknown[]).includes(o.direction) ? o.direction as CircleDirection : "sharps",
+    start: typeof o.start === "string" && CHROMATIC_TONICS.includes(o.start.split(":")[0]) && o.start.endsWith(":major")
+      ? o.start : DEFAULT_START,
   };
 }

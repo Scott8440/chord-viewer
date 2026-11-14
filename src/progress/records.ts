@@ -71,6 +71,8 @@ export interface RoutineBody {
   routine: string;
   name: string;
   direction: CircleDirection;
+  /** The key it started on, for routines that let you choose (absent otherwise, and in older records) */
+  start?: string;
   /** UTC ms of the first note */
   startedAt: number;
   /** First note to last note of the last finished item */
@@ -131,6 +133,7 @@ export function routineBody(r: RoutineState, session: string, direction: CircleD
   const items = r.outcomes.map((o, i) => itemOutcome(r.items[i].exercise, exerciseOf(i), o));
   return {
     kind: "routine", session, routine: r.routine.id, name: r.routine.name, direction,
+    ...(r.routine.startsOn ? { start: r.items[0].options.key } : {}),
     startedAt: Math.round(toWall(r.startTime ?? 0)),
     durationMs: r.startTime != null && r.endTime != null ? Math.round(r.endTime - r.startTime) : 0,
     finished: r.status === "done", totalItems: r.items.length, items,

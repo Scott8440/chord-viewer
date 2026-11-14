@@ -100,6 +100,7 @@ export function exerciseLabel(r: Pick<RunBody, "exercise" | "exerciseId" | "titl
     const inversion = Number(parts[3]);
     return `${r.title}${inversion ? `, ${INVERSION_NAMES[inversion]}` : ""}, ${octaves(parts[4])}`;
   }
+  if (r.exercise === "triad") return `${r.title}${parts[parts.length - 1] === "any" ? ", any voicing" : ""}`;
   if (r.exercise === "brokenChords" || r.exercise === "chromatic") return `${r.title}, ${octaves(parts[parts.length - 1])}`;
   return r.title;
 }

@@ -14,7 +14,7 @@ export function startRoutinePractice(store: AppStore, views: {
 }, recorder: Recorder = noRecorder): Mode {
   const fresh = (): RoutineState => {
     const s = store.getState();
-    return initialRoutine(routineById(s.settings.routine.id)!, s.settings.routine.direction, s.settings.exercise, heldNotes(s),
+    return initialRoutine(routineById(s.settings.routine.id)!, s.settings.routine, s.settings.exercise, heldNotes(s),
                           timingGrid(s));
   };
   let state = fresh();
@@ -39,7 +39,9 @@ export function startRoutinePractice(store: AppStore, views: {
     views.circle.render({
       keyValue: state.status === "done" ? null : state.current.exercise.keyValue,
       neighbours: false,
-      progress: Object.fromEntries(progress.map(g => [g.keyValue, g.state])),
+      // A key the routine comes back to (the octave at the end of a triad walk) shows its first visit until reached
+      progress: progress.reduce<Record<string, typeof progress[number]["state"]>>((m, g) =>
+        m[g.keyValue] && g.state === "upcoming" ? m : { ...m, [g.keyValue]: g.state }, {}),
       center: { text: state.status === "done" ? "Done" : `${at + 1} / ${progress.length}`,
                 arrow: DIRECTION_NAMES[state.routine.order][store.getState().settings.routine.direction].arrow },
     });

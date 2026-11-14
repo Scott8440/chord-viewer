@@ -4,7 +4,7 @@ import { CHORD_KEYS } from "../exercises/chordPractice";
 import type { PromptStyle } from "../exercises/chordPrompt";
 import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTraining";
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
-import { DIRECTION_NAMES, ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
+import { CHROMATIC_TONICS, DIRECTION_NAMES, ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
 import type { ArpeggioInversion } from "../exercises/technique";
 import { levelsFor, type ReadingPart } from "../exercises/excerpts";
@@ -105,6 +105,8 @@ export function bindControls(store: AppStore) {
   bindSelect($("routineSel"), s => s.routine.id, id => ({ type: "setRoutineOptions", options: { id } }));
   bindSelect($("routineDir"), s => s.routine.direction,
     direction => ({ type: "setRoutineOptions", options: { direction: direction as CircleDirection } }));
+  for (const t of CHROMATIC_TONICS) $("routineStart").append(new Option(prettyAcc(t), `${t}:major`));
+  bindSelect($("routineStart"), s => s.routine.start, start => ({ type: "setRoutineOptions", options: { start } }));
 }
 
 const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRESCRIPTIVE;
@@ -116,7 +118,7 @@ const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRES
 function exercisesOf(s: Settings): { ids: PrescriptiveId[]; keys: string[]; ownKey: boolean } {
   if (isPrescriptive(s.mode)) return { ids: [s.mode], keys: [s.exercise.key], ownKey: true };
   if (s.mode !== "routines") return { ids: [], keys: [], ownKey: false };
-  const items = routineById(s.routine.id)!.items(s.routine.direction);
+  const items = routineById(s.routine.id)!.items(s.routine.direction, s.routine.start);
   return { ids: [...new Set(items.map(i => i.exercise))], keys: items.map(i => i.options.key ?? s.exercise.key), ownKey: false };
 }
 
@@ -142,6 +144,7 @@ export function showControls(state: AppState) {
   $("routineOptions").hidden = id !== "routines";
   // The direction picker names the routine's own directions: round the circle, or up and down chromatically
   const order = routineById(s.routine.id)!.order;
+  $("routineStartPick").hidden = !routineById(s.routine.id)!.startsOn;
   for (const o of $<HTMLSelectElement>("routineDir").options) o.text = DIRECTION_NAMES[order][o.value as CircleDirection].long;
   $("readingOptions").hidden = id !== "notes";
   // Songs come as written; only generated lines have a length and a staff to choose

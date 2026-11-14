@@ -2,7 +2,7 @@
 // the mode (src/modes/sequencePractice.ts) and the options UI are the same for all of them.
 import { buildKey, isKeyValue } from "../theory";
 import { STRICTNESS, SUBDIVISIONS, type Strictness, type Subdivision } from "../timing/grid";
-import { diatonicChordsExercise } from "./diatonicChords";
+import { diatonicChordsExercise, tonicTriadExercise } from "./diatonicChords";
 import { MINOR_FORMS, SCALE_OCTAVES, scaleExercise, type MinorForm, type ScaleOctaves } from "./scales";
 import type { SequenceExercise } from "./sequence";
 import {
@@ -103,6 +103,13 @@ export const PRESCRIPTIVE = {
     chords: false,
     build: o => brokenChordExercise(buildKey(o.key)!, o.octaves),
     options: ["key", "octaves", "metronome"],
+  },
+  // Not a mode of its own: the item of triad routines, which set its key
+  triad: {
+    short: "triad",
+    chords: true,
+    build: o => tonicTriadExercise(buildKey(o.key)!, o.rootPosition),
+    options: ["rootPosition", "metronome"],
   },
   chromatic: {
     short: "chromatic",

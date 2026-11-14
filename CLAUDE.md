@@ -156,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 363 tests (54 voicings) should pass
+npm test           # Vitest: 367 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -340,14 +340,22 @@ A set of prescriptive exercises played one after another, e.g. every major scale
   `"flats"` = C F B♭ E♭ A♭ D♭ F♯ B E A D G) or `"chromatic"` (`chromaticKeys`: up C D♭ D E♭ E F F♯ G A♭ A B♭ B, or down
   C B B♭ A …). The direction is one setting with the saved values "sharps"/"flats"; `DIRECTION_NAMES[order]` names
   them for the picker ("Sharps first …" / "Up …"), the circle's centre arrow (↻ ↺ ↑ ↓) and the Progress table. F♯
-  stands in for G♭, as in the key lists. Major keys only, for now.
+  stands in for G♭, as in the key lists. Major keys only, for now. A routine with `startsOn` lets the player pick the
+  key it starts on (`RoutineOptions.start`, a major key value, default C; the "Start on" picker shows only then;
+  recorded as `start` in its routine record); `chromaticKeys(direction, from, octave)` starts there and, with
+  `octave`, ends on it again an octave away (13 keys). `initialRoutine` takes the routine options (or just a
+  direction, starting on C). A key a routine comes back to keeps its first visit's colour on the circle until reached.
 - **Running:** `reduceRoutine` forwards input to the item's `reduceSequence`; when the item's run finishes (mistakes
   allowed, and recorded) it moves on, carrying held keys over so a scale's last note doesn't count against the
   next item's chord. The previous item's result shows until the next one starts. Skip records "skipped".
 - **End:** `routineSummary`: played, clean, mistakes, total time, skipped, and the weakest items (most mistakes,
   then least even; at most three, never clean ones).
-- **Built:** major scales round the circle, and chromatically; diatonic chords; scale then diatonic chords;
-  technique (five-finger pattern, scale, arpeggio, broken chords per key); each of the last three round the circle.
+- **Built:** major scales round the circle, and chromatically; **major triads up an octave** (`major-triads-octave`:
+  from the chosen root, the major triad on each semitone to the root an octave up, or down; each item the `triad`
+  exercise, a single chord step, `tonicTriadExercise`: the key's tonic triad, in root position or any voicing by the
+  "Root position only" option; a registry entry without a mode of its own); diatonic chords; scale then diatonic
+  chords; technique (five-finger pattern, scale, arpeggio, broken chords per key); each of the last three round the
+  circle. A one-step run's result shows no tempo or evenness (`runText`).
 
 ## Ear training (mode "ear", `src/modes/earTraining.ts`)
 First mode: scale degrees over a drone. A drone sounds the tonic (an octave below, plus the octave above it), the

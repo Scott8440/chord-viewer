@@ -34,3 +34,20 @@ export function diatonicChordsExercise(key: KeyContext, opts: DiatonicOptions): 
     steps: [...chords, chords[0]].map(chord => ({ kind: "chord", chord })),
   };
 }
+
+/**
+ * The key's tonic triad (major in a major key, minor in a minor one) as a single chord step: the building block of
+ * routines that walk through triads (e.g. every major triad up an octave). In root position, or any voicing.
+ */
+export function tonicTriadExercise(key: KeyContext, rootPosition: boolean): SequenceExercise<ChordStep> {
+  const keyValue = `${key.tonic}:${key.mode}`;
+  const chord = { rootPc: key.tonicPc, root: key.tonic, type: key.mode === "minor" ? "m" : "M" };
+  return {
+    id: `triad:${keyValue}:${rootPosition ? "root" : "any"}`,
+    title: `${key.tonic} ${key.mode} triad`,
+    instruction: `Play the ${key.tonic} ${key.mode} triad, ${rootPosition ? "in root position" : "in any voicing"}`,
+    basePc: key.tonicPc,
+    keyValue,
+    steps: [{ kind: "chord", chord: rootPosition ? atInversion(chord, 0) : chord }],
+  };
+}

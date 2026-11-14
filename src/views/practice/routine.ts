@@ -46,7 +46,7 @@ export function routineDisplay(r: RoutineState, style: PromptStyle): PracticeDis
   if (r.previous && r.current.status !== "playing" && !r.current.startHint) {
     const title = prettyNames(itemExercise(r.items[r.previous.index], r.base).title);
     feedback = (r.previous.result.mistakes ? `${title}: ${r.previous.result.mistakes} mistake${r.previous.result.mistakes > 1 ? "s" : ""}`
-      : `✓ ${title}: clean`) + " · " + runText(r.previous.result);
+      : `✓ ${title}: clean`) + runText(r.previous.result);
     status = r.previous.result.mistakes ? "waiting" : "correct";
   }
   const clean = r.outcomes.filter(o => o !== "skipped" && !o.mistakes).length;

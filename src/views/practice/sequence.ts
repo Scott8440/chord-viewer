@@ -34,7 +34,7 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
     feedback = `Start ${first.kind === "note" ? "on" : "with"} ${stepText(first)}`;
   } else if (s.status === "done" && s.result) {
     feedback = (s.result.mistakes ? `Done · ${s.result.mistakes} mistake${s.result.mistakes > 1 ? "s" : ""}` : "✓ Clean run") +
-      " · " + runText(s.result);
+      runText(s.result);
     status = s.result.mistakes ? "waiting" : "correct";
   }
   if (s.status === "done") sub = `Play ${stepText(first)} to go again`;
@@ -64,9 +64,11 @@ function describeWrongStep(step: SequenceStep, wrong: WrongStep, key: KeyContext
 }
 
 /** How a run went: "132 BPM · 91% even", or against the metronome "92% on time · rushing 18 ms" (no duration) */
+/** How a run went, after " · " (or nothing for a one-step run, e.g. a single chord: it has no tempo or evenness) */
 export function runText(r: RunResult): string {
-  if (r.timing) return timingText(r.timing);
-  return `${Math.round(r.bpm)} BPM · ${Math.round(r.evenness * 100)}% even`;
+  if (r.timing) return " · " + timingText(r.timing);
+  if (!r.bpm) return "";
+  return ` · ${Math.round(r.bpm)} BPM · ${Math.round(r.evenness * 100)}% even`;
 }
 
 /** How steady a run was, briefly: "92% on time" against the metronome, else "95% even" */

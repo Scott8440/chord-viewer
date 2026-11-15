@@ -10,9 +10,11 @@ import type { Rng } from "../exercises/notePractice";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { melodyDrillBody } from "../progress/records";
 import { buildKey } from "../theory";
-import { earMelodyDisplay, type PracticeView } from "../views/practice";
+import type { ProgressStore } from "../progress/store";
+import { earMelodyDisplay, roundScore, roundSummaryDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, onPlayerInput, type AppStore, type Mode } from "./performance";
+import { createRoundKeeper } from "./rounds";
 
 /** Seconds from the root to the first note, and between notes; how long each note rings */
 const ROOT_GAP_S = 1.1, NOTE_GAP_S = 0.65, NOTE_RING_S = 1.4;
@@ -23,8 +25,13 @@ const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarMelody(store: AppStore, views: {
   staff: StaffView; practice: PracticeView; tones: TonePlayer;
-}, recorder: Recorder = noRecorder, rng: Rng = Math.random): Mode {
+}, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.ear;
+  // In rounds of ROUND_SIZE melodies, compared at the end with earlier rounds of the same length and degrees
+  const rounds = createRoundKeeper({
+    drill: "melody", recorder, history, changed: () => render(),
+    setup: () => `length:${options().melodyLength};degrees:${options().degrees.join(",")}`,
+  });
   let tonic = pickTonic(rng, options().tonic);
   let inKey = 0;
   let state: MelodyState = initialMelody(newPrompt());
@@ -65,7 +72,9 @@ export function startEarMelody(store: AppStore, views: {
   }
 
   function render() {
-    views.practice.render(earMelodyDisplay(state, options().degrees, views.tones.blocked(), running));
+    const summary = rounds.summary();
+    views.practice.render(summary ? roundSummaryDisplay(summary, "Melodies")
+      : { ...earMelodyDisplay(state, options().degrees, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
     // The drawer only redraws by itself on input; the melody and its key change here
     drawer.schedule();
   }
@@ -79,6 +88,13 @@ export function startEarMelody(store: AppStore, views: {
       recorder.record(melodyDrillBody(state.prompt, options().degrees, true, state.missed, Date.now() - shownAt));
     } else if (action.type === "skip" && prev.status !== "correct") {
       recorder.record(melodyDrillBody(prev.prompt, options().degrees, false, prev.missed, Date.now() - shownAt));
+    }
+    // The round's last melody: stop, and show how the round went until Next round
+    if (state.answered !== prev.answered && rounds.check(state)) {
+      clearTimers();
+      views.tones.stopNotes();
+      render();
+      return;
     }
     if (state.prompt !== prev.prompt) {
       shownAt = Date.now();
@@ -96,6 +112,7 @@ export function startEarMelody(store: AppStore, views: {
   /** New options: a fresh melody (not a skip) */
   function restart(o: EarOptions, before: EarOptions) {
     clearTimers();
+    rounds.next(state);
     if (o.tonic !== before.tonic) { tonic = pickTonic(rng, o.tonic, tonic); inKey = 0; }
     inKey++;
     state = { ...state, prompt: makeMelodyPrompt(rng, tonic, o.degrees, o.melodyLength, state.prompt),
@@ -105,7 +122,15 @@ export function startEarMelody(store: AppStore, views: {
     render();
   }
 
-  const offInput = onPlayerInput(store, { noteOn: note => { if (running) apply({ type: "play", note }); } });
+  const offInput = onPlayerInput(store, { noteOn: note => { if (running && !rounds.summary()) apply({ type: "play", note }); } });
+
+  /** Next round: on to a new melody */
+  function nextRound() {
+    rounds.next(state);
+    running = true;
+    if (state.status === "correct") apply({ type: "next", prompt: newPrompt(state.prompt) });
+    else { shownAt = Date.now(); sound(); render(); }
+  }
   const offSettings = store.subscribe((s, p) => { if (s.settings.ear !== p.settings.ear) restart(s.settings.ear, p.settings.ear); });
   const offBlocked = views.tones.onBlockedChange(() => {
     if (awaitingSound && !views.tones.blocked()) {
@@ -132,13 +157,15 @@ export function startEarMelody(store: AppStore, views: {
     },
     skip() {
       awaitingSound = false;
+      if (rounds.summary()) { nextRound(); return; }
       running = true;   // skipping while stopped starts again, on the new melody
       apply({ type: "skip", prompt: newPrompt(state.prompt) });
     },
     replay() {
-      if (running) sound();
+      if (running && !rounds.summary()) sound();
     },
     toggleRunning() {
+      if (rounds.summary()) return;
       awaitingSound = false;
       clearTimers();
       running = !running;

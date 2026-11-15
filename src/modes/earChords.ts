@@ -12,8 +12,10 @@ import type { Rng } from "../exercises/notePractice";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { chordEarDrillBody } from "../progress/records";
 import type { AnswerBoard } from "../views/answerBoard";
-import { chordEarAnswers, chordEarDisplay, type PracticeView } from "../views/practice";
+import type { ProgressStore } from "../progress/store";
+import { chordEarAnswers, chordEarDisplay, roundScore, roundSummaryDisplay, type PracticeView } from "../views/practice";
 import type { AppStore, Mode } from "./performance";
+import { createRoundKeeper } from "./rounds";
 
 /** How long the chord rings; with Broken, the gap between its notes and the pause before them together */
 const CHORD_RING_S = 2.4, BROKEN_GAP_S = 0.45, BROKEN_PAUSE_S = 0.35;
@@ -24,8 +26,13 @@ const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarChords(store: AppStore, views: {
   practice: PracticeView; tones: TonePlayer; answers: AnswerBoard;
-}, recorder: Recorder = noRecorder, rng: Rng = Math.random): Mode {
+}, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.earChords;
+  // In rounds of ROUND_SIZE chords, compared at the end with earlier rounds played with the same options
+  const rounds = createRoundKeeper({
+    drill: "chordEar", recorder, history, changed: () => render(),
+    setup: () => { const o = options(); return `types:${answerOrder(o.types).join(",")};inversions:${o.inversions};broken:${o.broken}`; },
+  });
   let state: ChordEarState = initialChordEar(makeChordEarPrompt(rng, options()));
   let nextTimer: ReturnType<typeof setTimeout> | undefined, replayTimer: ReturnType<typeof setTimeout> | undefined;
   let shownAt = Date.now();
@@ -49,7 +56,13 @@ export function startEarChords(store: AppStore, views: {
   }
 
   function render() {
-    views.practice.render(chordEarDisplay(state, options().types, views.tones.blocked(), running));
+    const summary = rounds.summary();
+    if (summary) {
+      views.practice.render(roundSummaryDisplay(summary, "Chord qualities"));
+      views.answers.render(chordEarAnswers(state, options().types, false), { enabled: false });
+      return;
+    }
+    views.practice.render({ ...chordEarDisplay(state, options().types, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
     views.answers.render(chordEarAnswers(state, options().types, running), { enabled: running });
   }
 
@@ -64,6 +77,13 @@ export function startEarChords(store: AppStore, views: {
     } else if (action.type === "skip" && prev.status !== "correct") {
       recorder.record(chordEarDrillBody(prev.prompt, qualityLabel(prev.prompt.type), types, false, prev.missed, Date.now() - shownAt, prev.wrong));
     }
+    // The round's last chord: stop, and show how the round went until Next round
+    if (state.answered !== prev.answered && rounds.check(state)) {
+      clearTimers();
+      views.tones.stopNotes();
+      render();
+      return;
+    }
     if (state.prompt !== prev.prompt) {
       shownAt = Date.now();
       sound();
@@ -76,9 +96,17 @@ export function startEarChords(store: AppStore, views: {
     }
   }
 
-  const answer = (quality: string) => { if (running) apply({ type: "answer", quality }); };
+  const answer = (quality: string) => { if (running && !rounds.summary()) apply({ type: "answer", quality }); };
   const offAnswer = views.answers.onAnswer(answer);
-  const offReplay = views.answers.onReplay(() => { if (running) sound(); });
+  const offReplay = views.answers.onReplay(() => { if (running && !rounds.summary()) sound(); });
+
+  /** Next round: on to a new chord (the last round's last one was answered, or skipped onto a new one) */
+  function nextRound() {
+    rounds.next(state);
+    running = true;
+    if (state.status === "correct") apply({ type: "next", prompt: makeChordEarPrompt(rng, options(), state.prompt) });
+    else { shownAt = Date.now(); sound(); render(); }
+  }
 
   /** The number keys answer: 1 for the first button, and so on (not while typing in a field, nor with modifiers) */
   function onKey(e: KeyboardEvent) {
@@ -95,6 +123,8 @@ export function startEarChords(store: AppStore, views: {
   /** New options: a fresh chord from them (not a skip) */
   function restart(o: ChordEarOptions) {
     clearTimers();
+    // Other options: a new round, compared with rounds played that way
+    rounds.next(state);
     state = { ...state, prompt: makeChordEarPrompt(rng, o, state.prompt), status: "waiting", wrong: [], missed: false };
     shownAt = Date.now();
     sound();
@@ -128,13 +158,15 @@ export function startEarChords(store: AppStore, views: {
     },
     skip() {
       awaitingSound = false;
+      if (rounds.summary()) { nextRound(); return; }
       running = true;
       apply({ type: "skip", prompt: makeChordEarPrompt(rng, options(), state.prompt) });
     },
     replay() {
-      if (running) sound();
+      if (running && !rounds.summary()) sound();
     },
     toggleRunning() {
+      if (rounds.summary()) return;
       awaitingSound = false;
       clearTimers();
       running = !running;

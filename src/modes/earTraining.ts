@@ -13,8 +13,10 @@ import { createDegreeKeys } from "../input/degreeKeys";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { earDrillBody } from "../progress/records";
 import type { DegreeCircleView } from "../views/degreeCircle";
-import { earDisplay, type PracticeView } from "../views/practice";
+import type { ProgressStore } from "../progress/store";
+import { earDisplay, roundScore, roundSummaryDisplay, type PracticeView } from "../views/practice";
 import { onPlayerInput, type AppStore, type Mode } from "./performance";
+import { createRoundKeeper } from "./rounds";
 
 /** How long "✓" stays up before the next note */
 const NEXT_PROMPT_MS = 1000;
@@ -32,8 +34,13 @@ const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarTraining(store: AppStore, views: {
   practice: PracticeView; tones: TonePlayer; degrees: DegreeCircleView;
-}, recorder: Recorder = noRecorder, rng: Rng = Math.random): Mode {
+}, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.ear;
+  // In rounds of ROUND_SIZE notes, compared at the end with earlier rounds with the same degrees on offer
+  const rounds = createRoundKeeper({
+    drill: "ear", recorder, history, changed: () => render(),
+    setup: () => `degrees:${options().degrees.join(",")}`,
+  });
   let tonic = pickTonic(rng, options().tonic);
   let inKey = 0;
   let state: EarState = initialNotePractice(newPrompt());
@@ -128,7 +135,8 @@ export function startEarTraining(store: AppStore, views: {
   /** Paused by leaving the window (another app, another tab): carries on when the player comes back */
   let pausedAway = false;
   function away() {
-    if (!running) return;
+    // Between rounds nothing is playing, and coming back mustn't start the next round by itself
+    if (!running || rounds.summary()) return;
     pausedAway = true;
     pause(AWAY_FADE_S);
   }
@@ -143,7 +151,9 @@ export function startEarTraining(store: AppStore, views: {
   const onVisibility = () => document.hidden ? away() : back();
 
   function render() {
-    views.practice.render(earDisplay(state, views.tones.blocked(), running));
+    const summary = rounds.summary();
+    views.practice.render(summary ? roundSummaryDisplay(summary, "Scale degrees")
+      : { ...earDisplay(state, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
     views.degrees.render(options().degrees);
   }
 
@@ -157,6 +167,15 @@ export function startEarTraining(store: AppStore, views: {
       recorder.record(earDrillBody(state.prompt, options().degrees, true, state.missed, Date.now() - shownAt));
     } else if (action.type === "skip" && prev.status !== "correct") {
       recorder.record(earDrillBody(prev.prompt, options().degrees, false, prev.missed, Date.now() - shownAt));
+    }
+    // The round's last note: the drone stops, and the round's summary shows until Next round
+    if (state.answered !== prev.answered && rounds.check(state)) {
+      clearTimeout(nextTimer);
+      clearTimeout(replayTimer);
+      silence();
+      views.tones.stopNotes();
+      render();
+      return;
     }
     if (state.prompt !== prev.prompt) {
       shownAt = Date.now();
@@ -176,6 +195,7 @@ export function startEarTraining(store: AppStore, views: {
   function restart(o: EarOptions, before: EarOptions) {
     clearTimeout(nextTimer);
     clearTimeout(replayTimer);
+    rounds.next(state);
     if (o.tonic !== before.tonic) { tonic = pickTonic(rng, o.tonic, tonic); inKey = 0; }
     const prev = state.prompt;
     inKey++;
@@ -186,7 +206,15 @@ export function startEarTraining(store: AppStore, views: {
     render();
   }
 
-  const offInput = onPlayerInput(store, { noteOn: note => { if (running) apply({ type: "play", note }); } });
+  const offInput = onPlayerInput(store, { noteOn: note => { if (running && !rounds.summary()) apply({ type: "play", note }); } });
+
+  /** Next round: the drone and its introduction again, then a new note */
+  function nextRound() {
+    rounds.next(state);
+    running = true;
+    if (state.status === "correct") apply({ type: "next", prompt: newPrompt(state.prompt) });
+    else { shownAt = Date.now(); sound(); render(); }
+  }
   // No controller needed: 1–7 play that degree, so they're judged like any other note
   const offDegreeKeys = createDegreeKeys(event => store.dispatch({ type: "input", event }),
     digit => degreeNote(tonicMidi(tonic), digit));
@@ -222,14 +250,16 @@ export function startEarTraining(store: AppStore, views: {
       silence();
     },
     skip() {
+      if (rounds.summary()) { awaitingSound = pausedAway = false; nextRound(); return; }
       awaitingSound = pausedAway = false;
       running = true;   // skipping while stopped starts again, on the new note
       apply({ type: "skip", prompt: newPrompt(state.prompt) });
     },
     replay() {
-      if (running) views.tones.play(state.prompt.note);
+      if (running && !rounds.summary()) views.tones.play(state.prompt.note);
     },
     toggleRunning() {
+      if (rounds.summary()) return;
       awaitingSound = pausedAway = false;
       if (running && performance.now() - backAt < 600) return;
       if (running) pause();

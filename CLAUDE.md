@@ -156,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 389 tests (54 voicings) should pass
+npm test           # Vitest: 394 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -423,8 +423,21 @@ jump back to the attack's peak and click. Recorded as `drill: "chordEar"`, promp
 (7)"), with the wrong answers given first in `detail.guesses` (type ids, comma-separated; from Nov 2026 on), charted
 as a 7th series (`--series-7`, #9085e9).
 
+**Rounds** (all three ear modes; `src/exercises/rounds.ts` pure, `src/modes/rounds.ts` the `RoundKeeper` each mode
+calls after every answer or skip, `src/views/practice/round.ts`): prompts come in rounds of `ROUND_SIZE` (20),
+counted from the mode's own answered / right-first-time counters (skips count as answered, not right first time); the
+score reads "Round: 7 / 20 · 5 right first time". At 20 the sound stops (the drone too), answers and replays are
+ignored, and the panel shows the round: its share right first time, how many and how long, and how it compares with
+earlier rounds of the same drill played the same way (`setup`: the degrees on offer; the melody length and degrees;
+the chord types, voicing and play) — "▲ 10 points on your last round · best 85% · average 72% over your last 10
+rounds" (or "Your first round played this way …"), with small bars of the last ten and this one. Skip reads "Next
+round" and starts the next (scale degrees introduce the key again). New options start a new round. Each finished
+round is a `round` record (drill, size, firstTry, setup, durationMs), read back from the history for the comparison
+before it's recorded; leaving the window between rounds doesn't start the next.
+
 **Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,
-intervals; chord qualities answered by playing the chord back, and weighting towards the qualities missed.
+intervals; chord qualities answered by playing the chord back, and weighting towards the qualities missed; a live
+view of the round's score while playing.
 
 ## Sight reading (mode "notes", `src/modes/sightReading.ts`)
 Replaced note practice. Two sources, chosen by **Level** (`ReadingOptions.level`, saved in `Settings.reading`):
@@ -534,7 +547,8 @@ Everything practised is recorded, and the **Progress** page charts it.
   duration, BPM, evenness, timing, routine session), `routine` (one per session, finished or left part-way: routine,
   direction, start, first-to-last-note time, each item's outcome, total mistakes, metronome), `drill` (one per note,
   chord or progression prompt answered or skipped: the prompt as asked, grouping details such as chord type and
-  inversion, firstTry/corrected/skipped, time to answer). Charts are worked out from these, so new charts don't need
+  inversion, firstTry/corrected/skipped, time to answer), `round` (one per finished ear-training round: drill, size,
+  right first time, the options as `setup`, duration). Charts are worked out from these, so new charts don't need
   new records.
 - **Ready to move to a server later:** every record has a random UUID, a schema version (`RECORD_VERSION`; readers go
   through `upgradeRecord`, which drops malformed records and ones from a newer version), a UTC time and a device id

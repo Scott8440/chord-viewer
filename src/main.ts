@@ -146,9 +146,9 @@ const startModeView = (id: View): Mode =>
   : id === "chords" ? startChordPractice(store, practiceViews, history.recorder)
   : id === "progressions" ? startProgressionPractice(store, practiceViews, history.recorder)
   : id === "routines" ? startRoutinePractice(store, practiceViews, history.recorder)
-  : id === "ear" ? startEarTraining(store, { practice, tones, degrees: degreeCircle }, history.recorder)
-  : id === "earMelody" ? startEarMelody(store, { ...practiceViews, tones }, history.recorder)
-  : id === "earChords" ? startEarChords(store, { practice, tones, answers: answerBoard }, history.recorder)
+  : id === "ear" ? startEarTraining(store, { practice, tones, degrees: degreeCircle }, history.recorder, history.store)
+  : id === "earMelody" ? startEarMelody(store, { ...practiceViews, tones }, history.recorder, history.store)
+  : id === "earChords" ? startEarChords(store, { practice, tones, answers: answerBoard }, history.recorder, history.store)
   : id === "progress" ? startProgress({ progress: progressView }, history.store, history.saved)
   : startSequencePractice(store, practiceViews, id, history.recorder);
 

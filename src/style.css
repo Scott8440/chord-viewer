@@ -192,6 +192,13 @@ main {
   font-size: clamp(34px, 4.6vw, 60px); display: flex; flex-wrap: wrap; align-items: flex-start; gap: .1em 0;
 }
 #practicePrompt.sequence { font-size: clamp(22px, 2.6vw, 30px); }
+/* Ear training rounds: the summary at a round's end */
+#practicePrompt .roundSummary { font-family: system-ui, sans-serif; }
+#practicePrompt .roundShare { font-size: 64px; font-weight: 600; line-height: 1; }
+#practicePrompt .roundOf { font-size: 16px; color: var(--muted); margin: 8px 0 16px; }
+#practicePrompt .roundBars rect.then { fill: var(--muted); opacity: .45; }
+#practicePrompt .roundBars rect.now { fill: var(--accent); }
+#practicePrompt .roundBars line { stroke: var(--line); stroke-width: 1; }
 /* Ear training's chord-quality answers: a board of large boxes in the staff's place, numbered for the number keys */
 #answerBoard {
   width: 100%; align-self: stretch; display: flex; flex-direction: column; justify-content: center; align-items: center;

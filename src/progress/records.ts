@@ -104,7 +104,20 @@ export interface DrillBody {
   ms: number;
 }
 
-export type RecordBody = RunBody | RoutineBody | DrillBody;
+/** A round of an ear-training drill (ROUND_SIZE prompts), finished: compared with earlier rounds played the same way */
+export interface RoundBody {
+  kind: "round";
+  drill: DrillKind;
+  /** Prompts in the round, and how many were right first time */
+  size: number;
+  firstTry: number;
+  /** The options it was played with, as a key: rounds compare only with rounds played the same way */
+  setup: string;
+  /** First prompt to the round's end */
+  durationMs: number;
+}
+
+export type RecordBody = RunBody | RoutineBody | DrillBody | RoundBody;
 export type ProgressRecord = RecordBody & RecordMeta;
 
 const tempoOf = (o: ExerciseOptions, latencyMs: number): TempoSettings | null =>
@@ -242,7 +255,7 @@ export function upgradeRecord(raw: unknown): ProgressRecord | null {
   if (!isObj(raw)) return null;
   const { id, v, at, device, kind } = raw;
   if (typeof id !== "string" || !id || typeof v !== "number" || typeof at !== "number" || !Number.isFinite(at) ||
-      typeof device !== "string" || (kind !== "run" && kind !== "routine" && kind !== "drill")) return null;
+      typeof device !== "string" || (kind !== "run" && kind !== "routine" && kind !== "drill" && kind !== "round")) return null;
   // Newer than this app understands: keep out rather than misread
   if (v > RECORD_VERSION) return null;
   // Version 1 is current; upgrades from older versions go here as the schema changes

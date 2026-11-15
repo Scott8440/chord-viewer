@@ -2,10 +2,18 @@
 import { describe, expect, it } from "vitest";
 import { freshAttempt, trackAttempt, type ChordAttempt } from "../src/exercises/chordAttempt";
 
-const isC = (notes: number[]) => notes.map(n => n % 12).sort((a, b) => a - b).join() === "0,4,7";
+const isC = (notes: number[]) =>
+  notes
+    .map(n => n % 12)
+    .sort((a, b) => a - b)
+    .join() === "0,4,7";
 const feed = (a: ChordAttempt, ...steps: number[][]) => {
   const outcomes: string[] = [];
-  for (const notes of steps) { const r = trackAttempt(a, notes, isC); a = r.attempt; outcomes.push(r.outcome.kind === "miss" ? "miss:" + r.outcome.notes.join(",") : r.outcome.kind); }
+  for (const notes of steps) {
+    const r = trackAttempt(a, notes, isC);
+    a = r.attempt;
+    outcomes.push(r.outcome.kind === "miss" ? "miss:" + r.outcome.notes.join(",") : r.outcome.kind);
+  }
   return { attempt: a, outcomes };
 };
 
@@ -19,7 +27,12 @@ describe("trackAttempt", () => {
   });
 
   it("judges a miss only after new presses and then all keys up, reporting the fullest set", () => {
-    expect(feed(freshAttempt(), [50], [50, 53, 57], [50, 53], []).outcomes).toEqual(["none", "none", "none", "miss:50,53,57"]);
+    expect(feed(freshAttempt(), [50], [50, 53, 57], [50, 53], []).outcomes).toEqual([
+      "none",
+      "none",
+      "none",
+      "miss:50,53,57",
+    ]);
   });
 
   it("does not count letting go of keys that were already held", () => {

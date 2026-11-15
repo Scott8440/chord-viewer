@@ -2,14 +2,28 @@
 // the shared excerpt helpers: steps, levels, durations.
 import { describe, expect, it } from "vitest";
 import {
-  asMelody, cutExcerpts, cutPianoExcerpts, excerptRanges, measure, phrases, restsFor,
+  asMelody,
+  cutExcerpts,
+  cutPianoExcerpts,
+  excerptRanges,
+  measure,
+  phrases,
+  restsFor,
 } from "../scripts/corpus/excerpts";
 import { bassFor } from "../scripts/corpus/arrange";
 import { readMscx } from "../scripts/corpus/mscx";
 import { parseXml } from "../scripts/corpus/xml";
 import {
-  eventLength, excerptSteps, ledgerLines, PIANO_LEVELS, READING_LEVELS, readingLevel, tpcName,
-  type ExcerptEvent, type ExcerptFeatures, type ExcerptStaff,
+  eventLength,
+  excerptSteps,
+  ledgerLines,
+  PIANO_LEVELS,
+  READING_LEVELS,
+  readingLevel,
+  tpcName,
+  type ExcerptEvent,
+  type ExcerptFeatures,
+  type ExcerptStaff,
 } from "../src/exercises/excerpts";
 
 /** A version 3 score: a voice part (staff 1) and a piano (staves 2 and 3), with these bars of each */
@@ -31,14 +45,17 @@ const chord = (type: string, notes: [number, number][], extra = "") =>
 const rest = (type: string) => `<Rest><durationType>${type}</durationType></Rest>`;
 const START = "<KeySig><accidental>1</accidental></KeySig><TimeSig><sigN>3</sigN><sigD>4</sigD></TimeSig>";
 const TIE = '<Spanner type="Tie"><Tie/><next><location><fractions>1/4</fractions></location></next></Spanner>';
-const n = (p: number, s: number, tie?: 1) => tie ? [{ p, s, tie }] : [{ p, s }];
+const n = (p: number, s: number, tie?: 1) => (tie ? [{ p, s, tie }] : [{ p, s }]);
 
 describe("parseXml", () => {
   it("reads elements, attributes and text, decoding entities and skipping comments", () => {
     const doc = parseXml('<?xml version="1.0"?><!-- hi --><a x="1"><b>t &lt;3</b><c/></a>');
     const a = doc.children[0];
     expect(a).toMatchObject({ name: "a", attrs: { x: "1" } });
-    expect(a.children.map(c => [c.name, c.text])).toEqual([["b", "t <3"], ["c", ""]]);
+    expect(a.children.map(c => [c.name, c.text])).toEqual([
+      ["b", "t <3"],
+      ["c", ""],
+    ]);
   });
 
   it("refuses mismatched tags", () => {
@@ -48,51 +65,106 @@ describe("parseXml", () => {
 
 describe("readMscx", () => {
   it("reads the voice part's bars: key, time, notes with spelling, rests, dots and ties", () => {
-    const song = readMscx(v3([
-      START + note("quarter", 67, 15, "<dots>1</dots>") + note("eighth", 66, 20) + note("quarter", 64, 18, "", TIE),
-      note("quarter", 64, 18) + rest("quarter") + note("quarter", 62, 16),
-    ]), "123")!;
+    const song = readMscx(
+      v3([
+        START + note("quarter", 67, 15, "<dots>1</dots>") + note("eighth", 66, 20) + note("quarter", 64, 18, "", TIE),
+        note("quarter", 64, 18) + rest("quarter") + note("quarter", 62, 16),
+      ]),
+      "123",
+    )!;
     expect(song.title).toBe("A & B");
     const bars = song.voice!;
     expect(bars[0]).toMatchObject({ key: 1, time: [3, 4], clef: "G", problems: [] });
-    expect(bars[0].voices[0]).toEqual([{ v: "q", d: 1, n: n(67, 15) }, { v: "8", n: n(66, 20) }, { v: "q", n: n(64, 18, 1) }]);
+    expect(bars[0].voices[0]).toEqual([
+      { v: "q", d: 1, n: n(67, 15) },
+      { v: "8", n: n(66, 20) },
+      { v: "q", n: n(64, 18, 1) },
+    ]);
     expect(bars[1].voices[0][1]).toEqual({ v: "q" });
     expect(bars[1].problems).toEqual([]);
   });
 
   it("reads version 3 triplets (open until endTuplet) and leaves out grace notes", () => {
     const triplet = "<Tuplet><normalNotes>2</normalNotes><actualNotes>3</actualNotes></Tuplet>";
-    const bars = readMscx(v3([START + note("eighth", 60, 14, "<grace8/>") + triplet + note("eighth", 60, 14) +
-      note("eighth", 62, 16) + note("eighth", 64, 18) + "<endTuplet/>" + note("half", 65, 13)]), "1")!.voice!;
+    const bars = readMscx(
+      v3([
+        START +
+          note("eighth", 60, 14, "<grace8/>") +
+          triplet +
+          note("eighth", 60, 14) +
+          note("eighth", 62, 16) +
+          note("eighth", 64, 18) +
+          "<endTuplet/>" +
+          note("half", 65, 13),
+      ]),
+      "1",
+    )!.voice!;
     expect(bars[0].voices[0].map(e => e.t)).toEqual([[3, 2], [3, 2], [3, 2], undefined]);
     expect(bars[0].problems).toEqual([]);
   });
 
   it("reads chords low to high, a unison once; a melody can't use them", () => {
-    const bars = readMscx(v3([START + chord("half", [[64, 18], [60, 14], [64, 18]]) + note("quarter", 60, 14), START + note("half", 60, 14)]), "1")!.voice!;
-    expect(bars[0].voices[0][0].n).toEqual([{ p: 60, s: 14 }, { p: 64, s: 18 }]);
+    const bars = readMscx(
+      v3([
+        START +
+          chord("half", [
+            [64, 18],
+            [60, 14],
+            [64, 18],
+          ]) +
+          note("quarter", 60, 14),
+        START + note("half", 60, 14),
+      ]),
+      "1",
+    )!.voice!;
+    expect(bars[0].voices[0][0].n).toEqual([
+      { p: 60, s: 14 },
+      { p: 64, s: 18 },
+    ]);
     const melody = asMelody(bars);
     expect(melody[0].problems).toContain("chord");
     expect(melody[1].problems).toContain("doesn't add up");
   });
 
   it("reads the piano's two staves, each staff's clef from the instrument, and a second voice that sits out part of a bar", () => {
-    const song = readMscx(v3([START + note("half", 67, 15, "<dots>1</dots>")], "",
-      [`<voice>${START}${chord("half", [[64, 18], [67, 15]])}${note("quarter", 72, 14)}</voice>` +
-       `<voice><location><fractions>1/4</fractions></location>${note("quarter", 60, 14)}</voice>`],
-      [START + note("half", 48, 14, "<dots>1</dots>")]), "5")!;
+    const song = readMscx(
+      v3(
+        [START + note("half", 67, 15, "<dots>1</dots>")],
+        "",
+        [
+          `<voice>${START}${chord("half", [
+            [64, 18],
+            [67, 15],
+          ])}${note("quarter", 72, 14)}</voice>` +
+            `<voice><location><fractions>1/4</fractions></location>${note("quarter", 60, 14)}</voice>`,
+        ],
+        [START + note("half", 48, 14, "<dots>1</dots>")],
+      ),
+      "5",
+    )!;
     const [rh, lh] = song.piano!;
     expect(rh[0]).toMatchObject({ clef: "G", problems: [] });
-    expect(rh[0].voices[1]).toEqual([{ v: "q", hide: 1 }, { v: "q", n: n(60, 14) }]);
+    expect(rh[0].voices[1]).toEqual([
+      { v: "q", hide: 1 },
+      { v: "q", n: n(60, 14) },
+    ]);
     expect(lh[0]).toMatchObject({ clef: "F", problems: [] });
   });
 
   it("flags piano bars it can't draw or judge: cross-staff notes, tremolos, a clef change mid-bar", () => {
-    const song = readMscx(v3([START + note("half", 67, 15, "<dots>1</dots>")], "",
-      [START + note("half", 60, 14, "<staffMove>1</staffMove>") + note("quarter", 60, 14),
-       note("half", 60, 14, "<Tremolo/>") + note("quarter", 60, 14),
-       note("quarter", 60, 14) + "<Clef><concertClefType>F</concertClefType></Clef>" + note("half", 48, 14)],
-      []), "6")!;
+    const song = readMscx(
+      v3(
+        [START + note("half", 67, 15, "<dots>1</dots>")],
+        "",
+        [
+          START + note("half", 60, 14, "<staffMove>1</staffMove>") + note("quarter", 60, 14),
+          note("half", 60, 14, "<Tremolo/>") + note("quarter", 60, 14),
+          note("quarter", 60, 14) + "<Clef><concertClefType>F</concertClefType></Clef>" + note("half", 48, 14),
+        ],
+        [],
+      ),
+      "6",
+    )!;
     expect(song.piano![0].map(b => b.problems)).toEqual([["cross-staff"], ["tremolo"], ["clef change"]]);
   });
 
@@ -110,12 +182,18 @@ describe("readMscx", () => {
       </Measure></Staff></Score></museScore>`;
     const bar = readMscx(src, "2")!.voice![0];
     expect(bar).toMatchObject({ key: -2, time: [2, 4] });
-    expect(bar.voices[0].map(e => [e.n![0].p, e.t, e.n![0].tie])).toEqual([[70, [3, 2], 1], [70, [3, 2], undefined], [72, [3, 2], undefined], [74, undefined, undefined]]);
+    expect(bar.voices[0].map(e => [e.n![0].p, e.t, e.n![0].tie])).toEqual([
+      [70, [3, 2], 1],
+      [70, [3, 2], undefined],
+      [72, [3, 2], undefined],
+      [74, undefined, undefined],
+    ]);
     expect(bar.problems).toEqual(["second voice"]);
   });
 
   it("finds no voice part in a piano piece", () => {
-    const src = '<museScore version="3.02"><Score><Part><Staff id="1"/><trackName>Piano</trackName><Instrument><instrumentId>keyboard.piano</instrumentId></Instrument></Part></Score></museScore>';
+    const src =
+      '<museScore version="3.02"><Score><Part><Staff id="1"/><trackName>Piano</trackName><Instrument><instrumentId>keyboard.piano</instrumentId></Instrument></Part></Score></museScore>';
     expect(readMscx(src, "3")).toBeNull();
   });
 });
@@ -132,15 +210,22 @@ describe("cutting melody excerpts", () => {
       note("half", 60, 14, "<dots>1</dots>"),
     ]);
     expect(phrases(b)).toEqual([
-      { from: [0, 0], to: [0, 1], notes: 2 }, { from: [1, 0], to: [2, 0], notes: 2 }, { from: [4, 0], to: [4, 0], notes: 1 },
+      { from: [0, 0], to: [0, 1], notes: 2 },
+      { from: [1, 0], to: [2, 0], notes: 2 },
+      { from: [4, 0], to: [4, 0], notes: 1 },
     ]);
     // Alone, each is too short; the last pair spans a bar's rest
     expect(excerptRanges(b)).toEqual([{ from: [0, 0], to: [2, 0], notes: 4 }]);
   });
 
   it("leaves out a phrase cut short by a bar it can't use", () => {
-    const b = bars([START + note("quarter", 67, 15) + note("quarter", 66, 20) + note("quarter", 64, 18),
-      chord("half", [[60, 14], [64, 18]]) + rest("quarter")]);
+    const b = bars([
+      START + note("quarter", 67, 15) + note("quarter", 66, 20) + note("quarter", 64, 18),
+      chord("half", [
+        [60, 14],
+        [64, 18],
+      ]) + rest("quarter"),
+    ]);
     expect(phrases(b)).toEqual([]);
   });
 
@@ -161,10 +246,18 @@ describe("cutting melody excerpts", () => {
   });
 
   it("writes tenor parts as written (an octave up, treble clef) and drops a tie out of the phrase", () => {
-    const melody = asMelody(readMscx(v3([
-      START + note("quarter", 55, 15) + note("quarter", 54, 20) + note("quarter", 57, 17, "", TIE),
-      note("quarter", 57, 17) + note("quarter", 59, 19) + note("quarter", 60, 14, "", TIE),
-    ], "<defaultClef>G8vb</defaultClef>"), "7")!.voice!);
+    const melody = asMelody(
+      readMscx(
+        v3(
+          [
+            START + note("quarter", 55, 15) + note("quarter", 54, 20) + note("quarter", 57, 17, "", TIE),
+            note("quarter", 57, 17) + note("quarter", 59, 19) + note("quarter", 60, 14, "", TIE),
+          ],
+          "<defaultClef>G8vb</defaultClef>",
+        ),
+        "7",
+      )!.voice!,
+    );
     const [one] = cutExcerpts(melody, "7");
     expect(one).toMatchObject({ id: "7:1.0-2.2", key: 1, time: [3, 4] });
     expect(one.staves[0].clef).toBe("treble");
@@ -195,50 +288,106 @@ describe("cutting piano excerpts", () => {
   ];
 
   it("takes both staves over the melody's phrase, offered as each hand with enough to play, and both", () => {
-    const song = readMscx(v3(melody, "",
-      [START + chord("quarter", [[67, 15], [71, 19]]) + note("quarter", 69, 17) + note("quarter", 67, 15),
-       note("quarter", 66, 20) + note("half", 67, 15)],
-      [START + note("half", 43, 15, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")]), "4")!;
+    const song = readMscx(
+      v3(
+        melody,
+        "",
+        [
+          START +
+            chord("quarter", [
+              [67, 15],
+              [71, 19],
+            ]) +
+            note("quarter", 69, 17) +
+            note("quarter", 67, 15),
+          note("quarter", 66, 20) + note("half", 67, 15),
+        ],
+        [START + note("half", 43, 15, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")],
+      ),
+      "4",
+    )!;
     const [ex] = cutPianoExcerpts(song);
     expect(ex.id).toBe("4:1-2");
     expect(ex.staves.map(s => s.clef)).toEqual(["treble", "bass"]);
-    expect(Object.keys(ex.parts).sort()).toEqual(["both", "rh"]);   // the left hand has two notes: not enough alone
+    expect(Object.keys(ex.parts).sort()).toEqual(["both", "rh"]); // the left hand has two notes: not enough alone
     expect(ex.parts.rh).toMatchObject({ notes: 5, chord: 2, span: 4, voices: 1 });
     expect(ex.parts.both).toMatchObject({ notes: 5, chord: 2 });
   });
 
   it("leaves out bars it can't use", () => {
-    const song = readMscx(v3(melody, "",
-      [START + note("half", 60, 14, "<Tremolo/>") + note("quarter", 60, 14), note("half", 60, 14, "<dots>1</dots>")],
-      [START + note("half", 43, 15, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")]), "4")!;
+    const song = readMscx(
+      v3(
+        melody,
+        "",
+        [START + note("half", 60, 14, "<Tremolo/>") + note("quarter", 60, 14), note("half", 60, 14, "<dots>1</dots>")],
+        [START + note("half", 43, 15, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")],
+      ),
+      "4",
+    )!;
     expect(cutPianoExcerpts(song)).toEqual([]);
   });
 
   it("leaves out bars where the right hand isn't in treble or the left hand isn't in bass", () => {
     const toBass = "<Clef><concertClefType>F</concertClefType></Clef>";
-    const song = readMscx(v3(melody, "",
-      [START + toBass + note("half", 48, 14, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")],
-      [START + note("half", 43, 15, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")]), "4")!;
+    const song = readMscx(
+      v3(
+        melody,
+        "",
+        [START + toBass + note("half", 48, 14, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")],
+        [START + note("half", 43, 15, "<dots>1</dots>"), note("half", 50, 16, "<dots>1</dots>")],
+      ),
+      "4",
+    )!;
     expect(song.piano![0][0].clef).toBe("F");
     expect(cutPianoExcerpts(song)).toEqual([]);
   });
 });
 
 describe("measuring", () => {
-  const e = (v: ExcerptEvent["v"], p?: number, s?: number, more: Partial<ExcerptEvent> = {}, tie?: 1): ExcerptEvent =>
-    ({ v, ...(p == null ? {} : { n: n(p, s!, tie) }), ...more });
+  const e = (
+    v: ExcerptEvent["v"],
+    p?: number,
+    s?: number,
+    more: Partial<ExcerptEvent> = {},
+    tie?: 1,
+  ): ExcerptEvent => ({ v, ...(p == null ? {} : { n: n(p, s!, tie) }), ...more });
 
   it("measures what makes a melody hard", () => {
     // In G major, 3/4: G4 E4 | C♯5 (dotted, chromatic) A5 (a ledger line) | a syncopated tie
-    const f = measure([{ clef: "treble", voices: [[
-      [e("h", 67, 15), e("q", 64, 18)],
-      [e("q", 73, 21, { d: 1 }), e("8", 81, 17), e("q", 79, 15)],
-      [e("8", 74, 16), e("q", 76, 18, {}, 1), e("8", 76, 18), e("q")],
-    ]] }], 1, [3, 4]);
+    const f = measure(
+      [
+        {
+          clef: "treble",
+          voices: [
+            [
+              [e("h", 67, 15), e("q", 64, 18)],
+              [e("q", 73, 21, { d: 1 }), e("8", 81, 17), e("q", 79, 15)],
+              [e("8", 74, 16), e("q", 76, 18, {}, 1), e("8", 76, 18), e("q")],
+            ],
+          ],
+        },
+      ],
+      1,
+      [3, 4],
+    );
     expect(f).toMatchObject({
-      notes: 7, bars: 3, keyAccidentals: 1, chromatic: 1, range: 17, ledger: 1, maxLeap: 9,
-      dotted: 1, ties: 1, tuplets: 0, rests: 0, syncopations: 1, compound: false, shortest: 1 / 8,
-      chord: 1, span: 0, voices: 1,
+      notes: 7,
+      bars: 3,
+      keyAccidentals: 1,
+      chromatic: 1,
+      range: 17,
+      ledger: 1,
+      maxLeap: 9,
+      dotted: 1,
+      ties: 1,
+      tuplets: 0,
+      rests: 0,
+      syncopations: 1,
+      compound: false,
+      shortest: 1 / 8,
+      chord: 1,
+      span: 0,
+      voices: 1,
     });
     expect(f.values).toBe(4);
   });
@@ -249,10 +398,25 @@ describe("measuring", () => {
   });
 
   it("measures chords and voices in a piano staff", () => {
-    const st: ExcerptStaff = { clef: "treble", voices: [
-      [[{ v: "h", n: [{ p: 64, s: 18 }, { p: 67, s: 15 }, { p: 72, s: 14 }] }, e("q", 71, 19)]],
-      [[{ v: "q", hide: 1 }, e("h", 60, 14)]],
-    ] };
+    const st: ExcerptStaff = {
+      clef: "treble",
+      voices: [
+        [
+          [
+            {
+              v: "h",
+              n: [
+                { p: 64, s: 18 },
+                { p: 67, s: 15 },
+                { p: 72, s: 14 },
+              ],
+            },
+            e("q", 71, 19),
+          ],
+        ],
+        [[{ v: "q", hide: 1 }, e("h", 60, 14)]],
+      ],
+    };
     expect(measure([st], 0, [3, 4])).toMatchObject({ notes: 3, chord: 3, span: 8, voices: 2 });
   });
 });
@@ -260,10 +424,30 @@ describe("measuring", () => {
 describe("steps", () => {
   it("strikes every note starting together once, across voices and staves; a tied note isn't struck again", () => {
     const staves: ExcerptStaff[] = [
-      { clef: "treble", voices: [
-        [[{ v: "q", n: [{ p: 64, s: 18 }, { p: 67, s: 15, tie: 1 }] }, { v: "q", n: [{ p: 67, s: 15 }] }, { v: "q" }]],
-        [[{ v: "q", hide: 1 }, { v: "h", n: [{ p: 60, s: 14 }] }]],
-      ] },
+      {
+        clef: "treble",
+        voices: [
+          [
+            [
+              {
+                v: "q",
+                n: [
+                  { p: 64, s: 18 },
+                  { p: 67, s: 15, tie: 1 },
+                ],
+              },
+              { v: "q", n: [{ p: 67, s: 15 }] },
+              { v: "q" },
+            ],
+          ],
+          [
+            [
+              { v: "q", hide: 1 },
+              { v: "h", n: [{ p: 60, s: 14 }] },
+            ],
+          ],
+        ],
+      },
       { clef: "bass", voices: [[[{ v: "h", d: 1, n: [{ p: 48, s: 14 }] }]]] },
     ];
     const { steps, stepOf } = excerptSteps(staves, [3, 4]);
@@ -275,10 +459,24 @@ describe("steps", () => {
   });
 
   it("follows a tie into another voice of the same staff when its own voice has no such note", () => {
-    const st: ExcerptStaff = { clef: "treble", voices: [
-      [[{ v: "h", hide: 1 }], [{ v: "h", n: [{ p: 64, s: 18 }, { p: 67, s: 15 }] }]],
-      [[{ v: "h", n: [{ p: 67, s: 15, tie: 1 }] }], [{ v: "h", n: [{ p: 60, s: 14 }] }]],
-    ] };
+    const st: ExcerptStaff = {
+      clef: "treble",
+      voices: [
+        [
+          [{ v: "h", hide: 1 }],
+          [
+            {
+              v: "h",
+              n: [
+                { p: 64, s: 18 },
+                { p: 67, s: 15 },
+              ],
+            },
+          ],
+        ],
+        [[{ v: "h", n: [{ p: 67, s: 15, tie: 1 }] }], [{ v: "h", n: [{ p: 60, s: 14 }] }]],
+      ],
+    };
     const { steps, stepOf } = excerptSteps([st], [2, 4]);
     expect(steps.map(s => s.notes.map(x => x.p))).toEqual([[67], [60, 64]]);
     expect(stepOf[0][0][1]).toEqual([1]);
@@ -287,8 +485,25 @@ describe("steps", () => {
 
 describe("levels", () => {
   const easy: ExcerptFeatures = {
-    notes: 5, bars: 2, keyAccidentals: 0, chromatic: 0, range: 5, ledger: 0, maxLeap: 2, stepShare: 1, values: 2,
-    shortest: 1 / 4, dotted: 0, ties: 0, tuplets: 0, rests: 0, syncopations: 0, compound: false, chord: 1, span: 0, voices: 1,
+    notes: 5,
+    bars: 2,
+    keyAccidentals: 0,
+    chromatic: 0,
+    range: 5,
+    ledger: 0,
+    maxLeap: 2,
+    stepShare: 1,
+    values: 2,
+    shortest: 1 / 4,
+    dotted: 0,
+    ties: 0,
+    tuplets: 0,
+    rests: 0,
+    syncopations: 0,
+    compound: false,
+    chord: 1,
+    span: 0,
+    voices: 1,
   };
 
   it("puts a melody in the first level it fits, whatever its key", () => {
@@ -317,29 +532,59 @@ describe("levels", () => {
 
 describe("arranging a bass under a melody", () => {
   const q = (p: number, s: number): ExcerptEvent => ({ v: "q", n: [{ p, s }] });
-  const melody = (bars: ExcerptEvent[][], time: [number, number] = [4, 4], key = 0) =>
-    ({ key, time, staves: [{ clef: "treble" as const, voices: [bars] }] });
+  const melody = (bars: ExcerptEvent[][], time: [number, number] = [4, 4], key = 0) => ({
+    key,
+    time,
+    staves: [{ clef: "treble" as const, voices: [bars] }],
+  });
 
   it("puts the root of the best-fitting chord on beats 1 and 3, near the last bass note, ending on the tonic", () => {
     // C major: C E | F A | G B | C
-    const lh = bassFor(melody([
-      [q(60, 14), q(64, 18), q(65, 13), q(69, 17)],
-      [q(67, 15), q(71, 19), { v: "h", n: [{ p: 72, s: 14 }] }],
-    ]))!;
+    const lh = bassFor(
+      melody([
+        [q(60, 14), q(64, 18), q(65, 13), q(69, 17)],
+        [q(67, 15), q(71, 19), { v: "h", n: [{ p: 72, s: 14 }] }],
+      ]),
+    )!;
     expect(lh.clef).toBe("bass");
-    expect(lh.voices[0].map(bar => bar.map(e => [e.v, e.n![0].p]))).toEqual([[["h", 48], ["h", 53]], [["h", 55], ["h", 48]]]);
+    expect(lh.voices[0].map(bar => bar.map(e => [e.v, e.n![0].p]))).toEqual([
+      [
+        ["h", 48],
+        ["h", 53],
+      ],
+      [
+        ["h", 55],
+        ["h", 48],
+      ],
+    ]);
   });
 
   it("spells the bass in the key, and plays once a bar in 3/4, a pickup bar resting", () => {
     // F major (1 flat), 3/4: pickup C | B♭ D F | A C F
-    const lh = bassFor(melody([[q(72, 14)], [q(70, 12), q(74, 16), q(77, 13)], [q(69, 17), q(72, 14), q(77, 13)]], [3, 4], -1))!;
+    const lh = bassFor(
+      melody([[q(72, 14)], [q(70, 12), q(74, 16), q(77, 13)], [q(69, 17), q(72, 14), q(77, 13)]], [3, 4], -1),
+    )!;
     expect(lh.voices[0][0]).toEqual([{ v: "q" }]);
-    expect(lh.voices[0][1]).toEqual([{ v: "h", d: 1, n: [{ p: 46, s: 12 }] }]);   // B♭2: IV
-    expect(lh.voices[0][2][0].n![0].s).toBe(13);                                   // F: I
+    expect(lh.voices[0][1]).toEqual([{ v: "h", d: 1, n: [{ p: 46, s: 12 }] }]); // B♭2: IV
+    expect(lh.voices[0][2][0].n![0].s).toBe(13); // F: I
   });
 
   it("leaves out compound time and bass-clef melodies", () => {
-    expect(bassFor(melody([[{ v: "q", d: 1, n: [{ p: 60, s: 14 }] }, { v: "q", d: 1, n: [{ p: 60, s: 14 }] }]], [6, 8]))).toBeNull();
-    expect(bassFor({ key: 0, time: [4, 4], staves: [{ clef: "bass", voices: [[[{ v: "w", n: [{ p: 48, s: 14 }] }]]] }] })).toBeNull();
+    expect(
+      bassFor(
+        melody(
+          [
+            [
+              { v: "q", d: 1, n: [{ p: 60, s: 14 }] },
+              { v: "q", d: 1, n: [{ p: 60, s: 14 }] },
+            ],
+          ],
+          [6, 8],
+        ),
+      ),
+    ).toBeNull();
+    expect(
+      bassFor({ key: 0, time: [4, 4], staves: [{ clef: "bass", voices: [[[{ v: "w", n: [{ p: 48, s: 14 }] }]]] }] }),
+    ).toBeNull();
   });
 });

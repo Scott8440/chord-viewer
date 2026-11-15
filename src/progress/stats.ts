@@ -40,7 +40,7 @@ export function practicePerDay(records: readonly ProgressRecord[]): { day: strin
   for (const r of runs(records)) if (!r.routineSession) add(r.at, r.durationMs);
   for (const r of routines(records)) add(r.startedAt || r.at, r.durationMs);
   for (const r of drills(records)) add(r.at, Math.min(r.ms, DRILL_CAP_MS));
-  return [...byDay].map(([day, ms]) => ({ day, ms })).sort((a, b) => a.day < b.day ? -1 : 1);
+  return [...byDay].map(([day, ms]) => ({ day, ms })).sort((a, b) => (a.day < b.day ? -1 : 1));
 }
 
 export interface Summary {
@@ -53,7 +53,8 @@ export interface Summary {
 }
 
 export function summary(records: readonly ProgressRecord[]): Summary {
-  const perDay = practicePerDay(records), rs = runs(records);
+  const perDay = practicePerDay(records),
+    rs = runs(records);
   return {
     daysPractised: perDay.filter(d => d.ms > 0).length,
     practiceMs: perDay.reduce((n, d) => n + d.ms, 0),
@@ -64,28 +65,50 @@ export function summary(records: readonly ProgressRecord[]): Summary {
   };
 }
 
-export interface RoutineOption { id: string; name: string; finished: number }
+export interface RoutineOption {
+  id: string;
+  name: string;
+  finished: number;
+}
 
 /** Routines with at least one finished session, most played first */
 export function routineOptions(records: readonly ProgressRecord[]): RoutineOption[] {
   const m = new Map<string, RoutineOption>();
-  for (const r of routines(records)) if (r.finished) {
-    const o = m.get(r.routine) ?? { id: r.routine, name: r.name, finished: 0 };
-    o.finished++;
-    m.set(r.routine, o);
-  }
+  for (const r of routines(records))
+    if (r.finished) {
+      const o = m.get(r.routine) ?? { id: r.routine, name: r.name, finished: 0 };
+      o.finished++;
+      m.set(r.routine, o);
+    }
   return [...m.values()].sort((a, b) => b.finished - a.finished || a.name.localeCompare(b.name));
 }
 
-export interface RoutinePoint { at: number; durationMs: number; mistakes: number; direction: string; bpm: number | null }
+export interface RoutinePoint {
+  at: number;
+  durationMs: number;
+  mistakes: number;
+  direction: string;
+  bpm: number | null;
+}
 
 /** Each finished session of a routine, oldest first */
 export const routineSessions = (records: readonly ProgressRecord[], routine: string): RoutinePoint[] =>
-  routines(records).filter(r => r.finished && r.routine === routine)
-    .map(r => ({ at: r.startedAt || r.at, durationMs: r.durationMs, mistakes: r.totalMistakes, direction: r.direction, bpm: r.tempo?.bpm ?? null }))
+  routines(records)
+    .filter(r => r.finished && r.routine === routine)
+    .map(r => ({
+      at: r.startedAt || r.at,
+      durationMs: r.durationMs,
+      mistakes: r.totalMistakes,
+      direction: r.direction,
+      bpm: r.tempo?.bpm ?? null,
+    }))
     .sort((a, b) => a.at - b.at);
 
-export interface ExerciseOption { exerciseId: string; label: string; runs: number }
+export interface ExerciseOption {
+  exerciseId: string;
+  label: string;
+  runs: number;
+}
 
 /** "C major scale, 1 octave", "A harmonic minor scale, 2 octaves", "C major triads, any voicing" */
 export function exerciseLabel(r: Pick<RunBody, "exercise" | "exerciseId" | "title">): string {
@@ -101,7 +124,8 @@ export function exerciseLabel(r: Pick<RunBody, "exercise" | "exerciseId" | "titl
     return `${r.title}${inversion ? `, ${INVERSION_NAMES[inversion]}` : ""}, ${octaves(parts[4])}`;
   }
   if (r.exercise === "triad") return `${r.title}${parts[parts.length - 1] === "any" ? ", any voicing" : ""}`;
-  if (r.exercise === "brokenChords" || r.exercise === "chromatic") return `${r.title}, ${octaves(parts[parts.length - 1])}`;
+  if (r.exercise === "brokenChords" || r.exercise === "chromatic")
+    return `${r.title}, ${octaves(parts[parts.length - 1])}`;
   return r.title;
 }
 
@@ -131,18 +155,29 @@ const SUBDIVISION = { 1: "quarters", 2: "eighths", 4: "sixteenths" } as Record<n
 
 /** Each run of an exercise, oldest first */
 export const exerciseRuns = (records: readonly ProgressRecord[], exerciseId: string): RunPoint[] =>
-  runs(records).filter(r => r.exerciseId === exerciseId).map(r => ({
-    at: r.at, mistakes: r.mistakes, onTime: r.timing?.onTime ?? null, evenness: r.evenness,
-    tempo: r.tempo ? `${r.tempo.bpm} BPM, ${SUBDIVISION[r.tempo.subdivision]}` : null, inRoutine: !!r.routineSession,
-  })).sort((a, b) => a.at - b.at);
+  runs(records)
+    .filter(r => r.exerciseId === exerciseId)
+    .map(r => ({
+      at: r.at,
+      mistakes: r.mistakes,
+      onTime: r.timing?.onTime ?? null,
+      evenness: r.evenness,
+      tempo: r.tempo ? `${r.tempo.bpm} BPM, ${SUBDIVISION[r.tempo.subdivision]}` : null,
+      inRoutine: !!r.routineSession,
+    }))
+    .sort((a, b) => a.at - b.at);
 
 const median = (xs: readonly number[]) => {
-  const s = [...xs].sort((a, b) => a - b), m = s.length >> 1;
+  const s = [...xs].sort((a, b) => a - b),
+    m = s.length >> 1;
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 
 /** The median of a value per day (for the trend line through noisy per-run points), placed at midday */
-export function dailyMedian<T extends { at: number }>(points: readonly T[], value: (p: T) => number | null): { day: string; at: number; value: number; n: number }[] {
+export function dailyMedian<T extends { at: number }>(
+  points: readonly T[],
+  value: (p: T) => number | null,
+): { day: string; at: number; value: number; n: number }[] {
   const byDay = new Map<string, number[]>();
   for (const p of points) {
     const v = value(p);
@@ -150,7 +185,8 @@ export function dailyMedian<T extends { at: number }>(points: readonly T[], valu
     const d = dayOf(p.at);
     byDay.set(d, [...(byDay.get(d) ?? []), v]);
   }
-  return [...byDay].sort((a, b) => a[0] < b[0] ? -1 : 1)
+  return [...byDay]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([day, vs]) => ({ day, at: dayStart(day) + 12 * 3600_000, value: median(vs), n: vs.length }));
 }
 
@@ -158,20 +194,33 @@ export function dailyMedian<T extends { at: number }>(points: readonly T[], valu
 export const DRILLS: readonly DrillKind[] = ["notes", "chords", "progressions", "ear", "melody", "reading", "chordEar"];
 
 /** Per day and drill: the share of prompts right first time (skips count against), and how many there were */
-export function drillsPerDay(records: readonly ProgressRecord[]): Record<DrillKind, { day: string; at: number; firstTry: number; n: number }[]> {
+export function drillsPerDay(
+  records: readonly ProgressRecord[],
+): Record<DrillKind, { day: string; at: number; firstTry: number; n: number }[]> {
   const out = {} as Record<DrillKind, { day: string; at: number; firstTry: number; n: number }[]>;
   for (const kind of DRILLS) {
     const byDay = new Map<string, Drill[]>();
-    for (const d of drills(records)) if (d.drill === kind) byDay.set(dayOf(d.at), [...(byDay.get(dayOf(d.at)) ?? []), d]);
-    out[kind] = [...byDay].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([day, ds]) => ({
-      day, at: dayStart(day) + 12 * 3600_000, n: ds.length,
-      firstTry: ds.filter(d => d.outcome === "firstTry").length / ds.length,
-    }));
+    for (const d of drills(records))
+      if (d.drill === kind) byDay.set(dayOf(d.at), [...(byDay.get(dayOf(d.at)) ?? []), d]);
+    out[kind] = [...byDay]
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([day, ds]) => ({
+        day,
+        at: dayStart(day) + 12 * 3600_000,
+        n: ds.length,
+        firstTry: ds.filter(d => d.outcome === "firstTry").length / ds.length,
+      }));
   }
   return out;
 }
 
-export interface WeakPrompt { prompt: string; drill: DrillKind; asked: number; firstTry: number; medianMs: number }
+export interface WeakPrompt {
+  prompt: string;
+  drill: DrillKind;
+  asked: number;
+  firstTry: number;
+  medianMs: number;
+}
 
 /** Prompts asked at least `minAsked` times, least often right first time first (then slowest) */
 export function weakestPrompts(records: readonly ProgressRecord[], limit = 8, minAsked = 2): WeakPrompt[] {
@@ -181,15 +230,27 @@ export function weakestPrompts(records: readonly ProgressRecord[], limit = 8, mi
     const k = `${d.drill}|${d.prompt}`;
     m.set(k, [...(m.get(k) ?? []), d]);
   }
-  return [...m.values()].filter(ds => ds.length >= minAsked).map(ds => {
-    const answered = ds.filter(d => d.outcome !== "skipped").map(d => d.ms);
-    return { prompt: ds[0].prompt, drill: ds[0].drill, asked: ds.length,
-             firstTry: ds.filter(d => d.outcome === "firstTry").length / ds.length,
-             medianMs: answered.length ? median(answered) : 0 };
-  }).filter(w => w.firstTry < 1).sort((a, b) => a.firstTry - b.firstTry || b.medianMs - a.medianMs).slice(0, limit);
+  return [...m.values()]
+    .filter(ds => ds.length >= minAsked)
+    .map(ds => {
+      const answered = ds.filter(d => d.outcome !== "skipped").map(d => d.ms);
+      return {
+        prompt: ds[0].prompt,
+        drill: ds[0].drill,
+        asked: ds.length,
+        firstTry: ds.filter(d => d.outcome === "firstTry").length / ds.length,
+        medianMs: answered.length ? median(answered) : 0,
+      };
+    })
+    .filter(w => w.firstTry < 1)
+    .sort((a, b) => a.firstTry - b.firstTry || b.medianMs - a.medianMs)
+    .slice(0, limit);
 }
 
-export interface DrillOption { kind: DrillKind; prompts: number }
+export interface DrillOption {
+  kind: DrillKind;
+  prompts: number;
+}
 
 /** The drills done, most prompts first */
 export function drillOptions(records: readonly ProgressRecord[]): DrillOption[] {
@@ -214,12 +275,18 @@ export interface DrillDay {
 export function drillDays(records: readonly ProgressRecord[], kind: DrillKind): DrillDay[] {
   const byDay = new Map<string, Drill[]>();
   for (const d of drills(records)) if (d.drill === kind) byDay.set(dayOf(d.at), [...(byDay.get(dayOf(d.at)) ?? []), d]);
-  return [...byDay].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([day, ds]) => {
-    const answered = ds.filter(d => d.outcome !== "skipped").map(d => d.ms);
-    return { day, at: dayStart(day) + 12 * 3600_000, n: ds.length,
-             firstTry: ds.filter(d => d.outcome === "firstTry").length / ds.length,
-             medianMs: answered.length ? median(answered) : null };
-  });
+  return [...byDay]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([day, ds]) => {
+      const answered = ds.filter(d => d.outcome !== "skipped").map(d => d.ms);
+      return {
+        day,
+        at: dayStart(day) + 12 * 3600_000,
+        n: ds.length,
+        firstTry: ds.filter(d => d.outcome === "firstTry").length / ds.length,
+        medianMs: answered.length ? median(answered) : null,
+      };
+    });
 }
 
 export interface DrillPromptStats {
@@ -235,11 +302,18 @@ export interface DrillPromptStats {
 export function drillPromptStats(records: readonly ProgressRecord[], kind: DrillKind): DrillPromptStats[] {
   const m = new Map<string, Drill[]>();
   for (const d of drills(records)) if (d.drill === kind) m.set(d.prompt, [...(m.get(d.prompt) ?? []), d]);
-  return [...m].map(([prompt, ds]) => {
-    const answered = ds.filter(d => d.outcome !== "skipped").map(d => d.ms);
-    return { prompt, asked: ds.length, firstTry: ds.filter(d => d.outcome === "firstTry").length / ds.length,
-             skipped: ds.length - answered.length, medianMs: answered.length ? median(answered) : null };
-  }).sort((a, b) => a.firstTry - b.firstTry || b.asked - a.asked || a.prompt.localeCompare(b.prompt));
+  return [...m]
+    .map(([prompt, ds]) => {
+      const answered = ds.filter(d => d.outcome !== "skipped").map(d => d.ms);
+      return {
+        prompt,
+        asked: ds.length,
+        firstTry: ds.filter(d => d.outcome === "firstTry").length / ds.length,
+        skipped: ds.length - answered.length,
+        medianMs: answered.length ? median(answered) : null,
+      };
+    })
+    .sort((a, b) => a.firstTry - b.firstTry || b.asked - a.asked || a.prompt.localeCompare(b.prompt));
 }
 
 export interface ChordConfusion {
@@ -263,8 +337,15 @@ export function chordConfusions(records: readonly ProgressRecord[]): ChordConfus
     m.set(d.detail.type, e);
   }
   const total = (c: ChordConfusion) => c.mistakenFor.reduce((n, x) => n + x.n, 0);
-  return [...m].map(([type, e]) => ({
-    type, prompt: e.prompt, asked: e.asked,
-    mistakenFor: [...e.guesses].map(([t, n]) => ({ type: t, n })).sort((a, b) => b.n - a.n || a.type.localeCompare(b.type)),
-  })).filter(c => c.mistakenFor.length).sort((a, b) => total(b) - total(a) || a.prompt.localeCompare(b.prompt));
+  return [...m]
+    .map(([type, e]) => ({
+      type,
+      prompt: e.prompt,
+      asked: e.asked,
+      mistakenFor: [...e.guesses]
+        .map(([t, n]) => ({ type: t, n }))
+        .sort((a, b) => b.n - a.n || a.type.localeCompare(b.type)),
+    }))
+    .filter(c => c.mistakenFor.length)
+    .sort((a, b) => total(b) - total(a) || a.prompt.localeCompare(b.prompt));
 }

@@ -25,7 +25,11 @@ export function circlePosition(keyValue: string): number {
 export function keySignature(key: KeyContext): { count: number; accidental: "#" | "b" | "" } {
   const sharps = key.scale.filter(n => n.includes("#")).length;
   const flats = key.scale.filter(n => n.includes("b")).length;
-  return sharps ? { count: sharps, accidental: "#" } : flats ? { count: flats, accidental: "b" } : { count: 0, accidental: "" };
+  return sharps
+    ? { count: sharps, accidental: "#" }
+    : flats
+      ? { count: flats, accidental: "b" }
+      : { count: 0, accidental: "" };
 }
 
 /** Whether a value is one of the 24 keys offered, e.g. "C:major", "F#:minor" */
@@ -78,7 +82,8 @@ export function buildKey(value: string): KeyContext | null {
   const spell: (string | null)[] = new Array(12).fill(null);
   scale.forEach(n => (spell[chromaOf(n)] = n));
   const inKey = new Set(scale.map(chromaOf));
-  if (leadingTone) {                 // harmonic minor's raised 7th counts as in-key
+  if (leadingTone) {
+    // harmonic minor's raised 7th counts as in-key
     spell[chromaOf(leadingTone)] = leadingTone;
     inKey.add(chromaOf(leadingTone));
   }
@@ -87,7 +92,14 @@ export function buildKey(value: string): KeyContext | null {
   const sigAlter: Record<string, number> = {};
   scale.forEach(n => (sigAlter[n[0]] = alterOf(n.slice(1))));
   return {
-    tonic, mode, tonicPc: chromaOf(tonic), scale, spell: spell as string[], inKey, leadingTone, sigAlter,
+    tonic,
+    mode,
+    tonicPc: chromaOf(tonic),
+    scale,
+    spell: spell as string[],
+    inKey,
+    leadingTone,
+    sigAlter,
     vfKey: mode === "major" ? tonic : tonic + "m",
     label: tonic + (mode === "major" ? " major" : " minor"),
   };

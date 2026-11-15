@@ -34,4 +34,4 @@ export interface RomanPrompt {
 
 /** How chords are named to the player: chord names or Roman numerals */
 export const PROMPT_STYLES = ["names", "roman"] as const;
-export type PromptStyle = typeof PROMPT_STYLES[number];
+export type PromptStyle = (typeof PROMPT_STYLES)[number];

@@ -4,7 +4,11 @@ import { describe, expect, it } from "vitest";
 import { diatonicChordsExercise } from "../src/exercises/diatonicChords";
 import { DEFAULT_EXERCISE_OPTIONS, PRESCRIPTIVE } from "../src/exercises/prescriptive";
 import {
-  initialSequence, reduceSequence, type SequenceAction, type SequenceExercise, type SequenceState,
+  initialSequence,
+  reduceSequence,
+  type SequenceAction,
+  type SequenceExercise,
+  type SequenceState,
 } from "../src/exercises/sequence";
 import { heldNotes, onPlayerInput } from "../src/modes/performance";
 import { createAppState, reduceApp, type AppAction } from "../src/state/app";
@@ -16,7 +20,7 @@ const C = buildKey("C:major")!;
 const triads = diatonicChordsExercise(C, { sevenths: false, rootPosition: true });
 const run = (s: SequenceState, ...actions: SequenceAction[]) => actions.reduce(reduceSequence, s);
 let clock = 0;
-const held = (...notes: number[]): SequenceAction => ({ type: "held", notes, time: clock += 500 });
+const held = (...notes: number[]): SequenceAction => ({ type: "held", notes, time: (clock += 500) });
 const names = (ex: typeof triads) => ex.steps.map(st => st.chord.root + templateById(st.chord.type)!.symbol).join(" ");
 const numerals = (ex: typeof triads) => ex.steps.map(st => st.chord.roman!.numeral).join(" ");
 /** Close root-position voicing of a chord step, from C3 up */
@@ -33,7 +37,9 @@ describe("diatonicChordsExercise", () => {
     expect(names(triads)).toBe("C Dm Em F G Am Bdim C");
     expect(numerals(triads)).toBe("I ii iii IV V vi vii° I");
     expect(triads).toMatchObject({ title: "C major triads", keyValue: "C:major", basePc: 0 });
-    expect(triads.instruction).toBe("Play the diatonic triads of C major in order, I up to vii° and back to I, each in root position");
+    expect(triads.instruction).toBe(
+      "Play the diatonic triads of C major in order, I up to vii° and back to I, each in root position",
+    );
   });
 
   it("has seventh chords, and harmonic minor's V7 and vii°7 in minor keys", () => {
@@ -45,21 +51,28 @@ describe("diatonicChordsExercise", () => {
   });
 
   it("every chord analyzes back to itself and its numeral, in every key", () => {
-    for (const [tonics, mode] of [[KEY_MAJORS, "major"], [KEY_MINORS, "minor"]] as const) {
-      for (const tonic of tonics) for (const sevenths of [false, true]) {
-        const key = buildKey(`${tonic}:${mode}`)!;
-        for (const st of diatonicChordsExercise(key, { sevenths, rootPosition: true }).steps) {
-          const r = analyze(voice(st.chord), key);
-          expect(r?.text).toBe(st.chord.root + templateById(st.chord.type)!.symbol);
-          expect(r?.roman).toBe(prettyAcc(st.chord.roman!.numeral));
+    for (const [tonics, mode] of [
+      [KEY_MAJORS, "major"],
+      [KEY_MINORS, "minor"],
+    ] as const) {
+      for (const tonic of tonics)
+        for (const sevenths of [false, true]) {
+          const key = buildKey(`${tonic}:${mode}`)!;
+          for (const st of diatonicChordsExercise(key, { sevenths, rootPosition: true }).steps) {
+            const r = analyze(voice(st.chord), key);
+            expect(r?.text).toBe(st.chord.root + templateById(st.chord.type)!.symbol);
+            expect(r?.roman).toBe(prettyAcc(st.chord.roman!.numeral));
+          }
         }
-      }
     }
   });
 
   it("ids change with every option that changes the chords", () => {
-    const ids = new Set([true, false].flatMap(sevenths => [true, false].map(rootPosition =>
-      diatonicChordsExercise(C, { sevenths, rootPosition }).id)));
+    const ids = new Set(
+      [true, false].flatMap(sevenths =>
+        [true, false].map(rootPosition => diatonicChordsExercise(C, { sevenths, rootPosition }).id),
+      ),
+    );
     expect(ids.size).toBe(4);
   });
 });
@@ -81,7 +94,7 @@ describe("chord steps in a sequence", () => {
   });
 
   it("requires root position when asked: the right notes over the wrong bass are a mistake", () => {
-    let s = run(start, held(48, 52, 55), held(), held(53, 57, 62), held());    // Dm/F
+    let s = run(start, held(48, 52, 55), held(), held(53, 57, 62), held()); // Dm/F
     expect(s).toMatchObject({ index: 1, mistakes: 1, lastWrong: { kind: "chord", notes: [53, 57, 62] } });
     expect(sequenceDisplay(s, "names").feedback).toBe("✗ Right notes, wrong bass. Put D in the bass");
     s = run(s, held(50, 53, 57));
@@ -89,9 +102,11 @@ describe("chord steps in a sequence", () => {
   });
 
   it("says what was played instead, with its numeral", () => {
-    const s = run(start, held(48, 52, 55), held(), held(52, 55, 59), held());   // Em instead of Dm
+    const s = run(start, held(48, 52, 55), held(), held(52, 55, 59), held()); // Em instead of Dm
     // Closest moves first (E→F, G→A), and root position needs D in the bass
-    expect(sequenceDisplay(s, "roman").feedback).toBe("✗ That was Em (iii). Replace E with F, replace G with A, add D, remove B and put D in the bass");
+    expect(sequenceDisplay(s, "roman").feedback).toBe(
+      "✗ That was Em (iii). Replace E with F, replace G with A, add D, remove B and put D in the bass",
+    );
   });
 
   it("asks for the first chord without counting a mistake, and a finished run restarts on a re-struck first chord", () => {
@@ -100,7 +115,10 @@ describe("chord steps in a sequence", () => {
     expect(sequenceDisplay(s, "names").feedback).toBe("Start with C");
     expect(sequenceDisplay(s, "roman").feedback).toBe("Start with I");
     // Finish, keeping the last chord (C) down
-    s = triads.steps.reduce((x, st, i) => run(x, held(...voice(st.chord)), ...(i < triads.steps.length - 1 ? [held()] : [])), s);
+    s = triads.steps.reduce(
+      (x, st, i) => run(x, held(...voice(st.chord)), ...(i < triads.steps.length - 1 ? [held()] : [])),
+      s,
+    );
     expect(s.status).toBe("done");
     // Still holding C: no new run until it is played again
     s = run(s, held(48, 52));
@@ -112,10 +130,16 @@ describe("chord steps in a sequence", () => {
   it("shows each chord in the prompt's notation, revealing the other one when played", () => {
     const s = run(start, held(48, 52, 55));
     const roman = sequenceDisplay(s, "roman");
-    expect(roman.promptHtml).toContain('<span class="step done"><span class="main">I</span><span class="other">C</span></span>');
-    expect(roman.promptHtml).toContain('<span class="step current"><span class="main">ii</span><span class="other">&nbsp;</span></span>');
+    expect(roman.promptHtml).toContain(
+      '<span class="step done"><span class="main">I</span><span class="other">C</span></span>',
+    );
+    expect(roman.promptHtml).toContain(
+      '<span class="step current"><span class="main">ii</span><span class="other">&nbsp;</span></span>',
+    );
     const named = sequenceDisplay(s, "names");
-    expect(named.promptHtml).toContain('<span class="step done"><span class="main">C</span><span class="other">I</span></span>');
+    expect(named.promptHtml).toContain(
+      '<span class="step done"><span class="main">C</span><span class="other">I</span></span>',
+    );
     expect(named.sub).toBe("");
   });
 });
@@ -123,17 +147,25 @@ describe("chord steps in a sequence", () => {
 describe("mixed sequences", () => {
   // A C-major arpeggio, then the C chord: note steps then a chord step
   const ex: SequenceExercise = {
-    id: "mixed", title: "C", instruction: "", basePc: 0, keyValue: "C:major",
-    steps: [{ kind: "note", offset: 0, name: "C" }, { kind: "note", offset: 4, name: "E" }, { kind: "note", offset: 7, name: "G" },
-            { kind: "chord", chord: triads.steps[0].chord }],
+    id: "mixed",
+    title: "C",
+    instruction: "",
+    basePc: 0,
+    keyValue: "C:major",
+    steps: [
+      { kind: "note", offset: 0, name: "C" },
+      { kind: "note", offset: 4, name: "E" },
+      { kind: "note", offset: 7, name: "G" },
+      { kind: "chord", chord: triads.steps[0].chord },
+    ],
   };
 
   it("judges note steps on note-ons and chord steps on the held keys", () => {
     let s = initialSequence(ex);
-    for (const note of [60, 64, 67]) s = run(s, { type: "noteOn", note, time: clock += 100 }, held(note), held());
+    for (const note of [60, 64, 67]) s = run(s, { type: "noteOn", note, time: (clock += 100) }, held(note), held());
     // Releasing the last note of the arpeggio is not a failed attempt at the chord that follows
     expect(s).toMatchObject({ index: 3, anchor: 60, mistakes: 0 });
-    s = run(s, { type: "noteOn", note: 72, time: clock += 100 });   // a note-on during a chord step is not judged
+    s = run(s, { type: "noteOn", note: 72, time: (clock += 100) }); // a note-on during a chord step is not judged
     expect(s.mistakes).toBe(0);
     s = run(s, held(48, 52, 55));
     expect(s.status).toBe("done");
@@ -146,8 +178,11 @@ describe("prescriptive exercise registry", () => {
       const base = def.build(DEFAULT_EXERCISE_OPTIONS);
       expect(def.build({ ...DEFAULT_EXERCISE_OPTIONS, key: "Eb:minor" }).keyValue, id).toBe("Eb:minor");
       for (const option of ["minorForm", "octaves", "sevenths", "rootPosition"] as const) {
-        const changed = { ...DEFAULT_EXERCISE_OPTIONS, key: "A:minor",
-          [option]: option === "minorForm" ? "melodic" : option === "octaves" ? 2 : !DEFAULT_EXERCISE_OPTIONS[option] };
+        const changed = {
+          ...DEFAULT_EXERCISE_OPTIONS,
+          key: "A:minor",
+          [option]: option === "minorForm" ? "melodic" : option === "octaves" ? 2 : !DEFAULT_EXERCISE_OPTIONS[option],
+        };
         const differs = def.build(changed).id !== def.build({ ...DEFAULT_EXERCISE_OPTIONS, key: "A:minor" }).id;
         expect(differs, `${id} / ${option}`).toBe((def.options as readonly string[]).includes(option));
       }
@@ -164,8 +199,10 @@ describe("onPlayerInput", () => {
       noteOn: (note, time) => calls.push(`on ${note} @${time}`),
       held: (notes, time) => calls.push(`held ${notes.join(",")} @${time}`),
     });
-    const ev = (type: "noteOn" | "noteOff", note: number, time: number): AppAction =>
-      ({ type: "input", event: { type, note, velocity: 90, time, source: "a", channel: 0 } });
+    const ev = (type: "noteOn" | "noteOff", note: number, time: number): AppAction => ({
+      type: "input",
+      event: { type, note, velocity: 90, time, source: "a", channel: 0 },
+    });
     store.dispatch(ev("noteOn", 60, 10));
     store.dispatch(ev("noteOn", 64, 20));
     store.dispatch(ev("noteOff", 60, 30));

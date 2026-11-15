@@ -14,10 +14,18 @@ const files = new Map<ExcerptLibrary, Promise<ExcerptFile>>();
 export function loadExcerpts(part: ExcerptLibrary): Promise<ExcerptFile> {
   let file = files.get(part);
   if (!file) {
-    file = (servedFromFile() ? Promise.reject(new Error("opened as a local file")) : fetch(`reading/${excerptFileName(part)}`))
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<unknown>; })
+    file = (
+      servedFromFile() ? Promise.reject(new Error("opened as a local file")) : fetch(`reading/${excerptFileName(part)}`)
+    )
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<unknown>;
+      })
       .then(f => checkExcerptFile(f, part))
-      .catch(e => { files.delete(part); throw e; });
+      .catch(e => {
+        files.delete(part);
+        throw e;
+      });
     files.set(part, file);
   }
   return file;

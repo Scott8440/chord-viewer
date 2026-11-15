@@ -11,368 +11,1311 @@
   --ok: #6cc28a;
   --warn: #e07a5f;
 }
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 /* The hidden attribute must win over display rules (e.g. .opt, #chordOptions, #exerciseOptions) */
-[hidden] { display: none !important; }
-html, body { margin: 0; height: 100%; }
+[hidden] {
+  display: none !important;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
 /* Nothing here is text to edit or select: no text cursor where you click (even with Chrome's caret browsing, F7)
    and no accidental selections. The number fields keep theirs. */
-body { user-select: none; caret-color: transparent; }
-input, textarea { user-select: text; caret-color: auto; }
+body {
+  user-select: none;
+  caret-color: transparent;
+}
+input,
+textarea {
+  user-select: text;
+  caret-color: auto;
+}
 body {
   background: var(--bg);
   color: var(--text);
-  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  display: flex; flex-direction: column;
+  font:
+    15px/1.4 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 header {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 12px 20px; border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
 }
-header h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em; }
-#status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-.dot.ok { background: var(--ok); }
-.dot.err { background: var(--warn); }
-#inputs { display: flex; gap: 6px; flex-wrap: wrap; }
+header h1 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+#status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.dot.ok {
+  background: var(--ok);
+}
+.dot.err {
+  background: var(--warn);
+}
+#inputs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 .chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px 3px 8px;
-  font-size: 12px; color: var(--text); cursor: pointer; user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px 3px 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
 }
-.chip input { margin: 0; accent-color: var(--accent); }
-.chip.off { color: var(--muted); }
-.spacer { flex: 1; }
-.pick { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-.pick input[type=number] {
-  width: 4.5em; background: var(--panel); color: var(--text); border: 1px solid var(--line);
-  border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 13px;
+.chip input {
+  margin: 0;
+  accent-color: var(--accent);
 }
-.metronomeOptions, #metronomeDetails { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.chip.off {
+  color: var(--muted);
+}
+.spacer {
+  flex: 1;
+}
+.pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.pick input[type="number"] {
+  width: 4.5em;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 13px;
+}
+.metronomeOptions,
+#metronomeDetails {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
 /* Beat light: one dot per beat, the downbeat bigger, the current beat lit */
-#beat { display: flex; gap: 8px; align-items: center; height: 14px; margin-bottom: 12px; }
-#beat .b { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
-#beat .b.down { width: 12px; height: 12px; }
-#beat .b.lit { background: var(--accent); }
+#beat {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 14px;
+  margin-bottom: 12px;
+}
+#beat .b {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+}
+#beat .b.down {
+  width: 12px;
+  height: 12px;
+}
+#beat .b.lit {
+  background: var(--accent);
+}
 /* Latency calibration dialog */
 #calibration {
-  width: min(460px, calc(100vw - 32px)); padding: 24px 28px; border: 1px solid var(--line); border-radius: 12px;
-  background: var(--panel); color: var(--text); outline: none;
+  width: min(460px, calc(100vw - 32px));
+  padding: 24px 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  outline: none;
 }
-#calibration::backdrop { background: rgb(0 0 0 / .55); }
-#calibration h2 { margin: 0 0 8px; font-size: 20px; font-weight: 600; }
-#calibration p { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.45; }
-#calibration .calBeat { display: flex; gap: 10px; align-items: center; height: 18px; margin-bottom: 16px; }
-#calibration .calBeat .b { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
-#calibration .calBeat .b.down { width: 16px; height: 16px; }
-#calibration .calBeat .b.lit { background: var(--accent); }
-#calibration .calTaps { display: flex; gap: 6px; margin-bottom: 12px; }
-#calibration .calTaps span { width: 14px; height: 6px; border-radius: 3px; background: var(--line); }
-#calibration .calTaps span.in { background: var(--ok); }
-#calibration .calStatus { min-height: 2.6em; font-size: 14px; line-height: 1.4; }
-#calibration .calStatus.ok { color: var(--ok); }
-#calibration .calStatus.warn { color: var(--warn); }
-#calibration .calButtons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
-#outputLatencyNote { flex-basis: 100%; font-size: 12px; color: var(--accent); }
-#beat .soundHint { margin-left: 8px; font-size: 12px; color: var(--warn); }
+#calibration::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+#calibration h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+#calibration p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+#calibration .calBeat {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  height: 18px;
+  margin-bottom: 16px;
+}
+#calibration .calBeat .b {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--line);
+}
+#calibration .calBeat .b.down {
+  width: 16px;
+  height: 16px;
+}
+#calibration .calBeat .b.lit {
+  background: var(--accent);
+}
+#calibration .calTaps {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+#calibration .calTaps span {
+  width: 14px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+}
+#calibration .calTaps span.in {
+  background: var(--ok);
+}
+#calibration .calStatus {
+  min-height: 2.6em;
+  font-size: 14px;
+  line-height: 1.4;
+}
+#calibration .calStatus.ok {
+  color: var(--ok);
+}
+#calibration .calStatus.warn {
+  color: var(--warn);
+}
+#calibration .calButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+#outputLatencyNote {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--accent);
+}
+#beat .soundHint {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--warn);
+}
 .pick select {
-  background: var(--panel); color: var(--text); border: 1px solid var(--line);
-  border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 13px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 13px;
 }
 #roman {
-  margin-top: 10px; font-family: Georgia, "Times New Roman", serif; font-size: 30px;
-  color: var(--accent); min-height: 1.2em;
+  margin-top: 10px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  color: var(--accent);
+  min-height: 1.2em;
 }
 #pedal {
-  font-size: 12px; color: var(--muted); border: 1px solid var(--line);
-  border-radius: 4px; padding: 2px 8px;
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 8px;
 }
-#pedal.down { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+#pedal.down {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
 button {
-  background: transparent; color: var(--text); border: 1px solid var(--line);
-  border-radius: 6px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
 }
-button:hover { border-color: var(--muted); }
+button:hover {
+  border-color: var(--muted);
+}
 
 /* Chart series (the reference palette's first five dark steps, in its fixed order) */
-:root { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; }
+:root {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+}
 
 main {
-  flex: 1; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: 20px; padding: 20px; align-items: stretch; min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px;
+  align-items: stretch;
+  min-height: 0;
 }
-.card { border-radius: 10px; min-height: 0; }
+.card {
+  border-radius: 10px;
+  min-height: 0;
+}
 /* Circle of fifths: top-right corner of the staff card, which the fixed staff layout always leaves empty */
 /* Sized by fitToStaffCorner (views/staffCorner.ts) to the staff's free corner; this is only the starting size */
-#circle { position: absolute; top: 12px; right: 12px; width: min(200px, 34%); }
-#circle svg { display: block; width: 100%; height: auto; }
-.cof .seg path { fill: #ebe5d6; stroke: var(--paper); stroke-width: 1.2; }
-.cof .seg.inner path { fill: #e3dccb; }
-.cof .seg.inkey path { fill: #e7d3a3; }
-.cof .seg.focus path { fill: var(--accent); }
-.cof .seg.done path { fill: #b9dcc4; }
-.cof .seg.flawed path { fill: #f0cf8e; }
-.cof .seg.skipped path { fill: #ddd8cd; }
-.cof .seg.skipped .name { text-decoration: line-through; fill: #9a968c; }
-.cof .seg.current path { fill: var(--accent); }
-.cof .seg.mark path { stroke: var(--ink); stroke-width: 3; }
-.cof text { text-anchor: middle; dominant-baseline: middle; fill: var(--ink); font-family: Georgia, "Times New Roman", serif; }
-.cof .name { font-size: 11px; }
-.cof .inner .name { font-size: 9px; }
-.cof .num { font-size: 7px; font-family: system-ui, sans-serif; fill: #6b5a33; }
-.cof .c1 { font-size: 15px; }
-.cof .c2 { font-size: 9px; font-family: system-ui, sans-serif; fill: #6f6a60; }
+#circle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: min(200px, 34%);
+}
+#circle svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.cof .seg path {
+  fill: #ebe5d6;
+  stroke: var(--paper);
+  stroke-width: 1.2;
+}
+.cof .seg.inner path {
+  fill: #e3dccb;
+}
+.cof .seg.inkey path {
+  fill: #e7d3a3;
+}
+.cof .seg.focus path {
+  fill: var(--accent);
+}
+.cof .seg.done path {
+  fill: #b9dcc4;
+}
+.cof .seg.flawed path {
+  fill: #f0cf8e;
+}
+.cof .seg.skipped path {
+  fill: #ddd8cd;
+}
+.cof .seg.skipped .name {
+  text-decoration: line-through;
+  fill: #9a968c;
+}
+.cof .seg.current path {
+  fill: var(--accent);
+}
+.cof .seg.mark path {
+  stroke: var(--ink);
+  stroke-width: 3;
+}
+.cof text {
+  text-anchor: middle;
+  dominant-baseline: middle;
+  fill: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+}
+.cof .name {
+  font-size: 11px;
+}
+.cof .inner .name {
+  font-size: 9px;
+}
+.cof .num {
+  font-size: 7px;
+  font-family: system-ui, sans-serif;
+  fill: #6b5a33;
+}
+.cof .c1 {
+  font-size: 15px;
+}
+.cof .c2 {
+  font-size: 9px;
+  font-family: system-ui, sans-serif;
+  fill: #6f6a60;
+}
 #staffCard {
   position: relative;
-  background: var(--paper); display: flex; align-items: center; justify-content: center;
-  padding: 12px; min-height: 340px;
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  min-height: 340px;
 }
-#staff { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-#staff[hidden] { display: none; }
+#staff {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#staff[hidden] {
+  display: none;
+}
 /* Ear training's scale-degree circle, in place of the staff */
-:root { --ping-hear: #b8862b; --ping-correct: #2e8b57; --ping-wrong: #c8553d; }
-#degreeCircle { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-#degreeCircle[hidden] { display: none; }
-#degreeCircle svg { width: min(100%, 64vh); height: auto; overflow: visible; }
-.degrees text { text-anchor: middle; dominant-baseline: central; font: 600 20px system-ui, sans-serif; }
-.degrees .ring { fill: none; stroke: #d8d2c3; stroke-width: 2; }
-.degrees .node circle { fill: var(--paper); stroke: #cfc8b8; stroke-width: 2; }
-.degrees .node text { fill: #b3ad9f; }
-.degrees .node.on circle { fill: var(--ink); stroke: var(--ink); }
-.degrees .node.on text { fill: var(--paper); }
-.degrees .node.hear circle { animation: flash-hear 0.7s ease-out; }
-.degrees .node.correct circle { animation: flash-correct 0.7s ease-out; }
-.degrees .node.wrong circle { animation: flash-wrong 0.7s ease-out; }
-@keyframes flash-hear { from { fill: var(--ping-hear); stroke: var(--ping-hear); } }
-@keyframes flash-correct { from { fill: var(--ping-correct); stroke: var(--ping-correct); } }
-@keyframes flash-wrong { from { fill: var(--ping-wrong); stroke: var(--ping-wrong); } }
-.degrees .node.passing { animation: passing 1.2s ease-in forwards; }
-.degrees .node.passing circle { fill: var(--paper); stroke-width: 2; }
-.degrees .node.passing text { font-size: 15px; }
-.degrees .node.passing.wrong circle { stroke: var(--ping-wrong); }
-.degrees .node.passing.wrong text { fill: var(--ping-wrong); }
-.degrees .node.passing.correct circle { stroke: var(--ping-correct); }
-.degrees .node.passing.correct text { fill: var(--ping-correct); }
-@keyframes passing { 60% { opacity: 1; } to { opacity: 0; } }
-.degrees .ping { fill: none; stroke-width: 4; transform-box: fill-box; transform-origin: center; animation: ping 0.9s ease-out forwards; }
-.degrees .ping.hear { stroke: var(--ping-hear); }
-.degrees .ping.correct { stroke: var(--ping-correct); }
-.degrees .ping.wrong { stroke: var(--ping-wrong); }
-@keyframes ping { from { transform: scale(1); opacity: 0.9; } to { transform: scale(2.6); opacity: 0; } }
-#staff svg { max-width: 100%; max-height: 72vh; height: auto; }
+:root {
+  --ping-hear: #b8862b;
+  --ping-correct: #2e8b57;
+  --ping-wrong: #c8553d;
+}
+#degreeCircle {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#degreeCircle[hidden] {
+  display: none;
+}
+#degreeCircle svg {
+  width: min(100%, 64vh);
+  height: auto;
+  overflow: visible;
+}
+.degrees text {
+  text-anchor: middle;
+  dominant-baseline: central;
+  font:
+    600 20px system-ui,
+    sans-serif;
+}
+.degrees .ring {
+  fill: none;
+  stroke: #d8d2c3;
+  stroke-width: 2;
+}
+.degrees .node circle {
+  fill: var(--paper);
+  stroke: #cfc8b8;
+  stroke-width: 2;
+}
+.degrees .node text {
+  fill: #b3ad9f;
+}
+.degrees .node.on circle {
+  fill: var(--ink);
+  stroke: var(--ink);
+}
+.degrees .node.on text {
+  fill: var(--paper);
+}
+.degrees .node.hear circle {
+  animation: flash-hear 0.7s ease-out;
+}
+.degrees .node.correct circle {
+  animation: flash-correct 0.7s ease-out;
+}
+.degrees .node.wrong circle {
+  animation: flash-wrong 0.7s ease-out;
+}
+@keyframes flash-hear {
+  from {
+    fill: var(--ping-hear);
+    stroke: var(--ping-hear);
+  }
+}
+@keyframes flash-correct {
+  from {
+    fill: var(--ping-correct);
+    stroke: var(--ping-correct);
+  }
+}
+@keyframes flash-wrong {
+  from {
+    fill: var(--ping-wrong);
+    stroke: var(--ping-wrong);
+  }
+}
+.degrees .node.passing {
+  animation: passing 1.2s ease-in forwards;
+}
+.degrees .node.passing circle {
+  fill: var(--paper);
+  stroke-width: 2;
+}
+.degrees .node.passing text {
+  font-size: 15px;
+}
+.degrees .node.passing.wrong circle {
+  stroke: var(--ping-wrong);
+}
+.degrees .node.passing.wrong text {
+  fill: var(--ping-wrong);
+}
+.degrees .node.passing.correct circle {
+  stroke: var(--ping-correct);
+}
+.degrees .node.passing.correct text {
+  fill: var(--ping-correct);
+}
+@keyframes passing {
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.degrees .ping {
+  fill: none;
+  stroke-width: 4;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ping 0.9s ease-out forwards;
+}
+.degrees .ping.hear {
+  stroke: var(--ping-hear);
+}
+.degrees .ping.correct {
+  stroke: var(--ping-correct);
+}
+.degrees .ping.wrong {
+  stroke: var(--ping-wrong);
+}
+@keyframes ping {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+#staff svg {
+  max-width: 100%;
+  max-height: 72vh;
+  height: auto;
+}
 #chordCard {
-  background: var(--panel); border: 1px solid var(--line);
-  display: flex; flex-direction: column; justify-content: center; padding: 28px 32px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 28px 32px;
 }
 #chordName {
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(56px, 9vw, 128px); line-height: 1; font-weight: 400;
-  color: var(--text); word-break: break-word; min-height: 1em;
-  transition: opacity .25s;
+  font-size: clamp(56px, 9vw, 128px);
+  line-height: 1;
+  font-weight: 400;
+  color: var(--text);
+  word-break: break-word;
+  min-height: 1em;
+  transition: opacity 0.25s;
 }
-#chordName.stale { opacity: .3; }
+#chordName.stale {
+  opacity: 0.3;
+}
 /* Free play after a while without input: the chord fades out (--fade-ms is set by chordName.ts), and snaps back */
-#freeView.fading { opacity: 0; transition: opacity var(--fade-ms) linear; }
-#chordName .acc { font-size: .8em; }
-#chordName .ext { font-size: .55em; vertical-align: .55em; }
-#chordName .bass { color: var(--muted); }
-#chordSub { margin-top: 14px; color: var(--muted); font-size: 16px; min-height: 1.4em; }
-#alts { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; min-height: 30px; }
+#freeView.fading {
+  opacity: 0;
+  transition: opacity var(--fade-ms) linear;
+}
+#chordName .acc {
+  font-size: 0.8em;
+}
+#chordName .ext {
+  font-size: 0.55em;
+  vertical-align: 0.55em;
+}
+#chordName .bass {
+  color: var(--muted);
+}
+#chordSub {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 16px;
+  min-height: 1.4em;
+}
+#alts {
+  margin-top: 18px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 30px;
+}
 #alts span {
-  font-family: Georgia, serif; font-size: 17px; padding: 3px 10px;
-  border: 1px solid var(--line); border-radius: 6px; color: var(--muted);
+  font-family: Georgia, serif;
+  font-size: 17px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
 }
-#practiceLabel { color: var(--muted); font-size: 16px; }
+#practiceLabel {
+  color: var(--muted);
+  font-size: 16px;
+}
 #practicePrompt {
-  margin-top: 8px; font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(72px, 12vw, 160px); line-height: 1; color: var(--text);
-}
-#practicePrompt.chord { font-size: clamp(56px, 8vw, 112px); }
-#practicePrompt.progression {
-  font-size: clamp(34px, 4.6vw, 60px); display: flex; flex-wrap: wrap; align-items: flex-start; gap: .1em 0;
-}
-#practicePrompt.sequence { font-size: clamp(22px, 2.6vw, 30px); }
-/* MIDI mapping (src/app/midiMap.ts): the footer button, mappable controls outlined while mapping, the one waiting
-   for a key, and each mapped control's key in a corner badge */
-#midiMapBtn.on { background: var(--accent); border-color: var(--accent); color: #14161a; }
-#midiMapHint { margin-left: 8px; color: var(--accent); }
-[data-midi-map] { position: relative; }
-body.midiMapping [data-midi-map] { outline: 2px dashed var(--accent); outline-offset: 3px; cursor: crosshair; }
-body.midiMapping [data-midi-map].midiWaiting { outline-style: solid; outline-width: 3px; animation: midiWait 1s ease-in-out infinite; }
-@keyframes midiWait { 50% { outline-color: transparent; } }
-[data-midi-label]::after {
-  content: attr(data-midi-label); position: absolute; top: -9px; right: -9px; padding: 1px 6px; border-radius: 999px;
-  background: var(--accent); color: #14161a; font: 600 11px system-ui, sans-serif; text-decoration: none; pointer-events: none;
-}
-/* Ear training rounds: the score while playing (src/views/roundViz.ts) */
-#roundViz { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; margin: 14px 0 4px; }
-#roundViz .rvNote { font-size: 12px; color: var(--muted); flex-basis: 100%; }
-#roundViz .dot.firstTry { fill: var(--ok); }
-#roundViz .dot.corrected { fill: var(--accent); }
-#roundViz .dot.skipped { fill: var(--muted); opacity: .6; }
-#roundViz .dot.todo { fill: none; stroke: var(--line); stroke-width: 1.5; }
-#roundViz .dot.todo.next { stroke: var(--muted); }
-#roundViz .rvRing .track { fill: none; stroke: var(--line); stroke-width: 7; }
-#roundViz .rvRing .fill { fill: none; stroke: var(--ok); stroke-width: 7; stroke-linecap: round; }
-#roundViz .rvRing .avg, #roundViz .rvLine .avg { stroke: var(--text); stroke-width: 2; }
-#roundViz .rvLine .avg { stroke-dasharray: 4 4; stroke-width: 1.5; opacity: .7; }
-#roundViz .rvRing text { text-anchor: middle; fill: var(--text); font-family: system-ui, sans-serif; }
-#roundViz .rvRing .share { font-size: 17px; font-weight: 600; }
-#roundViz .rvRing .count { font-size: 10px; fill: var(--muted); }
-#roundViz .rvLine .base { stroke: var(--line); stroke-width: 1; }
-#roundViz .rvLine .run { fill: none; stroke: var(--ok); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-#roundViz .rvLine .end { fill: var(--ok); stroke: var(--panel); stroke-width: 2; }
-/* Ear training rounds: the summary at a round's end */
-#practicePrompt .roundSummary { font-family: system-ui, sans-serif; }
-#practicePrompt .roundShare { font-size: 64px; font-weight: 600; line-height: 1; }
-#practicePrompt .roundOf { font-size: 16px; color: var(--muted); margin: 8px 0 16px; }
-#practicePrompt .roundBars rect.then { fill: var(--muted); opacity: .45; }
-#practicePrompt .roundBars rect.now { fill: var(--accent); }
-#practicePrompt .roundBars line { stroke: var(--line); stroke-width: 1; }
-/* Ear training's chord-quality answers: a board of large boxes in the staff's place, numbered for the number keys */
-#answerBoard {
-  width: 100%; align-self: stretch; display: flex; flex-direction: column; justify-content: center; align-items: center;
-  gap: 18px; padding: 8px;
-}
-#answerBoard .boxes { width: 100%; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-#answerBoard .box {
-  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-  min-height: 120px; padding: 18px 14px; border-radius: 12px; border: 2px solid #d8d2c3; background: #fffdf8;
-  color: var(--ink); font: 600 clamp(18px, 2vw, 24px) system-ui, sans-serif; cursor: pointer;
-}
-#answerBoard .box:hover:not(:disabled) { border-color: #9a968c; background: #fff; }
-#answerBoard .box kbd {
-  position: absolute; top: 8px; left: 10px; font: 12px ui-monospace, Menlo, Consolas, monospace; color: #9a968c;
-  background: none; border: none;
-}
-#answerBoard .boxDetail { font-size: 14px; font-weight: 500; color: #6f6a60; }
-#answerBoard .box.right { border-color: #2e8b57; background: #e6f3ea; color: #1f6a40; }
-#answerBoard .box.right .boxDetail { color: #1f6a40; }
-#answerBoard .box.wrong { color: #b3ad9f; background: #f3efe6; }
-#answerBoard .box.wrong .boxLabel { text-decoration: line-through; }
-#answerBoard .box:disabled { cursor: default; }
-/* Between rounds: one large Next round in place of everything else */
-#answerBoard .next {
-  min-width: min(100%, 360px); padding: 28px 48px; border-radius: 16px; border: 2px solid #2e8b57; background: #e6f3ea;
-  color: #1f6a40; font: 600 clamp(24px, 3vw, 34px) system-ui, sans-serif; cursor: pointer;
-}
-#answerBoard .next:hover { background: #d8ecdf; }
-/* Replay, across the top of the board */
-#answerBoard .replay {
-  display: inline-flex; align-items: center; gap: 10px;
-  padding: 12px 28px; border-radius: 999px; border: 2px solid #d8d2c3; background: #fffdf8; color: var(--ink);
-  font: 600 18px system-ui, sans-serif; cursor: pointer;
-}
-#answerBoard .replay span { font-size: 14px; }
-#answerBoard .replay:hover:not(:disabled) { border-color: #9a968c; background: #fff; }
-#answerBoard .replay:disabled { color: #b3ad9f; cursor: default; }
-#practicePrompt .seqTitle { font-size: 1.6em; line-height: 1.1; margin-bottom: .35em; }
-/* Sight reading: a song's composer and source under its title */
-#practicePrompt .excerptBy { font-size: .6em; color: var(--muted); }
-#practicePrompt .seqRow { display: flex; flex-wrap: wrap; gap: .15em .45em; }
-#practicePrompt .seqRow .step .other { font-size: .5em; }
-#practicePrompt .routineRow { display: flex; flex-wrap: wrap; gap: .1em .5em; font-size: .75em; margin-bottom: .7em; }
-#practicePrompt .routineRow .step .other { font-size: .55em; }
-#practicePrompt .step.flawed .main { color: var(--accent); }
-#practicePrompt .step.skipped .main { color: var(--muted); text-decoration: line-through; }
-#practicePrompt .step { display: inline-flex; flex-direction: column; align-items: center; }
-#practicePrompt .step .main { padding: 0 .08em .06em; border-bottom: 3px solid transparent; }
-#practicePrompt .step .other { font-family: system-ui, sans-serif; font-size: .3em; color: var(--muted); margin-top: .35em; }
-#practicePrompt .step.done .main { color: var(--ok); }
-#practicePrompt .step.current .main { border-bottom-color: var(--accent); }
-#practicePrompt .step.upcoming .main { color: var(--muted); }
-/* Timed steps that missed the beat: early cool, late warm */
-#practicePrompt .step.done.early .main { color: #6fa8dc; }
-#practicePrompt .step.done.late .main { color: var(--warn); }
-#practicePrompt .sep { color: var(--line); padding: 0 .12em; }
-#practicePrompt .acc { font-size: .8em; }
-#practicePrompt .ext { font-size: .55em; vertical-align: .55em; }
-#practiceSub { margin-top: 10px; color: var(--muted); font-size: 16px; min-height: 1.4em; }
-#chordOptions, #exerciseOptions, #routineOptions, #earOptions, #readingOptions { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font-size: 13px; color: var(--muted); }
-#chordOptions details, #earOptions details { flex-basis: 100%; }
-#practicePrompt .fig {
-  display: inline-flex; flex-direction: column; font-size: .4em; line-height: .95;
-  vertical-align: .55em; margin-left: .04em; text-align: center;
-}
-#chordFilters, #earFilters { margin-top: 4px; }
-#chordFilters summary, #earFilters summary { cursor: pointer; user-select: none; }
-#chordFilterBody, #earFilterBody { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-.filterGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.filterTitle { width: 100%; font-size: 12px; letter-spacing: .04em; }
-#practiceFeedback { margin-top: 18px; font-size: 22px; min-height: 1.4em; }
-#practiceFeedback.correct { color: var(--ok); }
-#practiceFeedback.wrong { color: var(--warn); }
-#practiceFooter { margin-top: 18px; display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 14px; min-height: 28px; }
-
-#history { margin-left: auto; }
-#historyNote { margin-left: 6px; color: var(--accent); }
-button.link { background: none; border: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
-button.link:hover { color: var(--text); }
-footer {
-  padding: 10px 20px 14px; color: var(--muted); font-size: 12px;
-  display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
-}
-kbd {
-  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px;
-  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px;
+  margin-top: 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(72px, 12vw, 160px);
+  line-height: 1;
   color: var(--text);
 }
-label.opt { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-label.opt input { accent-color: var(--accent); }
+#practicePrompt.chord {
+  font-size: clamp(56px, 8vw, 112px);
+}
+#practicePrompt.progression {
+  font-size: clamp(34px, 4.6vw, 60px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.1em 0;
+}
+#practicePrompt.sequence {
+  font-size: clamp(22px, 2.6vw, 30px);
+}
+/* MIDI mapping (src/app/midiMap.ts): the footer button, mappable controls outlined while mapping, the one waiting
+   for a key, and each mapped control's key in a corner badge */
+#midiMapBtn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #14161a;
+}
+#midiMapHint {
+  margin-left: 8px;
+  color: var(--accent);
+}
+[data-midi-map] {
+  position: relative;
+}
+body.midiMapping [data-midi-map] {
+  outline: 2px dashed var(--accent);
+  outline-offset: 3px;
+  cursor: crosshair;
+}
+body.midiMapping [data-midi-map].midiWaiting {
+  outline-style: solid;
+  outline-width: 3px;
+  animation: midiWait 1s ease-in-out infinite;
+}
+@keyframes midiWait {
+  50% {
+    outline-color: transparent;
+  }
+}
+[data-midi-label]::after {
+  content: attr(data-midi-label);
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #14161a;
+  font:
+    600 11px system-ui,
+    sans-serif;
+  text-decoration: none;
+  pointer-events: none;
+}
+/* Ear training rounds: the score while playing (src/views/roundViz.ts) */
+#roundViz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  margin: 14px 0 4px;
+}
+#roundViz .rvNote {
+  font-size: 12px;
+  color: var(--muted);
+  flex-basis: 100%;
+}
+#roundViz .dot.firstTry {
+  fill: var(--ok);
+}
+#roundViz .dot.corrected {
+  fill: var(--accent);
+}
+#roundViz .dot.skipped {
+  fill: var(--muted);
+  opacity: 0.6;
+}
+#roundViz .dot.todo {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+#roundViz .dot.todo.next {
+  stroke: var(--muted);
+}
+#roundViz .rvRing .track {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 7;
+}
+#roundViz .rvRing .fill {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+#roundViz .rvRing .avg,
+#roundViz .rvLine .avg {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+#roundViz .rvLine .avg {
+  stroke-dasharray: 4 4;
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+#roundViz .rvRing text {
+  text-anchor: middle;
+  fill: var(--text);
+  font-family: system-ui, sans-serif;
+}
+#roundViz .rvRing .share {
+  font-size: 17px;
+  font-weight: 600;
+}
+#roundViz .rvRing .count {
+  font-size: 10px;
+  fill: var(--muted);
+}
+#roundViz .rvLine .base {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+#roundViz .rvLine .run {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+#roundViz .rvLine .end {
+  fill: var(--ok);
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+/* Ear training rounds: the summary at a round's end */
+#practicePrompt .roundSummary {
+  font-family: system-ui, sans-serif;
+}
+#practicePrompt .roundShare {
+  font-size: 64px;
+  font-weight: 600;
+  line-height: 1;
+}
+#practicePrompt .roundOf {
+  font-size: 16px;
+  color: var(--muted);
+  margin: 8px 0 16px;
+}
+#practicePrompt .roundBars rect.then {
+  fill: var(--muted);
+  opacity: 0.45;
+}
+#practicePrompt .roundBars rect.now {
+  fill: var(--accent);
+}
+#practicePrompt .roundBars line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+/* Ear training's chord-quality answers: a board of large boxes in the staff's place, numbered for the number keys */
+#answerBoard {
+  width: 100%;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  padding: 8px;
+}
+#answerBoard .boxes {
+  width: 100%;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+#answerBoard .box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 120px;
+  padding: 18px 14px;
+  border-radius: 12px;
+  border: 2px solid #d8d2c3;
+  background: #fffdf8;
+  color: var(--ink);
+  font:
+    600 clamp(18px, 2vw, 24px) system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+#answerBoard .box:hover:not(:disabled) {
+  border-color: #9a968c;
+  background: #fff;
+}
+#answerBoard .box kbd {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font:
+    12px ui-monospace,
+    Menlo,
+    Consolas,
+    monospace;
+  color: #9a968c;
+  background: none;
+  border: none;
+}
+#answerBoard .boxDetail {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6f6a60;
+}
+#answerBoard .box.right {
+  border-color: #2e8b57;
+  background: #e6f3ea;
+  color: #1f6a40;
+}
+#answerBoard .box.right .boxDetail {
+  color: #1f6a40;
+}
+#answerBoard .box.wrong {
+  color: #b3ad9f;
+  background: #f3efe6;
+}
+#answerBoard .box.wrong .boxLabel {
+  text-decoration: line-through;
+}
+#answerBoard .box:disabled {
+  cursor: default;
+}
+/* Between rounds: one large Next round in place of everything else */
+#answerBoard .next {
+  min-width: min(100%, 360px);
+  padding: 28px 48px;
+  border-radius: 16px;
+  border: 2px solid #2e8b57;
+  background: #e6f3ea;
+  color: #1f6a40;
+  font:
+    600 clamp(24px, 3vw, 34px) system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+#answerBoard .next:hover {
+  background: #d8ecdf;
+}
+/* Replay, across the top of the board */
+#answerBoard .replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  border-radius: 999px;
+  border: 2px solid #d8d2c3;
+  background: #fffdf8;
+  color: var(--ink);
+  font:
+    600 18px system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+#answerBoard .replay span {
+  font-size: 14px;
+}
+#answerBoard .replay:hover:not(:disabled) {
+  border-color: #9a968c;
+  background: #fff;
+}
+#answerBoard .replay:disabled {
+  color: #b3ad9f;
+  cursor: default;
+}
+#practicePrompt .seqTitle {
+  font-size: 1.6em;
+  line-height: 1.1;
+  margin-bottom: 0.35em;
+}
+/* Sight reading: a song's composer and source under its title */
+#practicePrompt .excerptBy {
+  font-size: 0.6em;
+  color: var(--muted);
+}
+#practicePrompt .seqRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15em 0.45em;
+}
+#practicePrompt .seqRow .step .other {
+  font-size: 0.5em;
+}
+#practicePrompt .routineRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1em 0.5em;
+  font-size: 0.75em;
+  margin-bottom: 0.7em;
+}
+#practicePrompt .routineRow .step .other {
+  font-size: 0.55em;
+}
+#practicePrompt .step.flawed .main {
+  color: var(--accent);
+}
+#practicePrompt .step.skipped .main {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+#practicePrompt .step {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+#practicePrompt .step .main {
+  padding: 0 0.08em 0.06em;
+  border-bottom: 3px solid transparent;
+}
+#practicePrompt .step .other {
+  font-family: system-ui, sans-serif;
+  font-size: 0.3em;
+  color: var(--muted);
+  margin-top: 0.35em;
+}
+#practicePrompt .step.done .main {
+  color: var(--ok);
+}
+#practicePrompt .step.current .main {
+  border-bottom-color: var(--accent);
+}
+#practicePrompt .step.upcoming .main {
+  color: var(--muted);
+}
+/* Timed steps that missed the beat: early cool, late warm */
+#practicePrompt .step.done.early .main {
+  color: #6fa8dc;
+}
+#practicePrompt .step.done.late .main {
+  color: var(--warn);
+}
+#practicePrompt .sep {
+  color: var(--line);
+  padding: 0 0.12em;
+}
+#practicePrompt .acc {
+  font-size: 0.8em;
+}
+#practicePrompt .ext {
+  font-size: 0.55em;
+  vertical-align: 0.55em;
+}
+#practiceSub {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 16px;
+  min-height: 1.4em;
+}
+#chordOptions,
+#exerciseOptions,
+#routineOptions,
+#earOptions,
+#readingOptions {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+#chordOptions details,
+#earOptions details {
+  flex-basis: 100%;
+}
+#practicePrompt .fig {
+  display: inline-flex;
+  flex-direction: column;
+  font-size: 0.4em;
+  line-height: 0.95;
+  vertical-align: 0.55em;
+  margin-left: 0.04em;
+  text-align: center;
+}
+#chordFilters,
+#earFilters {
+  margin-top: 4px;
+}
+#chordFilters summary,
+#earFilters summary {
+  cursor: pointer;
+  user-select: none;
+}
+#chordFilterBody,
+#earFilterBody {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.filterGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.filterTitle {
+  width: 100%;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+#practiceFeedback {
+  margin-top: 18px;
+  font-size: 22px;
+  min-height: 1.4em;
+}
+#practiceFeedback.correct {
+  color: var(--ok);
+}
+#practiceFeedback.wrong {
+  color: var(--warn);
+}
+#practiceFooter {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 14px;
+  min-height: 28px;
+}
+
+#history {
+  margin-left: auto;
+}
+#historyNote {
+  margin-left: 6px;
+  color: var(--accent);
+}
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+button.link:hover {
+  color: var(--text);
+}
+footer {
+  padding: 10px 20px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+kbd {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 5px;
+  color: var(--text);
+}
+label.opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+label.opt input {
+  accent-color: var(--accent);
+}
 
 @media (max-width: 760px) {
-  main { grid-template-columns: 1fr; padding: 16px; }
-  header, footer { padding-left: 16px; padding-right: 16px; }
-  #staffCard { min-height: 260px; }
+  main {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  header,
+  footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  #staffCard {
+    min-height: 260px;
+  }
 }
 
 /* Progress view: filters, summary tiles, chart cards (src/views/progressView.ts, src/views/charts.ts) */
 /* Taller than the window: the page area scrolls (between the header and footer), practice modes never need to */
-main:has(#progressView:not([hidden])) { overflow-y: auto; }
-#progressView { grid-column: 1 / -1; min-width: 0; align-self: start; }
-.pvFilters #pvBack { color: var(--muted); font-size: 13px; text-decoration: none; }
-.pvFilters #pvBack:hover { color: var(--text); }
-/* The header's Progress button reads as pressed while the page is open */
-#progressBtn.on { background: var(--accent); border-color: var(--accent); color: #14161a; }
-.pvFilters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin-bottom: 16px; }
-.pvCount { margin-left: auto; color: var(--muted); font-size: 12px; }
-.pvTiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
-.pvTile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
-.pvTileLabel { color: var(--muted); font-size: 12px; }
-.pvTileValue { font-size: 26px; font-weight: 600; margin-top: 4px; }
-.pvTileNote { color: var(--muted); font-size: 12px; margin-top: 2px; }
-.pvGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
-.pvCard { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; min-width: 0; }
-.pvCard.wide { grid-column: 1 / -1; }
-.pvCard h3 { margin: 0; font-size: 15px; font-weight: 600; }
-.pvCard h4 { margin: 12px 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
-.pvSub { color: var(--muted); font-size: 12px; margin-top: 2px; }
-.pvPair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-.pvEmpty { color: var(--muted); font-size: 13px; padding: 28px 0; }
-.pvLegend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 10px; }
-.pvLegend i { display: inline-block; width: 14px; height: 2px; border-radius: 1px; vertical-align: middle; margin-right: 6px; }
-.pvChart { position: relative; margin-top: 6px; }
-.pvTable { margin-top: 8px; font-size: 12px; color: var(--muted); }
-.pvTable summary { cursor: pointer; }
-.pvCard table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; font-variant-numeric: tabular-nums; }
-.pvCard th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 4px 8px 4px 0; }
-.pvCard td { color: var(--text); border-bottom: 1px solid var(--line); padding: 4px 8px 4px 0; }
-.chart { display: block; }
-.chart .grid { stroke: #2c3038; stroke-width: 1; }
-.chart .base { stroke: #3a3f49; stroke-width: 1; }
-.chart text { fill: var(--muted); font: 11px system-ui, sans-serif; font-variant-numeric: tabular-nums; }
-.chart .ytick { text-anchor: end; dominant-baseline: middle; }
-.chart .xtick { text-anchor: middle; }
-.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.chart .marker { stroke: var(--panel); stroke-width: 2; }
-.chart .dot { opacity: .35; }
-.chart .bar.hot { filter: brightness(1.25); }
-.chart .cross { stroke: var(--muted); stroke-width: 1; }
-.chartTip {
-  position: absolute; pointer-events: none; background: #0f1114; border: 1px solid var(--line);
-  border-radius: 6px; padding: 6px 9px; font-size: 12px; color: var(--muted); white-space: nowrap; z-index: 2;
+main:has(#progressView:not([hidden])) {
+  overflow-y: auto;
 }
-.chartTip .tipTitle { margin-bottom: 3px; }
-.chartTip .tipRow { display: flex; align-items: center; gap: 6px; }
-.chartTip .tipKey { width: 10px; height: 2px; border-radius: 1px; }
-.chartTip strong { color: var(--text); font-weight: 600; }
+#progressView {
+  grid-column: 1 / -1;
+  min-width: 0;
+  align-self: start;
+}
+.pvFilters #pvBack {
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+.pvFilters #pvBack:hover {
+  color: var(--text);
+}
+/* The header's Progress button reads as pressed while the page is open */
+#progressBtn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #14161a;
+}
+.pvFilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  margin-bottom: 16px;
+}
+.pvCount {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+.pvTiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.pvTile {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+.pvTileLabel {
+  color: var(--muted);
+  font-size: 12px;
+}
+.pvTileValue {
+  font-size: 26px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+.pvTileNote {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.pvGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 16px;
+}
+.pvCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px 18px;
+  min-width: 0;
+}
+.pvCard.wide {
+  grid-column: 1 / -1;
+}
+.pvCard h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.pvCard h4 {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.pvSub {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.pvPair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.pvEmpty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 28px 0;
+}
+.pvLegend {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.pvLegend i {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.pvChart {
+  position: relative;
+  margin-top: 6px;
+}
+.pvTable {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.pvTable summary {
+  cursor: pointer;
+}
+.pvCard table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.pvCard th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--line);
+  padding: 4px 8px 4px 0;
+}
+.pvCard td {
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
+  padding: 4px 8px 4px 0;
+}
+.chart {
+  display: block;
+}
+.chart .grid {
+  stroke: #2c3038;
+  stroke-width: 1;
+}
+.chart .base {
+  stroke: #3a3f49;
+  stroke-width: 1;
+}
+.chart text {
+  fill: var(--muted);
+  font:
+    11px system-ui,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.chart .ytick {
+  text-anchor: end;
+  dominant-baseline: middle;
+}
+.chart .xtick {
+  text-anchor: middle;
+}
+.chart .line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart .marker {
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+.chart .dot {
+  opacity: 0.35;
+}
+.chart .bar.hot {
+  filter: brightness(1.25);
+}
+.chart .cross {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+.chartTip {
+  position: absolute;
+  pointer-events: none;
+  background: #0f1114;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  z-index: 2;
+}
+.chartTip .tipTitle {
+  margin-bottom: 3px;
+}
+.chartTip .tipRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chartTip .tipKey {
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+}
+.chartTip strong {
+  color: var(--text);
+  font-weight: 600;
+}

@@ -1,8 +1,11 @@
 // Progression practice mode: asks for a progression, judges the held keys chord by chord,
 // and starts a new progression after the last chord.
 import {
-  initialProgression, makeProgressionPrompt, reduceProgression,
-  type ProgressionAction, type ProgressionState,
+  initialProgression,
+  makeProgressionPrompt,
+  reduceProgression,
+  type ProgressionAction,
+  type ProgressionState,
 } from "../exercises/progressions";
 import type { Rng } from "../exercises/random";
 import { buildKey } from "../theory";
@@ -15,15 +18,24 @@ import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type 
 /** How long "✓ Progression complete" stays up before the next progression */
 const NEXT_PROGRESSION_MS = 1200;
 
-export function startProgressionPractice({ store, views, recorder = noRecorder, rng = Math.random }: {
-  store: AppStore; views: { staff: StaffView; practice: PracticeView }; recorder?: Recorder; rng?: Rng;
+export function startProgressionPractice({
+  store,
+  views,
+  recorder = noRecorder,
+  rng = Math.random,
+}: {
+  store: AppStore;
+  views: { staff: StaffView; practice: PracticeView };
+  recorder?: Recorder;
+  rng?: Rng;
 }): Mode {
   // Exercises don't use the header key: each progression names its own (random) key
   const newPrompt = (previous?: ProgressionState["prompt"]) => makeProgressionPrompt(rng, null, previous);
   let state: ProgressionState = initialProgression(newPrompt(), heldNotes(store.getState()));
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
   /** When the current progression appeared, and the first-try count then, to judge this progression alone */
-  let shownAt = Date.now(), firstTryBefore = state.chordsFirstTry;
+  let shownAt = Date.now(),
+    firstTryBefore = state.chordsFirstTry;
   // The staff follows the progression's key
   const drawer = createPerformanceDrawer(store, views, () => buildKey(state.prompt.keyValue));
 
@@ -34,9 +46,14 @@ export function startProgressionPractice({ store, views, recorder = noRecorder, 
     state = reduceProgression(state, action);
     if (state === prev) return;
     if (state.status === "done" && prev.status !== "done") {
-      recorder.record(progressionDrillBody(state.prompt, true, state.chordsFirstTry - firstTryBefore, Date.now() - shownAt));
+      recorder.record(
+        progressionDrillBody(state.prompt, true, state.chordsFirstTry - firstTryBefore, Date.now() - shownAt),
+      );
     }
-    if (state.prompt !== prev.prompt) { shownAt = Date.now(); firstTryBefore = state.chordsFirstTry; }
+    if (state.prompt !== prev.prompt) {
+      shownAt = Date.now();
+      firstTryBefore = state.chordsFirstTry;
+    }
     render();
     if (state.prompt !== prev.prompt) drawer.schedule();
     if (state.status === "done" && prev.status !== "done") {
@@ -49,14 +66,18 @@ export function startProgressionPractice({ store, views, recorder = noRecorder, 
     clearTimeout(nextTimer);
     // Skipped part-way (or before starting)
     if (state.status !== "done") {
-      recorder.record(progressionDrillBody(state.prompt, false, state.chordsFirstTry - firstTryBefore, Date.now() - shownAt));
+      recorder.record(
+        progressionDrillBody(state.prompt, false, state.chordsFirstTry - firstTryBefore, Date.now() - shownAt),
+      );
     }
     apply({ type: "next", prompt: newPrompt(state.prompt) });
   }
 
   const offInput = onPlayerInput(store, { held: notes => apply({ type: "held", notes }) });
   // The prompt style only changes how the progression is shown
-  const offSettings = store.subscribe((s, prev) => { if (s.settings.promptStyle !== prev.settings.promptStyle) render(); });
+  const offSettings = store.subscribe((s, prev) => {
+    if (s.settings.promptStyle !== prev.settings.promptStyle) render();
+  });
   render();
 
   return {

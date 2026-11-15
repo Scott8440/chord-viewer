@@ -86,9 +86,13 @@ export interface EarDrill<S, A> {
   stop(): void;
 }
 
-export function createEarDrill<P, S extends Judged<P>, A extends { type: string }, O>(store: AppStore, views: EarDrillViews,
-                                                            cfg: EarDrillConfig<P, S, A, O>, recorder: Recorder,
-                                                            history: Promise<ProgressStore> | null): EarDrill<S, A> {
+export function createEarDrill<P, S extends Judged<P>, A extends { type: string }, O>(
+  store: AppStore,
+  views: EarDrillViews,
+  cfg: EarDrillConfig<P, S, A, O>,
+  recorder: Recorder,
+  history: Promise<ProgressStore> | null,
+): EarDrill<S, A> {
   // In rounds of ROUND_SIZE prompts, compared at the end with earlier rounds played the same way
   const rounds = createRoundKeeper({ drill: cfg.drill, recorder, history, changed: () => render(), setup: cfg.setup });
   let state = cfg.initial;
@@ -119,8 +123,11 @@ export function createEarDrill<P, S extends Judged<P>, A extends { type: string 
   function render() {
     const summary = rounds.summary();
     views.roundViz.render({ outcomes: rounds.outcomes(), average: rounds.average() });
-    views.practice.render(summary ? cfg.summaryDisplay(summary)
-      : { ...cfg.display(state, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
+    views.practice.render(
+      summary
+        ? cfg.summaryDisplay(summary)
+        : { ...cfg.display(state, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) },
+    );
     cfg.rendered?.(state, { summary, running, over: rounds.over() });
   }
 
@@ -143,7 +150,10 @@ export function createEarDrill<P, S extends Judged<P>, A extends { type: string 
     if (state.prompt !== prev.prompt) sound();
     render();
     clearTimers();
-    if (state.status === "wrong") replayTimer = setTimeout(() => { if (running) replay(state); }, REPLAY_AFTER_MISS_MS);
+    if (state.status === "wrong")
+      replayTimer = setTimeout(() => {
+        if (running) replay(state);
+      }, REPLAY_AFTER_MISS_MS);
     if (state.status === "correct") nextTimer = setTimeout(next, cfg.nextPromptMs);
   }
 
@@ -182,7 +192,8 @@ export function createEarDrill<P, S extends Judged<P>, A extends { type: string 
   }
 
   const offSettings = store.subscribe((s, p) => {
-    const o = cfg.options(s), before = cfg.options(p);
+    const o = cfg.options(s),
+      before = cfg.options(p);
     if (o !== before) restart(o, before);
   });
   const offBlocked = views.tones.onBlockedChange(() => {
@@ -213,7 +224,7 @@ export function createEarDrill<P, S extends Judged<P>, A extends { type: string 
         else rounds.reveal();
         return;
       }
-      running = true;   // skipping while stopped starts again, on the new prompt
+      running = true; // skipping while stopped starts again, on the new prompt
       apply({ type: "skip", prompt: cfg.nextPrompt(state.prompt) });
     },
     nextRound() {

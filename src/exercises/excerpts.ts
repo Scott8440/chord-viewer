@@ -127,14 +127,28 @@ export const excerptFileName = (part: ReadingPart) => `lieder-${part}.json`;
 /** The file if it's a well-formed excerpt file for the part (this version, this part); else throws */
 export function checkExcerptFile(f: unknown, part: ReadingPart): ExcerptFile {
   const file = f as Partial<ExcerptFile> | null;
-  if (!file || file.version !== EXCERPT_FILE_VERSION || file.part !== part || typeof file.credit !== "string" ||
-      !Array.isArray(file.sources) || !Array.isArray(file.excerpts)) {
+  if (
+    !file ||
+    file.version !== EXCERPT_FILE_VERSION ||
+    file.part !== part ||
+    typeof file.credit !== "string" ||
+    !Array.isArray(file.sources) ||
+    !Array.isArray(file.excerpts)
+  ) {
     throw new Error(`not a version ${EXCERPT_FILE_VERSION} excerpt file for ${part}`);
   }
   return file as ExcerptFile;
 }
 
-const BASE: Record<NoteValue, number> = { w: 1, h: 1 / 2, q: 1 / 4, "8": 1 / 8, "16": 1 / 16, "32": 1 / 32, "64": 1 / 64 };
+const BASE: Record<NoteValue, number> = {
+  w: 1,
+  h: 1 / 2,
+  q: 1 / 4,
+  "8": 1 / 8,
+  "16": 1 / 16,
+  "32": 1 / 32,
+  "64": 1 / 64,
+};
 
 /** How long an event lasts, as a fraction of a whole note (a whole-bar rest is given its bar's length by the caller) */
 export function eventLength(e: Pick<ExcerptEvent, "v" | "d" | "t">): number {
@@ -146,13 +160,19 @@ export function eventLength(e: Pick<ExcerptEvent, "v" | "d" | "t">): number {
 /** Each bar's length: the longest voice in it (a pickup is short; a whole-bar rest is the time signature's) */
 export function barLengths(staves: readonly ExcerptStaff[], time: readonly [number, number]): number[] {
   const bars = staves[0].voices[0].length;
-  return Array.from({ length: bars }, (_, b) => Math.max(0, ...staves.flatMap(st => st.voices.map(v =>
-    (v[b] ?? []).reduce((sum, e) => sum + (e.bar ? time[0] / time[1] : eventLength(e)), 0)))));
+  return Array.from({ length: bars }, (_, b) =>
+    Math.max(
+      0,
+      ...staves.flatMap(st =>
+        st.voices.map(v => (v[b] ?? []).reduce((sum, e) => sum + (e.bar ? time[0] / time[1] : eventLength(e)), 0)),
+      ),
+    ),
+  );
 }
 
 /** A tonal pitch class (tpc) as a note name: 14 → "C", 20 → "F#", 12 → "Bb" */
 export function tpcName(tpc: number): string {
-  const letter = "FCGDAEB"[((tpc + 1) % 7 + 7) % 7];
+  const letter = "FCGDAEB"[(((tpc + 1) % 7) + 7) % 7];
   const alter = Math.floor((tpc + 1) / 7) - 2;
   return letter + (alter > 0 ? "#".repeat(alter) : "b".repeat(-alter));
 }
@@ -162,7 +182,7 @@ export const tpcAlter = (tpc: number) => Math.floor((tpc + 1) / 7) - 2;
 
 const LETTERS = "CDEFGAB";
 const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
-const tpcLetter = (tpc: number) => "FCGDAEB"[((tpc + 1) % 7 + 7) % 7];
+const tpcLetter = (tpc: number) => "FCGDAEB"[(((tpc + 1) % 7) + 7) % 7];
 
 /** A written note's staff step: C4 is 28, each letter one step */
 export function staffStep(p: number, tpc: number): number {
@@ -191,7 +211,10 @@ export function partStaves(e: Excerpt, part: ReadingPart): ExcerptStaff[] {
 }
 
 const mapNotes = (staves: readonly ExcerptStaff[], f: (n: ExcerptNote) => ExcerptNote): ExcerptStaff[] =>
-  staves.map(st => ({ ...st, voices: st.voices.map(v => v.map(bar => bar.map(e => e.n ? { ...e, n: e.n.map(f) } : e))) }));
+  staves.map(st => ({
+    ...st,
+    voices: st.voices.map(v => v.map(bar => bar.map(e => (e.n ? { ...e, n: e.n.map(f) } : e)))),
+  }));
 
 /**
  * Staves moved from one key signature to another (in fifths), spelled for it, all by the same interval, in the octave
@@ -202,14 +225,19 @@ export function transposeStaves(staves: readonly ExcerptStaff[], from: number, t
   const shift = to - from;
   const notes = staves.flatMap(st => st.voices.flat(2).flatMap(e => (e.n ?? []).map(n => ({ n, clef: st.clef }))));
   if (notes.some(({ n }) => Math.abs(tpcAlter(n.s + shift)) > 2)) return null;
-  const base = ((shift * 7) % 12 + 12) % 12;
-  let best = 0, bestCost = Infinity;
+  const base = (((shift * 7) % 12) + 12) % 12;
+  let best = 0,
+    bestCost = Infinity;
   for (const semitones of [base - 24, base - 12, base, base + 12]) {
     const cost = notes.reduce((sum, { n, clef }) => {
-      const step = staffStep(n.p + semitones, n.s + shift), [low, high] = LEDGER[clef];
+      const step = staffStep(n.p + semitones, n.s + shift),
+        [low, high] = LEDGER[clef];
       return sum + Math.max(0, low - step, step - high);
     }, 0);
-    if (cost < bestCost || (cost === bestCost && Math.abs(semitones) < Math.abs(best))) { best = semitones; bestCost = cost; }
+    if (cost < bestCost || (cost === bestCost && Math.abs(semitones) < Math.abs(best))) {
+      best = semitones;
+      bestCost = cost;
+    }
   }
   if (!shift && !best) return [...staves];
   return mapNotes(staves, n => ({ ...n, p: n.p + best, s: n.s + shift }));
@@ -238,25 +266,29 @@ export interface ExcerptTie {
  * lands on the same pitch starting as it ends, in its own voice or, failing that, another voice of the same staff
  * (a chord tied from one voice into another, as piano parts often are).
  */
-export function excerptTimeline(staves: readonly ExcerptStaff[], time: readonly [number, number]):
-  { at: number[][][][]; ties: ExcerptTie[] } {
+export function excerptTimeline(
+  staves: readonly ExcerptStaff[],
+  time: readonly [number, number],
+): { at: number[][][][]; ties: ExcerptTie[] } {
   const lengths = barLengths(staves, time);
   const starts = lengths.map((_, b) => lengths.slice(0, b).reduce((a, x) => a + x, 0));
   const key = (t: number) => Math.round(t * 1e6);
   const ties: ExcerptTie[] = [];
   const at = staves.map((st, si) => {
     const placed: { pos: EventPos; e: ExcerptEvent; at: number; end: number }[] = [];
-    const times = st.voices.map((voice, vi) => voice.map((bar, b) => {
-      let t = starts[b];
-      return bar.map((e, i) => {
-        const len = e.bar ? lengths[b] : eventLength(e);
-        placed.push({ pos: [si, vi, b, i], e, at: t, end: t + len });
-        t += len;
-        return t - len;
-      });
-    }));
+    const times = st.voices.map((voice, vi) =>
+      voice.map((bar, b) => {
+        let t = starts[b];
+        return bar.map((e, i) => {
+          const len = e.bar ? lengths[b] : eventLength(e);
+          placed.push({ pos: [si, vi, b, i], e, at: t, end: t + len });
+          t += len;
+          return t - len;
+        });
+      }),
+    );
     const byStart = new Map<number, typeof placed>();
-    for (const x of placed) if (x.e.n) byStart.set(key(x.at), [...byStart.get(key(x.at)) ?? [], x]);
+    for (const x of placed) if (x.e.n) byStart.set(key(x.at), [...(byStart.get(key(x.at)) ?? []), x]);
     for (const x of placed) {
       const tied = x.e.n?.filter(n => n.tie) ?? [];
       if (!tied.length) continue;
@@ -265,7 +297,7 @@ export function excerptTimeline(staves: readonly ExcerptStaff[], time: readonly 
       for (const n of tied) {
         const has = (c: (typeof placed)[number]) => c.e.n?.some(m => m.p === n.p) ?? false;
         const target = next.find(c => c.pos[1] === x.pos[1] && has(c)) ?? next.find(has);
-        if (target) targets.set(target, [...targets.get(target) ?? [], n.p]);
+        if (target) targets.set(target, [...(targets.get(target) ?? []), n.p]);
       }
       for (const [target, pitches] of targets) ties.push({ from: x.pos, to: target.pos, pitches });
     }
@@ -278,26 +310,36 @@ export function excerptTimeline(staves: readonly ExcerptStaff[], time: readonly 
  * The steps to play, in order, and for each event (`stepOf[staff][voice][bar][event]`) the step that strikes it:
  * a tied-over chord's is the step that struck what it continues; −1 for rests.
  */
-export function excerptSteps(staves: readonly ExcerptStaff[], time: readonly [number, number]):
-  { steps: ExcerptStep[]; stepOf: number[][][][] } {
+export function excerptSteps(
+  staves: readonly ExcerptStaff[],
+  time: readonly [number, number],
+): { steps: ExcerptStep[]; stepOf: number[][][][] } {
   const { at, ties } = excerptTimeline(staves, time);
   const id = (p: EventPos) => p.join();
-  const continued = new Map<string, Set<number>>(), source = new Map<string, EventPos>();
+  const continued = new Map<string, Set<number>>(),
+    source = new Map<string, EventPos>();
   for (const t of ties) {
-    continued.set(id(t.to), new Set([...continued.get(id(t.to)) ?? [], ...t.pitches]));
+    continued.set(id(t.to), new Set([...(continued.get(id(t.to)) ?? []), ...t.pitches]));
     if (!source.has(id(t.to))) source.set(id(t.to), t.from);
   }
   const key = (t: number) => Math.round(t * 1e6);
   const struck = new Map<number, { at: number; notes: Map<number, number> }>();
-  staves.forEach((st, si) => st.voices.forEach((voice, vi) => voice.forEach((bar, b) => bar.forEach((e, i) => {
-    const fresh = (e.n ?? []).filter(n => !continued.get(id([si, vi, b, i]))?.has(n.p));
-    if (!fresh.length) return;
-    const t = at[si][vi][b][i];
-    const s = struck.get(key(t)) ?? { at: t, notes: new Map() };
-    for (const n of fresh) s.notes.set(n.p, n.s);
-    struck.set(key(t), s);
-  }))));
-  const steps = [...struck.values()].sort((a, b) => a.at - b.at)
+  staves.forEach((st, si) =>
+    st.voices.forEach((voice, vi) =>
+      voice.forEach((bar, b) =>
+        bar.forEach((e, i) => {
+          const fresh = (e.n ?? []).filter(n => !continued.get(id([si, vi, b, i]))?.has(n.p));
+          if (!fresh.length) return;
+          const t = at[si][vi][b][i];
+          const s = struck.get(key(t)) ?? { at: t, notes: new Map() };
+          for (const n of fresh) s.notes.set(n.p, n.s);
+          struck.set(key(t), s);
+        }),
+      ),
+    ),
+  );
+  const steps = [...struck.values()]
+    .sort((a, b) => a.at - b.at)
     .map(s => ({ at: s.at, notes: [...s.notes].sort((a, b) => a[0] - b[0]).map(([p, s]) => ({ p, s })) }));
   const index = new Map(steps.map((s, i) => [key(s.at), i]));
   const stepAt = (pos: EventPos): number => {
@@ -309,7 +351,9 @@ export function excerptSteps(staves: readonly ExcerptStaff[], time: readonly [nu
   };
   return {
     steps,
-    stepOf: staves.map((st, si) => st.voices.map((voice, vi) => voice.map((bar, b) => bar.map((_, i) => stepAt([si, vi, b, i]))))),
+    stepOf: staves.map((st, si) =>
+      st.voices.map((voice, vi) => voice.map((bar, b) => bar.map((_, i) => stepAt([si, vi, b, i])))),
+    ),
   };
 }
 
@@ -321,12 +365,20 @@ export function tupletGroups(bar: readonly ExcerptEvent[]): { from: number; to: 
   const out: { from: number; to: number; t: [number, number] }[] = [];
   /** The tuplet being filled: where it started, and its ratio */
   let open: { from: number; t: [number, number] } | null = null;
-  let sum = 0, smallest = Infinity;
-  const close = (to: number) => { if (open) out.push({ from: open.from, to, t: open.t }); open = null; };
+  let sum = 0,
+    smallest = Infinity;
+  const close = (to: number) => {
+    if (open) out.push({ from: open.from, to, t: open.t });
+    open = null;
+  };
   bar.forEach((e, i) => {
     if (open && (!e.t || e.t[0] !== open.t[0] || e.t[1] !== open.t[1])) close(i);
     if (!e.t) return;
-    if (!open) { open = { from: i, t: e.t }; sum = 0; smallest = Infinity; }
+    if (!open) {
+      open = { from: i, t: e.t };
+      sum = 0;
+      smallest = Infinity;
+    }
     sum += eventLength({ v: e.v, d: e.d });
     smallest = Math.min(smallest, BASE[e.v]);
     const units = sum / (e.t[0] * smallest);
@@ -365,52 +417,222 @@ export interface LevelLimits {
 }
 
 const ANYTHING: LevelLimits = {
-  bars: Infinity, chromatic: Infinity, range: Infinity, maxLeap: Infinity, ledger: Infinity, values: Infinity, shortest: 0,
-  dotted: Infinity, ties: Infinity, tuplets: Infinity, syncopations: Infinity, compound: true, chord: Infinity,
-  span: Infinity, voices: Infinity, perBar: Infinity,
+  bars: Infinity,
+  chromatic: Infinity,
+  range: Infinity,
+  maxLeap: Infinity,
+  ledger: Infinity,
+  values: Infinity,
+  shortest: 0,
+  dotted: Infinity,
+  ties: Infinity,
+  tuplets: Infinity,
+  syncopations: Infinity,
+  compound: true,
+  chord: Infinity,
+  span: Infinity,
+  voices: Infinity,
+  perBar: Infinity,
 };
 
 export const READING_LEVELS: readonly { name: string; limits: LevelLimits }[] = [
-  { name: "Steps, simple rhythm",
-    limits: { bars: 2, chromatic: 0, range: 7, maxLeap: 4, ledger: 0, values: 2, shortest: 1 / 8,
-              dotted: 0, ties: 0, tuplets: 0, syncopations: 0, compound: false, chord: 1, span: 0, voices: 1, perBar: Infinity } },
-  { name: "Small leaps, dotted notes",
-    limits: { bars: 4, chromatic: 1, range: 9, maxLeap: 7, ledger: 1, values: 3, shortest: 1 / 8,
-              dotted: 2, ties: 1, tuplets: 0, syncopations: 0, compound: false, chord: 1, span: 0, voices: 1, perBar: Infinity } },
-  { name: "Wider range, compound time",
-    limits: { bars: 4, chromatic: 1, range: 12, maxLeap: 9, ledger: 2, values: 4, shortest: 1 / 16,
-              dotted: 4, ties: 2, tuplets: 0, syncopations: 1, compound: true, chord: 1, span: 0, voices: 1, perBar: Infinity } },
-  { name: "Accidentals, triplets",
-    limits: { bars: 4, chromatic: 3, range: 16, maxLeap: 12, ledger: 3, values: 5, shortest: 1 / 16,
-              dotted: 8, ties: 4, tuplets: 6, syncopations: 2, compound: true, chord: 1, span: 0, voices: 1, perBar: Infinity } },
+  {
+    name: "Steps, simple rhythm",
+    limits: {
+      bars: 2,
+      chromatic: 0,
+      range: 7,
+      maxLeap: 4,
+      ledger: 0,
+      values: 2,
+      shortest: 1 / 8,
+      dotted: 0,
+      ties: 0,
+      tuplets: 0,
+      syncopations: 0,
+      compound: false,
+      chord: 1,
+      span: 0,
+      voices: 1,
+      perBar: Infinity,
+    },
+  },
+  {
+    name: "Small leaps, dotted notes",
+    limits: {
+      bars: 4,
+      chromatic: 1,
+      range: 9,
+      maxLeap: 7,
+      ledger: 1,
+      values: 3,
+      shortest: 1 / 8,
+      dotted: 2,
+      ties: 1,
+      tuplets: 0,
+      syncopations: 0,
+      compound: false,
+      chord: 1,
+      span: 0,
+      voices: 1,
+      perBar: Infinity,
+    },
+  },
+  {
+    name: "Wider range, compound time",
+    limits: {
+      bars: 4,
+      chromatic: 1,
+      range: 12,
+      maxLeap: 9,
+      ledger: 2,
+      values: 4,
+      shortest: 1 / 16,
+      dotted: 4,
+      ties: 2,
+      tuplets: 0,
+      syncopations: 1,
+      compound: true,
+      chord: 1,
+      span: 0,
+      voices: 1,
+      perBar: Infinity,
+    },
+  },
+  {
+    name: "Accidentals, triplets",
+    limits: {
+      bars: 4,
+      chromatic: 3,
+      range: 16,
+      maxLeap: 12,
+      ledger: 3,
+      values: 5,
+      shortest: 1 / 16,
+      dotted: 8,
+      ties: 4,
+      tuplets: 6,
+      syncopations: 2,
+      compound: true,
+      chord: 1,
+      span: 0,
+      voices: 1,
+      perBar: Infinity,
+    },
+  },
   { name: "Anything", limits: ANYTHING },
 ];
 
 export const PIANO_LEVELS: readonly { name: string; limits: LevelLimits }[] = [
-  { name: "Single notes, simple rhythm",
-    limits: { bars: 2, chromatic: 1, range: 12, maxLeap: 7, ledger: 1, values: 3, shortest: 1 / 8,
-              dotted: 1, ties: 1, tuplets: 0, syncopations: 0, compound: false, chord: 1, span: 0, voices: 1, perBar: 6 } },
-  { name: "Two-note chords",
-    limits: { bars: 4, chromatic: 2, range: 16, maxLeap: 12, ledger: 2, values: 3, shortest: 1 / 8,
-              dotted: 2, ties: 2, tuplets: 0, syncopations: 1, compound: true, chord: 2, span: 12, voices: 1, perBar: 8 } },
-  { name: "Triads, two voices",
-    limits: { bars: 4, chromatic: 3, range: 19, maxLeap: 12, ledger: 3, values: 4, shortest: 1 / 16,
-              dotted: 4, ties: 4, tuplets: 0, syncopations: 2, compound: true, chord: 3, span: 12, voices: 2, perBar: 12 } },
-  { name: "Fuller chords, triplets",
-    limits: { bars: 4, chromatic: 6, range: 24, maxLeap: 16, ledger: 4, values: 5, shortest: 1 / 16,
-              dotted: 8, ties: 8, tuplets: 12, syncopations: 4, compound: true, chord: 4, span: 14, voices: 2, perBar: 16 } },
+  {
+    name: "Single notes, simple rhythm",
+    limits: {
+      bars: 2,
+      chromatic: 1,
+      range: 12,
+      maxLeap: 7,
+      ledger: 1,
+      values: 3,
+      shortest: 1 / 8,
+      dotted: 1,
+      ties: 1,
+      tuplets: 0,
+      syncopations: 0,
+      compound: false,
+      chord: 1,
+      span: 0,
+      voices: 1,
+      perBar: 6,
+    },
+  },
+  {
+    name: "Two-note chords",
+    limits: {
+      bars: 4,
+      chromatic: 2,
+      range: 16,
+      maxLeap: 12,
+      ledger: 2,
+      values: 3,
+      shortest: 1 / 8,
+      dotted: 2,
+      ties: 2,
+      tuplets: 0,
+      syncopations: 1,
+      compound: true,
+      chord: 2,
+      span: 12,
+      voices: 1,
+      perBar: 8,
+    },
+  },
+  {
+    name: "Triads, two voices",
+    limits: {
+      bars: 4,
+      chromatic: 3,
+      range: 19,
+      maxLeap: 12,
+      ledger: 3,
+      values: 4,
+      shortest: 1 / 16,
+      dotted: 4,
+      ties: 4,
+      tuplets: 0,
+      syncopations: 2,
+      compound: true,
+      chord: 3,
+      span: 12,
+      voices: 2,
+      perBar: 12,
+    },
+  },
+  {
+    name: "Fuller chords, triplets",
+    limits: {
+      bars: 4,
+      chromatic: 6,
+      range: 24,
+      maxLeap: 16,
+      ledger: 4,
+      values: 5,
+      shortest: 1 / 16,
+      dotted: 8,
+      ties: 8,
+      tuplets: 12,
+      syncopations: 4,
+      compound: true,
+      chord: 4,
+      span: 14,
+      voices: 2,
+      perBar: 16,
+    },
+  },
   { name: "Anything", limits: ANYTHING },
 ];
 
 /** The level table for a part */
-export const levelsFor = (part: ReadingPart) => part === "voice" ? READING_LEVELS : PIANO_LEVELS;
+export const levelsFor = (part: ReadingPart) => (part === "voice" ? READING_LEVELS : PIANO_LEVELS);
 
 export function fitsLevel(f: ExcerptFeatures, l: LevelLimits): boolean {
-  return f.bars <= l.bars && f.chromatic <= l.chromatic && f.range <= l.range &&
-    f.maxLeap <= l.maxLeap && f.ledger <= l.ledger && f.values <= l.values && f.shortest >= l.shortest - 1e-9 &&
-    f.dotted <= l.dotted && f.ties <= l.ties && f.tuplets <= l.tuplets && f.syncopations <= l.syncopations &&
-    (l.compound || !f.compound) && f.chord <= l.chord && f.span <= l.span && f.voices <= l.voices &&
-    f.notes / f.bars <= l.perBar + 1e-9;
+  return (
+    f.bars <= l.bars &&
+    f.chromatic <= l.chromatic &&
+    f.range <= l.range &&
+    f.maxLeap <= l.maxLeap &&
+    f.ledger <= l.ledger &&
+    f.values <= l.values &&
+    f.shortest >= l.shortest - 1e-9 &&
+    f.dotted <= l.dotted &&
+    f.ties <= l.ties &&
+    f.tuplets <= l.tuplets &&
+    f.syncopations <= l.syncopations &&
+    (l.compound || !f.compound) &&
+    f.chord <= l.chord &&
+    f.span <= l.span &&
+    f.voices <= l.voices &&
+    f.notes / f.bars <= l.perBar + 1e-9
+  );
 }
 
 /** An excerpt's level in a part: 1 for the easiest */

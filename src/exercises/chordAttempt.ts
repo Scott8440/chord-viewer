@@ -13,17 +13,17 @@ export interface ChordAttempt {
   peak: number[];
 }
 
-export type AttemptOutcome =
-  | { kind: "match" }
-  | { kind: "miss"; notes: number[] }
-  | { kind: "none" };
+export type AttemptOutcome = { kind: "match" } | { kind: "miss"; notes: number[] } | { kind: "none" };
 
 /** A new attempt; keys already held (e.g. the previous chord) are not part of it. */
 export const freshAttempt = (held: number[] = []): ChordAttempt => ({ prevHeld: held, pressed: false, peak: [] });
 
 /** Feeds the keys now held (MIDI numbers, low to high) and says whether they form the target or an attempt missed it. */
-export function trackAttempt(a: ChordAttempt, notes: number[], isTarget: (notes: number[]) => boolean):
-    { attempt: ChordAttempt; outcome: AttemptOutcome } {
+export function trackAttempt(
+  a: ChordAttempt,
+  notes: number[],
+  isTarget: (notes: number[]) => boolean,
+): { attempt: ChordAttempt; outcome: AttemptOutcome } {
   if (isTarget(notes)) return { attempt: freshAttempt(notes), outcome: { kind: "match" } };
   if (!notes.length) {
     return { attempt: freshAttempt(), outcome: a.pressed ? { kind: "miss", notes: a.peak } : { kind: "none" } };

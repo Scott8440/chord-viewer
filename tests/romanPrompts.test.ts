@@ -8,7 +8,10 @@ import { analyze, buildKey, KEY_MAJORS, KEY_MINORS, matchTemplate, prettyAcc, te
 import { chordPracticeDisplay } from "../src/views/practice";
 
 const KEYS = [...KEY_MAJORS.map(t => t + ":major"), ...KEY_MINORS.map(t => t + ":minor")];
-const seq = (...values: number[]) => { let i = 0; return () => values[i++ % values.length]; };
+const seq = (...values: number[]) => {
+  let i = 0;
+  return () => values[i++ % values.length];
+};
 
 /** The prompted chord in close root position, starting at C3 or above */
 function voice(c: { rootPc: number; type: string }): number[] {
@@ -72,7 +75,7 @@ describe("makeRomanPrompt", () => {
 });
 
 describe("Roman prompt display", () => {
-  const V7inG = makeRomanPrompt(seq(0.5), ["7"], buildKey("G:major"));   // V7 is the only dominant 7th in G
+  const V7inG = makeRomanPrompt(seq(0.5), ["7"], buildKey("G:major")); // V7 is the only dominant 7th in G
 
   it("shows the numeral and the key, and reveals the chord when answered", () => {
     expect(V7inG).toMatchObject({ root: "D", type: "7", roman: { numeral: "V7" } });
@@ -86,7 +89,7 @@ describe("Roman prompt display", () => {
 
   it("names a wrong chord with its numeral in the prompt's key", () => {
     let s = initialChordPractice(V7inG);
-    s = reduceChordPractice(s, { type: "held", notes: [48, 52, 55] });     // C major = IV in G
+    s = reduceChordPractice(s, { type: "held", notes: [48, 52, 55] }); // C major = IV in G
     s = reduceChordPractice(s, { type: "held", notes: [] });
     expect(chordPracticeDisplay(s, null).feedback).toMatch(/^✗ That was C \(IV\)\. /);
   });

@@ -6,8 +6,15 @@
 // (earDrill.ts); this sounds the chord and runs the answer board.
 import type { TonePlayer } from "../audio/tones";
 import {
-  answerOrder, initialChordEar, makeChordEarPrompt, qualityLabel, reduceChordEar,
-  type ChordEarAction, type ChordEarOptions, type ChordEarPrompt, type ChordEarState,
+  answerOrder,
+  initialChordEar,
+  makeChordEarPrompt,
+  qualityLabel,
+  reduceChordEar,
+  type ChordEarAction,
+  type ChordEarOptions,
+  type ChordEarPrompt,
+  type ChordEarState,
 } from "../exercises/chordEar";
 import type { Rng } from "../exercises/random";
 import { isTypingOrModified } from "../input/keys";
@@ -21,45 +28,66 @@ import type { AppStore, Mode } from "./performance";
 import type { RoundVizView } from "../views/roundViz";
 
 /** How long the chord rings; with Broken, the gap between its notes and the pause before them together */
-const CHORD_RING_S = 2.4, BROKEN_GAP_S = 0.45, BROKEN_PAUSE_S = 0.35;
+const CHORD_RING_S = 2.4,
+  BROKEN_GAP_S = 0.45,
+  BROKEN_PAUSE_S = 0.35;
 /** How long "✓ D♭ minor" stays up before the next chord */
 const NEXT_PROMPT_MS = 1500;
 
-export function startEarChords({ store, views, recorder = noRecorder, history = null, rng = Math.random }: {
-  store: AppStore; views: { practice: PracticeView; tones: TonePlayer; answers: AnswerBoard; roundViz: RoundVizView };
-  recorder?: Recorder; history?: Promise<ProgressStore> | null; rng?: Rng;
+export function startEarChords({
+  store,
+  views,
+  recorder = noRecorder,
+  history = null,
+  rng = Math.random,
+}: {
+  store: AppStore;
+  views: { practice: PracticeView; tones: TonePlayer; answers: AnswerBoard; roundViz: RoundVizView };
+  recorder?: Recorder;
+  history?: Promise<ProgressStore> | null;
+  rng?: Rng;
 }): Mode {
   const options = () => store.getState().settings.earChords;
 
-  const drill = createEarDrill<ChordEarPrompt, ChordEarState, ChordEarAction, ChordEarOptions>(store, views, {
-    drill: "chordEar",
-    options: s => s.settings.earChords,
-    setup: () => { const o = options(); return `types:${answerOrder(o.types).join(",")};inversions:${o.inversions};broken:${o.broken}`; },
-    initial: initialChordEar(makeChordEarPrompt(rng, options())),
-    reduce: reduceChordEar,
-    nextPrompt: previous => makeChordEarPrompt(rng, options(), previous),
-    freshPrompt: (o, _before, previous) => makeChordEarPrompt(rng, o, previous),
-    nextPromptMs: NEXT_PROMPT_MS,
-    record: (s, answered, ms) =>
-      chordEarDrillBody(s.prompt, qualityLabel(s.prompt.type), options().types, answered, s.missed, ms, s.wrong),
-    // The chord (its notes one by one first, with Broken), cutting off anything still sounding
-    sound(s) {
-      views.tones.stopNotes();
-      const notes = s.prompt.notes, level = 1 / Math.sqrt(notes.length);
-      const together = options().broken ? notes.length * BROKEN_GAP_S + BROKEN_PAUSE_S : 0;
-      if (options().broken) notes.forEach((n, i) => views.tones.play(n, i * BROKEN_GAP_S, 1.2, 0.8));
-      for (const n of notes) views.tones.play(n, together, CHORD_RING_S, level);
+  const drill = createEarDrill<ChordEarPrompt, ChordEarState, ChordEarAction, ChordEarOptions>(
+    store,
+    views,
+    {
+      drill: "chordEar",
+      options: s => s.settings.earChords,
+      setup: () => {
+        const o = options();
+        return `types:${answerOrder(o.types).join(",")};inversions:${o.inversions};broken:${o.broken}`;
+      },
+      initial: initialChordEar(makeChordEarPrompt(rng, options())),
+      reduce: reduceChordEar,
+      nextPrompt: previous => makeChordEarPrompt(rng, options(), previous),
+      freshPrompt: (o, _before, previous) => makeChordEarPrompt(rng, o, previous),
+      nextPromptMs: NEXT_PROMPT_MS,
+      record: (s, answered, ms) =>
+        chordEarDrillBody(s.prompt, qualityLabel(s.prompt.type), options().types, answered, s.missed, ms, s.wrong),
+      // The chord (its notes one by one first, with Broken), cutting off anything still sounding
+      sound(s) {
+        views.tones.stopNotes();
+        const notes = s.prompt.notes,
+          level = 1 / Math.sqrt(notes.length);
+        const together = options().broken ? notes.length * BROKEN_GAP_S + BROKEN_PAUSE_S : 0;
+        if (options().broken) notes.forEach((n, i) => views.tones.play(n, i * BROKEN_GAP_S, 1.2, 0.8));
+        for (const n of notes) views.tones.play(n, together, CHORD_RING_S, level);
+      },
+      // At a round's end the chord just named rings out rather than being cut off
+      silence: () => views.tones.stopNotes(),
+      display: (s, blocked, running) => chordEarDisplay(s, options().types, blocked, running),
+      // Between rounds the board holds just the way on: one large Next round, so the panel's button is hidden
+      summaryDisplay: summary => ({ ...roundSummaryDisplay(summary, "Chord qualities"), skipHidden: true }),
+      rendered(s, { summary, running, over }) {
+        if (summary) views.answers.renderNext("Next round");
+        else views.answers.render(chordEarAnswers(s, options().types, running), { enabled: running && !over });
+      },
     },
-    // At a round's end the chord just named rings out rather than being cut off
-    silence: () => views.tones.stopNotes(),
-    display: (s, blocked, running) => chordEarDisplay(s, options().types, blocked, running),
-    // Between rounds the board holds just the way on: one large Next round, so the panel's button is hidden
-    summaryDisplay: summary => ({ ...roundSummaryDisplay(summary, "Chord qualities"), skipHidden: true }),
-    rendered(s, { summary, running, over }) {
-      if (summary) views.answers.renderNext("Next round");
-      else views.answers.render(chordEarAnswers(s, options().types, running), { enabled: running && !over });
-    },
-  }, recorder, history);
+    recorder,
+    history,
+  );
 
   const answer = (quality: string) => drill.answer({ type: "answer", quality });
   const offAnswer = views.answers.onAnswer(answer);

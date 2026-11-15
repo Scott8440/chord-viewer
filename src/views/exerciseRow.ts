@@ -9,13 +9,14 @@ import type { StaffRow } from "./staff";
 /** Steps on the staff at once */
 export const PAGE_STEPS = 16;
 /** Before a run sets the octave: the exercise's lowest note no lower than this, and its highest no higher than TOP */
-const BOTTOM = 55, TOP = 84;
+const BOTTOM = 55,
+  TOP = 84;
 
 /** Where the base pitch class sits: the run's octave, or the one keeping the exercise between BOTTOM and TOP */
 function anchorOf(state: SequenceState): number {
   if (state.anchor != null) return state.anchor;
   const { basePc, steps } = state.exercise;
-  const offsets = steps.flatMap(s => s.kind === "note" ? [s.offset] : []);
+  const offsets = steps.flatMap(s => (s.kind === "note" ? [s.offset] : []));
   const high = offsets.length ? Math.max(...offsets) : 12;
   let anchor = 60 + basePc;
   if (anchor + high > TOP) anchor -= 12;
@@ -45,8 +46,14 @@ export function exerciseRow(state: SequenceState): StaffRow {
   return {
     notes: steps.slice(from, from + PAGE_STEPS).map((step, k) => {
       const i = from + k;
-      const style = done || i < state.index ? "done" as const
-        : i === state.index ? (state.lastWrong ? "wrong" as const : "current" as const) : undefined;
+      const style =
+        done || i < state.index
+          ? ("done" as const)
+          : i === state.index
+            ? state.lastWrong
+              ? ("wrong" as const)
+              : ("current" as const)
+            : undefined;
       return { ...stepNotes(step, anchor, basePc), style };
     }),
     slots: PAGE_STEPS,

@@ -2,7 +2,14 @@
 // Where and how each is kept is in the settings table (`SETTINGS`, src/state/settings.ts).
 import type { AppStore } from "../modes/performance";
 import { uuid } from "../progress/recorder";
-import { SETTING_NAMES, SETTINGS, type SavedSettings, type SettingName, type SettingSpec, type Settings } from "../state/settings";
+import {
+  SETTING_NAMES,
+  SETTINGS,
+  type SavedSettings,
+  type SettingName,
+  type SettingSpec,
+  type Settings,
+} from "../state/settings";
 import { loadItem, loadJson, saveItem } from "./safeStorage";
 
 /** This browser's random id for practice history records */
@@ -13,9 +20,12 @@ const storageOf = (name: SettingName): Stored | undefined => SETTINGS[name].stor
 
 function loadValue(key: string, format: Stored["format"]): unknown {
   switch (format) {
-    case "string": return loadItem(key);
-    case "json": return loadJson(key);
-    case "flag": return loadItem(key) === "1";
+    case "string":
+      return loadItem(key);
+    case "json":
+      return loadJson(key);
+    case "flag":
+      return loadItem(key) === "1";
   }
 }
 
@@ -47,7 +57,9 @@ export function saveChangedSettings(next: Settings, prev: Settings) {
 
 /** Saves each setting whenever it changes. */
 export const saveSettingsOnChange = (store: AppStore) =>
-  store.subscribe((s, prev) => { if (s.settings !== prev.settings) saveChangedSettings(s.settings, prev.settings); });
+  store.subscribe((s, prev) => {
+    if (s.settings !== prev.settings) saveChangedSettings(s.settings, prev.settings);
+  });
 
 /** This browser's id, stamped on every history record so histories from several devices can be merged later */
 export function deviceId(): string {

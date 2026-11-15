@@ -25,7 +25,12 @@ export interface PracticeView {
 }
 
 export function createPracticeView(els: {
-  label: HTMLElement; prompt: HTMLElement; sub: HTMLElement; feedback: HTMLElement; score: HTMLElement; skip: HTMLElement;
+  label: HTMLElement;
+  prompt: HTMLElement;
+  sub: HTMLElement;
+  feedback: HTMLElement;
+  score: HTMLElement;
+  skip: HTMLElement;
   stop: HTMLElement;
 }): PracticeView {
   return {

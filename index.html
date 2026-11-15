@@ -1,212 +1,290 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chord Display</title>
-<script type="module" src="/src/main.ts"></script>
-</head>
-<body>
-<header>
-  <h1>Chord Display</h1>
-  <div id="status"><span class="dot" id="statusDot"></span><span id="statusText">Starting…</span></div>
-  <div id="inputs"></div>
-  <label class="pick">Mode
-    <select id="modeSel">
-      <option value="free">Free play</option>
-      <option value="reading">Sight reading</option>
-      <option value="chords">Chord practice</option>
-      <option value="progressions">Progression practice</option>
-      <option value="scales">Scale practice</option>
-      <option value="diatonic">Diatonic chords</option>
-      <option value="fiveFinger">Five-finger patterns</option>
-      <option value="arpeggios">Arpeggios</option>
-      <option value="brokenChords">Broken chords</option>
-      <option value="chromatic">Chromatic scale</option>
-      <option value="routines">Routines</option>
-      <option value="ear">Ear training: scale degrees</option>
-      <option value="earMelody">Ear training: melodies</option>
-      <option value="earChords">Ear training: chord qualities</option>
-    </select>
-  </label>
-  <button id="progressBtn" title="Your practice history, as charts" aria-pressed="false">Progress</button>
-  <label class="pick" id="keyPick" title="Key for free play">Key
-    <select id="keySel"></select>
-  </label>
-  <div class="spacer"></div>
-  <span id="pedal" title="Sustain pedal (CC64)">Ped.</span>
-  <button id="retry" hidden title="Ask for MIDI access again">Retry MIDI</button>
-  <button id="panic" title="Clear all notes (Esc)">Clear</button>
-</header>
-
-<main>
-  <section class="card" id="staffCard"><div id="staff"></div><div id="circle" hidden></div><div id="degreeCircle" hidden></div><div id="answerBoard" hidden></div></section>
-  <section class="card" id="chordCard">
-    <div id="freeView">
-      <div id="chordName"></div>
-      <div id="chordSub">Play something</div>
-      <div id="roman"></div>
-      <div id="alts"></div>
-    </div>
-    <div id="practice" hidden>
-      <div id="beat" hidden title="Metronome"></div>
-      <div id="practiceLabel"></div>
-      <div id="practicePrompt"></div>
-      <div id="practiceSub"></div>
-      <div id="roundViz" hidden></div>
-      <div id="practiceFeedback"></div>
-      <div id="practiceFooter"><span id="practiceScore"></span><button id="practiceReplay" hidden title="Play the note again" data-midi-map="replay" data-midi-name="Replay">Replay</button><button id="practiceStop" hidden title="Stop or start the sound" data-midi-map="stop" data-midi-name="Stop / Start"></button><button id="practiceSkip" title="Skip this one" data-midi-map="skip" data-midi-name="Skip / Next">Skip</button></div>
-      <div id="earOptions" hidden>
-        <label class="pick"><span id="earTonicLabel">Drone</span>
-          <select id="earTonic"></select>
-        </label>
-        <label class="pick" id="melodyLengthPick">Notes
-          <select id="melodyLength"></select>
-        </label>
-        <details id="earFilters" open>
-          <summary id="earFilterSummary"></summary>
-          <div id="earFilterBody"></div>
-        </details>
-      </div>
-      <!-- TEMPORARY: compare the round score views; remove with the one not chosen -->
-      <label class="pick" id="roundVizPick" hidden>Round view (debug)
-        <select id="roundVizStyle">
-          <option value="dots">Dots</option><option value="ring">Ring</option><option value="line">Line</option>
-          <option value="all">All three</option><option value="off">Off</option>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chord Display</title>
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <header>
+      <h1>Chord Display</h1>
+      <div id="status"><span class="dot" id="statusDot"></span><span id="statusText">Starting…</span></div>
+      <div id="inputs"></div>
+      <label class="pick"
+        >Mode
+        <select id="modeSel">
+          <option value="free">Free play</option>
+          <option value="reading">Sight reading</option>
+          <option value="chords">Chord practice</option>
+          <option value="progressions">Progression practice</option>
+          <option value="scales">Scale practice</option>
+          <option value="diatonic">Diatonic chords</option>
+          <option value="fiveFinger">Five-finger patterns</option>
+          <option value="arpeggios">Arpeggios</option>
+          <option value="brokenChords">Broken chords</option>
+          <option value="chromatic">Chromatic scale</option>
+          <option value="routines">Routines</option>
+          <option value="ear">Ear training: scale degrees</option>
+          <option value="earMelody">Ear training: melodies</option>
+          <option value="earChords">Ear training: chord qualities</option>
         </select>
       </label>
-      <div id="earChordOptions" hidden>
-        <label class="pick">Voicing
-          <select id="earChordVoicing">
-            <option value="root">Root position</option>
-            <option value="inversions">Any inversion</option>
-          </select>
-        </label>
-        <label class="pick">Play
-          <select id="earChordPlay">
-            <option value="together">Together</option>
-            <option value="broken">Broken, then together</option>
-          </select>
-        </label>
-        <details id="earChordFilters" open>
-          <summary id="earChordFilterSummary"></summary>
-          <div id="earChordFilterBody"></div>
-        </details>
-      </div>
-      <div id="readingOptions" hidden>
-        <label class="pick" id="readingPartPick">Read
-          <select id="readingPart"></select>
-        </label>
-        <label class="pick">Level
-          <select id="readingLevel"></select>
-        </label>
-        <label class="pick">Key
-          <select id="readingKey"></select>
-        </label>
-        <label class="pick" id="readingLengthPick">Notes
-          <select id="readingLength"></select>
-        </label>
-        <label class="pick" id="readingRangePick">Staff
-          <select id="readingRange"></select>
-        </label>
-      </div>
-      <div id="chordOptions" hidden>
-        <label class="pick">Prompts
-          <select id="promptStyle">
-            <option value="names">Chord names</option>
-            <option value="roman">Roman numerals</option>
-          </select>
-        </label>
-        <label class="pick" id="chordKeyPick" title="Only this key's diatonic chords, or any chord">Key
-          <select id="chordKey"></select>
-        </label>
-        <label class="opt" id="inversionsOpt"><input type="checkbox" id="optInversions"> Specific inversions</label>
-        <details id="chordFilters">
-          <summary id="chordFilterSummary"></summary>
-          <div id="chordFilterBody"></div>
-        </details>
-      </div>
-      <div id="routineOptions" hidden>
-        <label class="pick">Routine
-          <select id="routineSel"></select>
-        </label>
-        <label class="pick" id="routineStartPick" hidden>Start on
-          <select id="routineStart"></select>
-        </label>
-        <label class="pick">Direction
-          <select id="routineDir">
-            <option value="sharps">Sharps first (C G D …)</option>
-            <option value="flats">Flats first (C F B♭ …)</option>
-          </select>
-        </label>
-        <button id="routineRestart" title="Start the routine over">Restart routine</button>
-      </div>
-      <div id="exerciseOptions" hidden>
-        <label class="pick" data-option="key">Key
-          <select id="exKey"></select>
-        </label>
-        <label class="pick" data-option="progression" title="Where to go once you've played it through">Then
-          <select id="exProgression"></select>
-        </label>
-        <label class="pick" data-option="octaves">Octaves
-          <select id="exOctaves"><option value="1">1</option><option value="2">2</option></select>
-        </label>
-        <label class="pick" data-option="inversion">Start from
-          <select id="exInversion">
-            <option value="0">Root (root position)</option>
-            <option value="1">3rd (first inversion)</option>
-            <option value="2">5th (second inversion)</option>
-          </select>
-        </label>
-        <label class="pick" data-option="minorForm">Minor scale
-          <select id="exMinorForm">
-            <option value="natural">Natural</option>
-            <option value="harmonic">Harmonic</option>
-            <option value="melodic">Melodic</option>
-          </select>
-        </label>
-        <label class="pick" data-option="sevenths">Chords
-          <select id="exChords"><option value="triads">Triads</option><option value="sevenths">Seventh chords</option></select>
-        </label>
-        <label class="opt" data-option="rootPosition"><input type="checkbox" id="exRootPosition"> Root position only</label>
-        <div class="metronomeOptions" data-option="metronome">
-          <label class="opt"><input type="checkbox" id="exMetronome"> Metronome</label>
-          <span id="metronomeDetails">
-            <label class="pick">BPM <input type="number" id="exBpm" min="30" max="240" step="1"></label>
-            <label class="pick">Notes per beat
-              <select id="exSubdivision">
-                <option value="1">1 (quarters)</option>
-                <option value="2">2 (eighths)</option>
-                <option value="4">4 (sixteenths)</option>
+      <button id="progressBtn" title="Your practice history, as charts" aria-pressed="false">Progress</button>
+      <label class="pick" id="keyPick" title="Key for free play"
+        >Key
+        <select id="keySel"></select>
+      </label>
+      <div class="spacer"></div>
+      <span id="pedal" title="Sustain pedal (CC64)">Ped.</span>
+      <button id="retry" hidden title="Ask for MIDI access again">Retry MIDI</button>
+      <button id="panic" title="Clear all notes (Esc)">Clear</button>
+    </header>
+
+    <main>
+      <section class="card" id="staffCard">
+        <div id="staff"></div>
+        <div id="circle" hidden></div>
+        <div id="degreeCircle" hidden></div>
+        <div id="answerBoard" hidden></div>
+      </section>
+      <section class="card" id="chordCard">
+        <div id="freeView">
+          <div id="chordName"></div>
+          <div id="chordSub">Play something</div>
+          <div id="roman"></div>
+          <div id="alts"></div>
+        </div>
+        <div id="practice" hidden>
+          <div id="beat" hidden title="Metronome"></div>
+          <div id="practiceLabel"></div>
+          <div id="practicePrompt"></div>
+          <div id="practiceSub"></div>
+          <div id="roundViz" hidden></div>
+          <div id="practiceFeedback"></div>
+          <div id="practiceFooter">
+            <span id="practiceScore"></span
+            ><button
+              id="practiceReplay"
+              hidden
+              title="Play the note again"
+              data-midi-map="replay"
+              data-midi-name="Replay"
+            >
+              Replay</button
+            ><button
+              id="practiceStop"
+              hidden
+              title="Stop or start the sound"
+              data-midi-map="stop"
+              data-midi-name="Stop / Start"
+            ></button
+            ><button id="practiceSkip" title="Skip this one" data-midi-map="skip" data-midi-name="Skip / Next">
+              Skip
+            </button>
+          </div>
+          <div id="earOptions" hidden>
+            <label class="pick"
+              ><span id="earTonicLabel">Drone</span>
+              <select id="earTonic"></select>
+            </label>
+            <label class="pick" id="melodyLengthPick"
+              >Notes
+              <select id="melodyLength"></select>
+            </label>
+            <details id="earFilters" open>
+              <summary id="earFilterSummary"></summary>
+              <div id="earFilterBody"></div>
+            </details>
+          </div>
+          <!-- TEMPORARY: compare the round score views; remove with the one not chosen -->
+          <label class="pick" id="roundVizPick" hidden
+            >Round view (debug)
+            <select id="roundVizStyle">
+              <option value="dots">Dots</option>
+              <option value="ring">Ring</option>
+              <option value="line">Line</option>
+              <option value="all">All three</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <div id="earChordOptions" hidden>
+            <label class="pick"
+              >Voicing
+              <select id="earChordVoicing">
+                <option value="root">Root position</option>
+                <option value="inversions">Any inversion</option>
               </select>
             </label>
-            <label class="pick" title="How close to the beat counts as on time">Timing
-              <select id="exStrictness"><option value="strict">Strict (±50 ms)</option><option value="loose">Loose (±80 ms)</option></select>
+            <label class="pick"
+              >Play
+              <select id="earChordPlay">
+                <option value="together">Together</option>
+                <option value="broken">Broken, then together</option>
+              </select>
             </label>
-            <label class="pick" title="Taken off your note times. Positive if you're judged consistently late, negative if early (rushing). Calibrate measures it.">Latency (ms)
-              <input type="number" id="latency" min="-200" max="300" step="5">
+            <details id="earChordFilters" open>
+              <summary id="earChordFilterSummary"></summary>
+              <div id="earChordFilterBody"></div>
+            </details>
+          </div>
+          <div id="readingOptions" hidden>
+            <label class="pick" id="readingPartPick"
+              >Read
+              <select id="readingPart"></select>
             </label>
-            <button id="calibrate" title="Play a note on each click to measure your latency">Calibrate</button>
-            <span id="outputLatencyNote" hidden></span>
-          </span>
+            <label class="pick"
+              >Level
+              <select id="readingLevel"></select>
+            </label>
+            <label class="pick"
+              >Key
+              <select id="readingKey"></select>
+            </label>
+            <label class="pick" id="readingLengthPick"
+              >Notes
+              <select id="readingLength"></select>
+            </label>
+            <label class="pick" id="readingRangePick"
+              >Staff
+              <select id="readingRange"></select>
+            </label>
+          </div>
+          <div id="chordOptions" hidden>
+            <label class="pick"
+              >Prompts
+              <select id="promptStyle">
+                <option value="names">Chord names</option>
+                <option value="roman">Roman numerals</option>
+              </select>
+            </label>
+            <label class="pick" id="chordKeyPick" title="Only this key's diatonic chords, or any chord"
+              >Key
+              <select id="chordKey"></select>
+            </label>
+            <label class="opt" id="inversionsOpt"
+              ><input type="checkbox" id="optInversions" /> Specific inversions</label
+            >
+            <details id="chordFilters">
+              <summary id="chordFilterSummary"></summary>
+              <div id="chordFilterBody"></div>
+            </details>
+          </div>
+          <div id="routineOptions" hidden>
+            <label class="pick"
+              >Routine
+              <select id="routineSel"></select>
+            </label>
+            <label class="pick" id="routineStartPick" hidden
+              >Start on
+              <select id="routineStart"></select>
+            </label>
+            <label class="pick"
+              >Direction
+              <select id="routineDir">
+                <option value="sharps">Sharps first (C G D …)</option>
+                <option value="flats">Flats first (C F B♭ …)</option>
+              </select>
+            </label>
+            <button id="routineRestart" title="Start the routine over">Restart routine</button>
+          </div>
+          <div id="exerciseOptions" hidden>
+            <label class="pick" data-option="key"
+              >Key
+              <select id="exKey"></select>
+            </label>
+            <label class="pick" data-option="progression" title="Where to go once you've played it through"
+              >Then
+              <select id="exProgression"></select>
+            </label>
+            <label class="pick" data-option="octaves"
+              >Octaves
+              <select id="exOctaves">
+                <option value="1">1</option>
+                <option value="2">2</option>
+              </select>
+            </label>
+            <label class="pick" data-option="inversion"
+              >Start from
+              <select id="exInversion">
+                <option value="0">Root (root position)</option>
+                <option value="1">3rd (first inversion)</option>
+                <option value="2">5th (second inversion)</option>
+              </select>
+            </label>
+            <label class="pick" data-option="minorForm"
+              >Minor scale
+              <select id="exMinorForm">
+                <option value="natural">Natural</option>
+                <option value="harmonic">Harmonic</option>
+                <option value="melodic">Melodic</option>
+              </select>
+            </label>
+            <label class="pick" data-option="sevenths"
+              >Chords
+              <select id="exChords">
+                <option value="triads">Triads</option>
+                <option value="sevenths">Seventh chords</option>
+              </select>
+            </label>
+            <label class="opt" data-option="rootPosition"
+              ><input type="checkbox" id="exRootPosition" /> Root position only</label
+            >
+            <div class="metronomeOptions" data-option="metronome">
+              <label class="opt"><input type="checkbox" id="exMetronome" /> Metronome</label>
+              <span id="metronomeDetails">
+                <label class="pick">BPM <input type="number" id="exBpm" min="30" max="240" step="1" /></label>
+                <label class="pick"
+                  >Notes per beat
+                  <select id="exSubdivision">
+                    <option value="1">1 (quarters)</option>
+                    <option value="2">2 (eighths)</option>
+                    <option value="4">4 (sixteenths)</option>
+                  </select>
+                </label>
+                <label class="pick" title="How close to the beat counts as on time"
+                  >Timing
+                  <select id="exStrictness">
+                    <option value="strict">Strict (±50 ms)</option>
+                    <option value="loose">Loose (±80 ms)</option>
+                  </select>
+                </label>
+                <label
+                  class="pick"
+                  title="Taken off your note times. Positive if you're judged consistently late, negative if early (rushing). Calibrate measures it."
+                  >Latency (ms)
+                  <input type="number" id="latency" min="-200" max="300" step="5" />
+                </label>
+                <button id="calibrate" title="Play a note on each click to measure your latency">Calibrate</button>
+                <span id="outputLatencyNote" hidden></span>
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </section>
-  <section id="progressView" hidden></section>
-</main>
+      </section>
+      <section id="progressView" hidden></section>
+    </main>
 
-<dialog id="calibration"></dialog>
-<footer>
-  <label class="opt"><input type="checkbox" id="optPedal" checked> Pedal-held notes count toward chord</label>
-  <span>Computer keys: <kbd>A</kbd>–<kbd>K</kbd> white, <kbd>W</kbd><kbd>E</kbd><kbd>T</kbd><kbd>Y</kbd><kbd>U</kbd> black, <kbd>Z</kbd>/<kbd>X</kbd> octave, <kbd>Space</kbd> pedal, <kbd>Esc</kbd> clear</span>
-  <span id="kbdOct"></span>
-  <span id="midiMap"><button id="midiMapBtn" title="Map keys on your keyboard to buttons on the page" aria-pressed="false">MIDI map</button>
-    <span id="midiMapHint"></span></span>
-  <span id="history" title="Your practice history, kept in this browser">History: <span id="historyCount">…</span>
-    · <button class="link" id="historyExport">Export</button> · <button class="link" id="historyImport">Import</button>
-    <input type="file" id="historyFile" accept=".json,application/json" hidden>
-    <span id="historyNote"></span></span>
-</footer>
-</body>
+    <dialog id="calibration"></dialog>
+    <footer>
+      <label class="opt"><input type="checkbox" id="optPedal" checked /> Pedal-held notes count toward chord</label>
+      <span
+        >Computer keys: <kbd>A</kbd>–<kbd>K</kbd> white, <kbd>W</kbd><kbd>E</kbd><kbd>T</kbd><kbd>Y</kbd
+        ><kbd>U</kbd> black, <kbd>Z</kbd>/<kbd>X</kbd> octave, <kbd>Space</kbd> pedal, <kbd>Esc</kbd> clear</span
+      >
+      <span id="kbdOct"></span>
+      <span id="midiMap"
+        ><button id="midiMapBtn" title="Map keys on your keyboard to buttons on the page" aria-pressed="false">
+          MIDI map
+        </button>
+        <span id="midiMapHint"></span
+      ></span>
+      <span id="history" title="Your practice history, kept in this browser"
+        >History: <span id="historyCount">…</span> · <button class="link" id="historyExport">Export</button> ·
+        <button class="link" id="historyImport">Import</button>
+        <input type="file" id="historyFile" accept=".json,application/json" hidden />
+        <span id="historyNote"></span
+      ></span>
+    </footer>
+  </body>
 </html>

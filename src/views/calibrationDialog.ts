@@ -15,11 +15,14 @@ export interface CalibrationDialog {
   close(): void;
 }
 
-export function createCalibrationDialog(el: HTMLDialogElement, actions: {
-  /** Cancel while listening, or Close after an uneven result: either way, stop */
-  cancel(): void;
-  retry(): void;
-}): CalibrationDialog {
+export function createCalibrationDialog(
+  el: HTMLDialogElement,
+  actions: {
+    /** Cancel while listening, or Close after an uneven result: either way, stop */
+    cancel(): void;
+    retry(): void;
+  },
+): CalibrationDialog {
   el.innerHTML = `
     <h2>Calibrate timing</h2>
     <p>Play any note on each click. The first ${CALIBRATION_WARMUP} settle you in; the next ${CALIBRATION_TAPS} are
@@ -36,11 +39,20 @@ export function createCalibrationDialog(el: HTMLDialogElement, actions: {
   let done = false;
 
   // Buttons never keep focus, so Space stays the pedal and computer keys keep playing notes
-  const press = (b: HTMLButtonElement, f: () => void) => { b.onclick = () => { b.blur(); f(); }; };
-  press(q(".calClose"), () => done ? close() : actions.cancel());
+  const press = (b: HTMLButtonElement, f: () => void) => {
+    b.onclick = () => {
+      b.blur();
+      f();
+    };
+  };
+  press(q(".calClose"), () => (done ? close() : actions.cancel()));
   press(q(".calRetry"), () => actions.retry());
   // Esc (the dialog's own cancel) stops listening too
-  el.addEventListener("cancel", e => { e.preventDefault(); if (done) close(); else actions.cancel(); });
+  el.addEventListener("cancel", e => {
+    e.preventDefault();
+    if (done) close();
+    else actions.cancel();
+  });
 
   function close() {
     beat.render(null);
@@ -57,20 +69,28 @@ export function createCalibrationDialog(el: HTMLDialogElement, actions: {
     setSoundBlocked: blocked => beat.setSoundBlocked(blocked),
     show(p) {
       done = p.kind === "done";
-      if (p.kind === "cancelled") { close(); return; }
+      if (p.kind === "cancelled") {
+        close();
+        return;
+      }
       const measured = p.kind === "listening" ? p.measured : CALIBRATION_TAPS;
-      q(".calTaps").innerHTML = Array.from({ length: CALIBRATION_TAPS }, (_, i) =>
-        `<span class="${i < measured ? "in" : ""}"></span>`).join("");
+      q(".calTaps").innerHTML = Array.from(
+        { length: CALIBRATION_TAPS },
+        (_, i) => `<span class="${i < measured ? "in" : ""}"></span>`,
+      ).join("");
       q(".calRetry").hidden = !(p.kind === "done");
       q(".calClose").textContent = p.kind === "done" ? (p.result.steady ? "Done" : "Close") : "Cancel";
       const status = q(".calStatus");
       status.className = "calStatus" + (p.kind === "done" ? (p.result.steady ? " ok" : " warn") : "");
-      status.textContent = p.kind === "listening"
-        ? p.warmupLeft ? `Warming up: ${p.warmupLeft} more…` : `${p.measured} of ${CALIBRATION_TAPS}`
-        : p.result.steady
-          ? `Your notes were ${Math.abs(p.result.latencyMs)} ms ${p.result.latencyMs < 0 ? "ahead of" : "behind"} the click ` +
-            `(±${p.result.spreadMs} ms). Latency set to ${p.result.latencyMs} ms.`
-          : `Those notes were too uneven to measure (±${p.result.spreadMs} ms). Latency unchanged.`;
+      status.textContent =
+        p.kind === "listening"
+          ? p.warmupLeft
+            ? `Warming up: ${p.warmupLeft} more…`
+            : `${p.measured} of ${CALIBRATION_TAPS}`
+          : p.result.steady
+            ? `Your notes were ${Math.abs(p.result.latencyMs)} ms ${p.result.latencyMs < 0 ? "ahead of" : "behind"} the click ` +
+              `(±${p.result.spreadMs} ms). Latency set to ${p.result.latencyMs} ms.`
+            : `Those notes were too uneven to measure (±${p.result.spreadMs} ms). Latency unchanged.`;
     },
     close,
   };

@@ -19,7 +19,13 @@ export interface PageSetup {
 
 export const IDLE_MS = 10_000;
 
-const PRACTICE: PageSetup = { panel: "practice", stage: "staff", headerKey: false, fadeChordWhenIdle: false, metronome: false };
+const PRACTICE: PageSetup = {
+  panel: "practice",
+  stage: "staff",
+  headerKey: false,
+  fadeChordWhenIdle: false,
+  metronome: false,
+};
 /** Prescriptive exercises and routines of them: timed against the metronome when it's on */
 const TIMED: PageSetup = { ...PRACTICE, metronome: true };
 
@@ -43,9 +49,9 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
 /** What's on screen: a practice mode, or the Progress page (opened from the header, apart from the modes) */
 export type View = ModeId | "progress";
 
-export const viewOf = (s: AppState): View => s.page === "progress" ? "progress" : s.settings.mode;
+export const viewOf = (s: AppState): View => (s.page === "progress" ? "progress" : s.settings.mode);
 
 /** The Progress page: its charts in place of the staff and practice card, nothing running */
 const PROGRESS_PAGE: PageSetup = { ...PRACTICE, panel: "progress" };
 
-export const pageSetup = (view: View): PageSetup => view === "progress" ? PROGRESS_PAGE : PAGE_SETUP[view];
+export const pageSetup = (view: View): PageSetup => (view === "progress" ? PROGRESS_PAGE : PAGE_SETUP[view]);

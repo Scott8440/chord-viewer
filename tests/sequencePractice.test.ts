@@ -19,7 +19,10 @@ function setup() {
   const store = createStore(reduceApp, reduceApp(createAppState(), { type: "setMode", mode: "scales" }));
   const dispatched: AppAction[] = [];
   const dispatch = store.dispatch;
-  store.dispatch = a => { dispatched.push(a); dispatch(a); };
+  store.dispatch = a => {
+    dispatched.push(a);
+    dispatch(a);
+  };
   const views = {
     staff: { render() {} } as unknown as StaffView,
     practice: { render() {} } as unknown as PracticeView,
@@ -32,9 +35,10 @@ function setup() {
     let time = 0;
     for (const step of steps) {
       if (step.kind !== "note") throw new Error("a scale has only note steps");
-      const note = 60 + step.offset, src = { velocity: 100, source: "kbd", channel: 0 };
-      dispatch({ type: "input", event: { type: "noteOn", note, time: time += 250, ...src } });
-      dispatch({ type: "input", event: { type: "noteOff", note, time: time += 100, ...src } });
+      const note = 60 + step.offset,
+        src = { velocity: 100, source: "kbd", channel: 0 };
+      dispatch({ type: "input", event: { type: "noteOn", note, time: (time += 250), ...src } });
+      dispatch({ type: "input", event: { type: "noteOff", note, time: (time += 100), ...src } });
     }
   };
   return { store, mode, dispatched, playRun };

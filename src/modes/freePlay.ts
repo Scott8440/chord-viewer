@@ -9,8 +9,12 @@ import { createPerformanceDrawer, sounding, type AppStore, type Mode } from "./p
 
 const NAME_SETTLE_MS = 40;
 
-export function startFreePlay({ store, views }: {
-  store: AppStore; views: { staff: StaffView; chordName: ChordNameView; circle: CircleView };
+export function startFreePlay({
+  store,
+  views,
+}: {
+  store: AppStore;
+  views: { staff: StaffView; chordName: ChordNameView; circle: CircleView };
 }): Mode {
   const drawer = createPerformanceDrawer(store, views);
   let nameTimer: ReturnType<typeof setTimeout> | undefined;

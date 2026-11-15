@@ -79,8 +79,14 @@ export interface ChordEarState extends Judged<ChordEarPrompt> {
 
 export type ChordEarAction = { type: "answer"; quality: string } | MoveOn<ChordEarPrompt>;
 
-export const initialChordEar = (prompt: ChordEarPrompt): ChordEarState =>
-  ({ prompt, status: "waiting", wrong: [], missed: false, answered: 0, firstTry: 0 });
+export const initialChordEar = (prompt: ChordEarPrompt): ChordEarState => ({
+  prompt,
+  status: "waiting",
+  wrong: [],
+  missed: false,
+  answered: 0,
+  firstTry: 0,
+});
 
 export function reduceChordEar(s: ChordEarState, a: ChordEarAction): ChordEarState {
   if (a.type !== "answer") return movedOn(s, a, { wrong: [] });

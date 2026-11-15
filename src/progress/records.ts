@@ -61,7 +61,15 @@ export interface RunBody {
 
 export type RoutineItemOutcome =
   | { exercise: PrescriptiveId; exerciseId: string; key: string; skipped: true }
-  | { exercise: PrescriptiveId; exerciseId: string; key: string; skipped: false; mistakes: number; evenness: number; onTime: number | null };
+  | {
+      exercise: PrescriptiveId;
+      exerciseId: string;
+      key: string;
+      skipped: false;
+      mistakes: number;
+      evenness: number;
+      onTime: number | null;
+    };
 
 /** A routine session: finished, or abandoned part-way (`finished: false`). */
 export interface RoutineBody {
@@ -123,34 +131,68 @@ export type ProgressRecord = RecordBody & RecordMeta;
 const tempoOf = (o: ExerciseOptions, latencyMs: number): TempoSettings | null =>
   o.metronome ? { bpm: o.bpm, subdivision: o.subdivision, strictness: o.strictness, latencyMs } : null;
 
-export function runBody(exercise: PrescriptiveId, ex: SequenceExercise, options: ExerciseOptions, latencyMs: number,
-                        result: RunResult, routineSession: string | null = null): RunBody {
+export function runBody(
+  exercise: PrescriptiveId,
+  ex: SequenceExercise,
+  options: ExerciseOptions,
+  latencyMs: number,
+  result: RunResult,
+  routineSession: string | null = null,
+): RunBody {
   return {
-    kind: "run", exercise, exerciseId: ex.id, title: ex.title, key: ex.keyValue,
+    kind: "run",
+    exercise,
+    exerciseId: ex.id,
+    title: ex.title,
+    key: ex.keyValue,
     tempo: result.timing ? tempoOf(options, latencyMs) : null,
-    mistakes: result.mistakes, durationMs: Math.round(result.durationMs), bpm: result.bpm, evenness: result.evenness,
-    timing: result.timing, routineSession,
+    mistakes: result.mistakes,
+    durationMs: Math.round(result.durationMs),
+    bpm: result.bpm,
+    evenness: result.evenness,
+    timing: result.timing,
+    routineSession,
   };
 }
 
 const itemOutcome = (exercise: PrescriptiveId, ex: SequenceExercise, o: ItemOutcome): RoutineItemOutcome =>
-  o === "skipped" ? { exercise, exerciseId: ex.id, key: ex.keyValue, skipped: true }
-    : { exercise, exerciseId: ex.id, key: ex.keyValue, skipped: false, mistakes: o.mistakes, evenness: o.evenness,
-        onTime: o.timing ? o.timing.onTime : null };
+  o === "skipped"
+    ? { exercise, exerciseId: ex.id, key: ex.keyValue, skipped: true }
+    : {
+        exercise,
+        exerciseId: ex.id,
+        key: ex.keyValue,
+        skipped: false,
+        mistakes: o.mistakes,
+        evenness: o.evenness,
+        onTime: o.timing ? o.timing.onTime : null,
+      };
 
 /**
  * A routine session from its state. `exerciseOf(i)` builds item i's exercise (as played); `toWall` turns a
  * performance.now() time into UTC ms.
  */
-export function routineBody(r: RoutineState, session: string, direction: CircleDirection, latencyMs: number,
-                            exerciseOf: (index: number) => SequenceExercise, toWall: (perfMs: number) => number): RoutineBody {
+export function routineBody(
+  r: RoutineState,
+  session: string,
+  direction: CircleDirection,
+  latencyMs: number,
+  exerciseOf: (index: number) => SequenceExercise,
+  toWall: (perfMs: number) => number,
+): RoutineBody {
   const items = r.outcomes.map((o, i) => itemOutcome(r.items[i].exercise, exerciseOf(i), o));
   return {
-    kind: "routine", session, routine: r.routine.id, name: r.routine.name, direction,
+    kind: "routine",
+    session,
+    routine: r.routine.id,
+    name: r.routine.name,
+    direction,
     ...(r.routine.startsOn ? { start: r.items[0].options.key } : {}),
     startedAt: Math.round(toWall(r.startTime ?? 0)),
     durationMs: r.startTime != null && r.endTime != null ? Math.round(r.endTime - r.startTime) : 0,
-    finished: r.status === "done", totalItems: r.items.length, items,
+    finished: r.status === "done",
+    totalItems: r.items.length,
+    items,
     totalMistakes: items.reduce((n, it) => n + (it.skipped ? 0 : it.mistakes), 0),
     tempo: r.current.grid ? tempoOf(r.base, latencyMs) : null,
   };
@@ -177,42 +219,76 @@ export function readingDrillBody(p: ReadingPrompt, answered: boolean, missed: bo
   if (p.music) {
     const { part, level } = p.music;
     return {
-      kind: "drill", drill: "reading", prompt: `${part === "voice" ? "Songs" : READING_PARTS[part]}, level ${level}`,
+      kind: "drill",
+      drill: "reading",
+      prompt: `${part === "voice" ? "Songs" : READING_PARTS[part]}, level ${level}`,
       detail: { key: p.keyValue, part, level, excerpt: p.music.id, length, notes },
-      outcome: outcomeOf(answered, missed), ms: Math.round(ms),
+      outcome: outcomeOf(answered, missed),
+      ms: Math.round(ms),
     };
   }
   return {
-    kind: "drill", drill: "reading", prompt: `${length} note${length === 1 ? "" : "s"}, ${READING_RANGES[p.range].label.toLowerCase()}`,
+    kind: "drill",
+    drill: "reading",
+    prompt: `${length} note${length === 1 ? "" : "s"}, ${READING_RANGES[p.range].label.toLowerCase()}`,
     detail: { key: p.keyValue, range: p.range, length, notes },
-    outcome: outcomeOf(answered, missed), ms: Math.round(ms),
+    outcome: outcomeOf(answered, missed),
+    ms: Math.round(ms),
   };
 }
 
 export function chordDrillBody(p: ChordPrompt, answered: boolean, missed: boolean, ms: number): DrillBody {
   const detail: DrillBody["detail"] = { type: p.type, rootPc: p.rootPc, style: p.roman ? "roman" : "names" };
   if (p.inversion) detail.inversion = p.inversion.number;
-  if (p.roman) { detail.numeral = p.roman.numeral; detail.key = p.roman.keyValue; }
+  if (p.roman) {
+    detail.numeral = p.roman.numeral;
+    detail.key = p.roman.keyValue;
+  }
   if (p.inKey) detail.key = p.inKey.keyValue;
-  return { kind: "drill", drill: "chords", prompt: chordLabel(p), detail, outcome: outcomeOf(answered, missed), ms: Math.round(ms) };
+  return {
+    kind: "drill",
+    drill: "chords",
+    prompt: chordLabel(p),
+    detail,
+    outcome: outcomeOf(answered, missed),
+    ms: Math.round(ms),
+  };
 }
 
 /** An ear-training prompt, by degree ("Degree 5") so the trickiest degrees show across keys */
-export function earDrillBody(p: EarPrompt, degrees: readonly string[], answered: boolean, missed: boolean, ms: number): DrillBody {
+export function earDrillBody(
+  p: EarPrompt,
+  degrees: readonly string[],
+  answered: boolean,
+  missed: boolean,
+  ms: number,
+): DrillBody {
   return {
-    kind: "drill", drill: "ear", prompt: `Degree ${p.degree}`,
+    kind: "drill",
+    drill: "ear",
+    prompt: `Degree ${p.degree}`,
     detail: { degree: p.degree, key: p.keyValue, note: p.note, degrees: degrees.join(",") },
-    outcome: outcomeOf(answered, missed), ms: Math.round(ms),
+    outcome: outcomeOf(answered, missed),
+    ms: Math.round(ms),
   };
 }
 
 /** An ear-training melody, judged as a whole; grouped by length ("Root + 3 notes"), since melodies rarely repeat */
-export function melodyDrillBody(p: MelodyPrompt, degrees: readonly string[], answered: boolean, missed: boolean, ms: number): DrillBody {
+export function melodyDrillBody(
+  p: MelodyPrompt,
+  degrees: readonly string[],
+  answered: boolean,
+  missed: boolean,
+  ms: number,
+): DrillBody {
   const length = p.notes.length - 1;
   return {
-    kind: "drill", drill: "melody", prompt: `Root + ${length} notes`,
+    kind: "drill",
+    drill: "melody",
+    prompt: `Root + ${length} notes`,
     detail: { key: p.keyValue, melody: p.notes.map(n => n.degree).join(" "), length, degrees: degrees.join(",") },
-    outcome: outcomeOf(answered, missed), ms: Math.round(ms),
+    outcome: outcomeOf(answered, missed),
+    ms: Math.round(ms),
   };
 }
 
@@ -221,22 +297,46 @@ export function melodyDrillBody(p: MelodyPrompt, degrees: readonly string[], ans
  * answers given first, in order (type ids, comma-separated in `detail.guesses`; absent in records made before), so
  * the Progress page can say what each quality gets mistaken for.
  */
-export function chordEarDrillBody(p: ChordEarPrompt, label: string, types: readonly string[], answered: boolean,
-                                  missed: boolean, ms: number, guesses: readonly string[] = []): DrillBody {
+export function chordEarDrillBody(
+  p: ChordEarPrompt,
+  label: string,
+  types: readonly string[],
+  answered: boolean,
+  missed: boolean,
+  ms: number,
+  guesses: readonly string[] = [],
+): DrillBody {
   return {
-    kind: "drill", drill: "chordEar", prompt: label,
-    detail: { type: p.type, rootPc: p.rootPc, inversion: p.inversion, types: types.join(","), guesses: guesses.join(",") },
-    outcome: outcomeOf(answered, missed), ms: Math.round(ms),
+    kind: "drill",
+    drill: "chordEar",
+    prompt: label,
+    detail: {
+      type: p.type,
+      rootPc: p.rootPc,
+      inversion: p.inversion,
+      types: types.join(","),
+      guesses: guesses.join(","),
+    },
+    outcome: outcomeOf(answered, missed),
+    ms: Math.round(ms),
   };
 }
 
 /** A progression, judged as a whole: first try only if every chord was */
-export function progressionDrillBody(p: ProgressionPrompt, answered: boolean, chordsFirstTry: number, ms: number): DrillBody {
+export function progressionDrillBody(
+  p: ProgressionPrompt,
+  answered: boolean,
+  chordsFirstTry: number,
+  ms: number,
+): DrillBody {
   const [tonic, mode] = p.keyValue.split(":");
   return {
-    kind: "drill", drill: "progressions", prompt: `${p.name} in ${tonic} ${mode}`,
+    kind: "drill",
+    drill: "progressions",
+    prompt: `${p.name} in ${tonic} ${mode}`,
     detail: { progression: p.id, key: p.keyValue, chords: p.chords.length, chordsFirstTry },
-    outcome: !answered ? "skipped" : chordsFirstTry === p.chords.length ? "firstTry" : "corrected", ms: Math.round(ms),
+    outcome: !answered ? "skipped" : chordsFirstTry === p.chords.length ? "firstTry" : "corrected",
+    ms: Math.round(ms),
   };
 }
 
@@ -250,8 +350,16 @@ const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 
 export function upgradeRecord(raw: unknown): ProgressRecord | null {
   if (!isObj(raw)) return null;
   const { id, v, at, device, kind } = raw;
-  if (typeof id !== "string" || !id || typeof v !== "number" || typeof at !== "number" || !Number.isFinite(at) ||
-      typeof device !== "string" || (kind !== "run" && kind !== "routine" && kind !== "drill" && kind !== "round")) return null;
+  if (
+    typeof id !== "string" ||
+    !id ||
+    typeof v !== "number" ||
+    typeof at !== "number" ||
+    !Number.isFinite(at) ||
+    typeof device !== "string" ||
+    (kind !== "run" && kind !== "routine" && kind !== "drill" && kind !== "round")
+  )
+    return null;
   // Newer than this app understands: keep out rather than misread
   if (v > RECORD_VERSION) return null;
   // Version 1 is current; upgrades from older versions go here as the schema changes
@@ -268,13 +376,21 @@ export interface ExportFile {
   records: ProgressRecord[];
 }
 
-export const exportFile = (records: readonly ProgressRecord[], now: number): ExportFile =>
-  ({ format: EXPORT_FORMAT, version: RECORD_VERSION, exportedAt: now, records: [...records] });
+export const exportFile = (records: readonly ProgressRecord[], now: number): ExportFile => ({
+  format: EXPORT_FORMAT,
+  version: RECORD_VERSION,
+  exportedAt: now,
+  records: [...records],
+});
 
 /** Reads an export file's text: its usable records and how many were skipped, or an error message. */
 export function parseExport(text: string): { records: ProgressRecord[]; skipped: number } | { error: string } {
   let data: unknown;
-  try { data = JSON.parse(text); } catch { return { error: "That file isn't valid JSON." }; }
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return { error: "That file isn't valid JSON." };
+  }
   if (!isObj(data) || data.format !== EXPORT_FORMAT || !Array.isArray(data.records)) {
     return { error: "That isn't a practice history file." };
   }

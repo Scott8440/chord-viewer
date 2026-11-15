@@ -8,7 +8,7 @@ export const DEGREE_KEYS_SOURCE = "deg";
 /** Listens for 1–7 until the returned function is called. `noteOf` gives a digit's MIDI note, or null to ignore it. */
 export function createDegreeKeys(emit: Emit, noteOf: (digit: string) => number | null): () => void {
   const src = { source: DEGREE_KEYS_SOURCE, channel: 0 };
-  const down = new Map<string, number>();  // digit -> MIDI note it started
+  const down = new Map<string, number>(); // digit -> MIDI note it started
 
   function keydown(e: KeyboardEvent) {
     if (isTypingOrModified(e)) return;

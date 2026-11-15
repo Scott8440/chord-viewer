@@ -7,8 +7,16 @@ import { scaleExercise } from "../src/exercises/scales";
 import { runResult } from "../src/exercises/sequence";
 import { createRecorder } from "../src/progress/recorder";
 import {
-  chordDrillBody, exportFile, parseExport, progressionDrillBody, RECORD_VERSION, routineBody, runBody,
-  upgradeRecord, type DrillBody, type ProgressRecord,
+  chordDrillBody,
+  exportFile,
+  parseExport,
+  progressionDrillBody,
+  RECORD_VERSION,
+  routineBody,
+  runBody,
+  upgradeRecord,
+  type DrillBody,
+  type ProgressRecord,
 } from "../src/progress/records";
 import { createMemoryStore } from "../src/progress/store";
 import { buildKey } from "../src/theory";
@@ -22,8 +30,20 @@ describe("run records", () => {
 
   it("keep the exercise, its settings and the result", () => {
     const r = runBody("scales", ex, DEFAULT_EXERCISE_OPTIONS, 0, runResult([0, 500, 1000], 2));
-    expect(r).toMatchObject({ kind: "run", exercise: "scales", exerciseId: "scale:C:major::1", title: "C major", key: "C:major",
-                              tempo: null, mistakes: 2, durationMs: 1000, bpm: 120, evenness: 1, timing: null, routineSession: null });
+    expect(r).toMatchObject({
+      kind: "run",
+      exercise: "scales",
+      exerciseId: "scale:C:major::1",
+      title: "C major",
+      key: "C:major",
+      tempo: null,
+      mistakes: 2,
+      durationMs: 1000,
+      bpm: 120,
+      evenness: 1,
+      timing: null,
+      routineSession: null,
+    });
   });
 
   it("keep the metronome settings when played to it", () => {
@@ -40,18 +60,50 @@ describe("routine records", () => {
   const base = DEFAULT_EXERCISE_OPTIONS;
   /** Plays the item in progress through, cleanly, from `t` */
   const playItem = (r: ReturnType<typeof initialRoutine>, t: number) =>
-    r.current.exercise.steps.reduce((s, st, i) =>
-      reduceRoutine(s, { type: "noteOn", note: 60 + (r.current.exercise.basePc) + (st.kind === "note" ? st.offset : 0), time: t + 100 * i }), r);
+    r.current.exercise.steps.reduce(
+      (s, st, i) =>
+        reduceRoutine(s, {
+          type: "noteOn",
+          note: 60 + r.current.exercise.basePc + (st.kind === "note" ? st.offset : 0),
+          time: t + 100 * i,
+        }),
+      r,
+    );
 
   it("a session part-way: items reached, time from first note to last, not finished", () => {
     let r = initialRoutine(scales, "sharps", base);
     r = playItem(r, 1000);
     r = reduceRoutine(r, { type: "skip", held: [] });
-    const body = routineBody(r, "s1", "sharps", 0, i => itemExercise(r.items[i], r.base), perf => 1_700_000_000_000 + perf);
-    expect(body).toMatchObject({ kind: "routine", session: "s1", routine: "scales-circle", direction: "sharps", finished: false,
-                                 totalItems: 12, durationMs: 1400, startedAt: 1_700_000_001_000, totalMistakes: 0, tempo: null });
+    const body = routineBody(
+      r,
+      "s1",
+      "sharps",
+      0,
+      i => itemExercise(r.items[i], r.base),
+      perf => 1_700_000_000_000 + perf,
+    );
+    expect(body).toMatchObject({
+      kind: "routine",
+      session: "s1",
+      routine: "scales-circle",
+      direction: "sharps",
+      finished: false,
+      totalItems: 12,
+      durationMs: 1400,
+      startedAt: 1_700_000_001_000,
+      totalMistakes: 0,
+      tempo: null,
+    });
     expect(body.items).toEqual([
-      { exercise: "scales", exerciseId: "scale:C:major::1", key: "C:major", skipped: false, mistakes: 0, evenness: 1, onTime: null },
+      {
+        exercise: "scales",
+        exerciseId: "scale:C:major::1",
+        key: "C:major",
+        skipped: false,
+        mistakes: 0,
+        evenness: 1,
+        onTime: null,
+      },
       { exercise: "scales", exerciseId: "scale:G:major::1", key: "G:major", skipped: true },
     ]);
   });
@@ -60,32 +112,73 @@ describe("routine records", () => {
     let r = initialRoutine(scales, "sharps", base);
     for (let i = 0; i < 12; i++) r = playItem(r, 10_000 * i);
     expect(r.status).toBe("done");
-    const body = routineBody(r, "s2", "sharps", 0, i => itemExercise(r.items[i], r.base), p => p);
+    const body = routineBody(
+      r,
+      "s2",
+      "sharps",
+      0,
+      i => itemExercise(r.items[i], r.base),
+      p => p,
+    );
     expect(body).toMatchObject({ finished: true, totalItems: 12 });
     expect(body.items).toHaveLength(12);
   });
 
   it("notes the metronome a session was played to", () => {
-    const grid = { transport: startTransport(100, 4, 0), subdivision: 1 as const, strictness: "strict" as const, latencyMs: 0 };
+    const grid = {
+      transport: startTransport(100, 4, 0),
+      subdivision: 1 as const,
+      strictness: "strict" as const,
+      latencyMs: 0,
+    };
     const r = initialRoutine(scales, "flats", { ...base, metronome: true, bpm: 100 }, [], grid);
-    expect(routineBody(r, "s3", "flats", 12, () => r.current.exercise, p => p).tempo)
-      .toEqual({ bpm: 100, subdivision: 1, strictness: "strict", latencyMs: 12 });
+    expect(
+      routineBody(
+        r,
+        "s3",
+        "flats",
+        12,
+        () => r.current.exercise,
+        p => p,
+      ).tempo,
+    ).toEqual({ bpm: 100, subdivision: 1, strictness: "strict", latencyMs: 12 });
   });
 });
 
 describe("drill records", () => {
   it("chords: as asked, with what's needed to group them", () => {
-    const named = chordDrillBody({ rootPc: 0, root: "C", type: "maj7", inversion: { number: 1, bass: "E", bassPc: 4 } }, true, false, 1500);
-    expect(named).toMatchObject({ prompt: "Cmaj7/E", detail: { type: "maj7", rootPc: 0, style: "names", inversion: 1 } });
-    const roman = chordDrillBody({ rootPc: 2, root: "D", type: "7", roman: { numeral: "V7", keyValue: "G:major", filterIgnored: false } }, true, true, 2000);
-    expect(roman).toMatchObject({ prompt: "V7 in G major", outcome: "corrected", detail: { style: "roman", numeral: "V7", key: "G:major" } });
+    const named = chordDrillBody(
+      { rootPc: 0, root: "C", type: "maj7", inversion: { number: 1, bass: "E", bassPc: 4 } },
+      true,
+      false,
+      1500,
+    );
+    expect(named).toMatchObject({
+      prompt: "Cmaj7/E",
+      detail: { type: "maj7", rootPc: 0, style: "names", inversion: 1 },
+    });
+    const roman = chordDrillBody(
+      { rootPc: 2, root: "D", type: "7", roman: { numeral: "V7", keyValue: "G:major", filterIgnored: false } },
+      true,
+      true,
+      2000,
+    );
+    expect(roman).toMatchObject({
+      prompt: "V7 in G major",
+      outcome: "corrected",
+      detail: { style: "roman", numeral: "V7", key: "G:major" },
+    });
   });
 
   it("progressions: first try only if every chord was", () => {
     const def = progressionById(PROG_ID)!;
     const p = { id: def.id, name: def.name, keyValue: "C:major", chords: progressionChords(def, C) };
-    expect(progressionDrillBody(p, true, p.chords.length, 5000)).toMatchObject({ drill: "progressions", outcome: "firstTry",
-      prompt: `${def.name} in C major`, detail: { progression: def.id, key: "C:major", chords: p.chords.length } });
+    expect(progressionDrillBody(p, true, p.chords.length, 5000)).toMatchObject({
+      drill: "progressions",
+      outcome: "firstTry",
+      prompt: `${def.name} in C major`,
+      detail: { progression: def.id, key: "C:major", chords: p.chords.length },
+    });
     expect(progressionDrillBody(p, true, p.chords.length - 1, 0).outcome).toBe("corrected");
     expect(progressionDrillBody(p, false, 0, 0).outcome).toBe("skipped");
   });
@@ -93,8 +186,14 @@ describe("drill records", () => {
 const PROG_ID = "I-V-vi-IV";
 
 /** A drill record from the old note practice, as it was saved: nothing makes these now, but old history has them */
-const oldNoteDrill = (name: string, pc: number, outcome: DrillBody["outcome"] = "firstTry"): DrillBody =>
-  ({ kind: "drill", drill: "notes", prompt: name, detail: { pc }, outcome, ms: 100 });
+const oldNoteDrill = (name: string, pc: number, outcome: DrillBody["outcome"] = "firstTry"): DrillBody => ({
+  kind: "drill",
+  drill: "notes",
+  prompt: name,
+  detail: { pc },
+  outcome,
+  ms: 100,
+});
 
 describe("reading records back", () => {
   const good = { ...oldNoteDrill("C", 0), ...meta("a") };
@@ -111,7 +210,10 @@ describe("reading records back", () => {
   it("an export file round-trips, and other files are refused", () => {
     const file = JSON.stringify(exportFile([good], 5));
     expect(parseExport(file)).toEqual({ records: [good], skipped: 0 });
-    expect(parseExport(JSON.stringify({ ...JSON.parse(file), records: [good, { junk: 1 }] }))).toEqual({ records: [good], skipped: 1 });
+    expect(parseExport(JSON.stringify({ ...JSON.parse(file), records: [good, { junk: 1 }] }))).toEqual({
+      records: [good],
+      skipped: 1,
+    });
     expect(parseExport("{not json")).toEqual({ error: "That file isn't valid JSON." });
     expect(parseExport(JSON.stringify({ records: [] }))).toEqual({ error: "That isn't a practice history file." });
   });
@@ -122,7 +224,8 @@ describe("store", () => {
 
   it("keeps records oldest first", async () => {
     const s = createMemoryStore();
-    await s.add(rec("b", 2)); await s.add(rec("a", 1));
+    await s.add(rec("b", 2));
+    await s.add(rec("a", 1));
     expect((await s.all()).map(r => r.id)).toEqual(["a", "b"]);
     expect(await s.count()).toBe(2);
   });
@@ -136,7 +239,15 @@ describe("store", () => {
 
   it("reads one kind of record, oldest first", async () => {
     const round = (id: string, at: number) =>
-      ({ kind: "round", drill: "ear", size: 20, firstTry: 10, setup: "", durationMs: 1, ...meta(id, at) }) as ProgressRecord;
+      ({
+        kind: "round",
+        drill: "ear",
+        size: 20,
+        firstTry: 10,
+        setup: "",
+        durationMs: 1,
+        ...meta(id, at),
+      }) as ProgressRecord;
     const s = createMemoryStore([round("r2", 5), rec("a", 1), round("r1", 3), rec("b", 4)]);
     expect((await s.ofKind("round")).map(r => r.id)).toEqual(["r1", "r2"]);
     expect((await s.ofKind("drill")).map(r => r.id)).toEqual(["a", "b"]);
@@ -148,7 +259,12 @@ describe("recorder", () => {
   it("stamps each record with an id, the schema version, the time and the device, then stores it", async () => {
     const store = createMemoryStore();
     let n = 0;
-    const recorder = createRecorder(Promise.resolve(store), "my-device", () => 1234, () => `id-${++n}`);
+    const recorder = createRecorder(
+      Promise.resolve(store),
+      "my-device",
+      () => 1234,
+      () => `id-${++n}`,
+    );
     const seen: string[] = [];
     recorder.onRecorded(r => seen.push(r.id));
     recorder.record(oldNoteDrill("C", 0));

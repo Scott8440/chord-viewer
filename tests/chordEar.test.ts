@@ -1,7 +1,13 @@
 // Ear training, chord qualities: prompts, voicing, judging answers, options and the record.
 import { describe, expect, it } from "vitest";
 import {
-  answerOrder, initialChordEar, makeChordEarPrompt, qualityLabel, reduceChordEar, sanitizeChordEarOptions, voiceChord,
+  answerOrder,
+  initialChordEar,
+  makeChordEarPrompt,
+  qualityLabel,
+  reduceChordEar,
+  sanitizeChordEarOptions,
+  voiceChord,
   type ChordEarOptions,
 } from "../src/exercises/chordEar";
 import { chordEarDrillBody } from "../src/progress/records";
@@ -10,7 +16,10 @@ import { analyze, chordSemitones } from "../src/theory";
 import { chordEarAnswers, chordEarDisplay } from "../src/views/practice";
 
 /** A repeatable sequence of "random" numbers */
-const seq = (...xs: number[]) => { let i = 0; return () => xs[i++ % xs.length]; };
+const seq = (...xs: number[]) => {
+  let i = 0;
+  return () => xs[i++ % xs.length];
+};
 const opts: ChordEarOptions = { types: ["M", "m", "dim", "7"], inversions: false, broken: false };
 
 describe("chord tones", () => {
@@ -78,9 +87,16 @@ describe("answers", () => {
   it("boxes in the filter's order, numbered, struck through when wrong; the chord named on its box when right", () => {
     let s = reduceChordEar(initialChordEar(p), { type: "answer", quality: "7" });
     let boxes = chordEarAnswers(s, ["7", "m", "M"], true);
-    expect(boxes.map(b => [b.id, b.key, b.state, b.disabled])).toEqual([["M", 1, "", false], ["m", 2, "", false], ["7", 3, "wrong", true]]);
+    expect(boxes.map(b => [b.id, b.key, b.state, b.disabled])).toEqual([
+      ["M", 1, "", false],
+      ["m", 2, "", false],
+      ["7", 3, "wrong", true],
+    ]);
     expect(boxes[2].label).toBe("Dominant seventh (7)");
-    expect(chordEarDisplay(s, ["7", "m", "M"], false, true)).toMatchObject({ promptHtml: "", feedback: "✗ Not dominant seventh (7). Listen again" });
+    expect(chordEarDisplay(s, ["7", "m", "M"], false, true)).toMatchObject({
+      promptHtml: "",
+      feedback: "✗ Not dominant seventh (7). Listen again",
+    });
     s = reduceChordEar(s, { type: "answer", quality: "m" });
     boxes = chordEarAnswers(s, ["7", "m", "M"], true);
     expect(boxes[1]).toMatchObject({ state: "right", detail: "D minor" });
@@ -101,8 +117,11 @@ describe("options", () => {
   it("at least two known types, else major and minor; inversions and broken off unless set", () => {
     expect(sanitizeChordEarOptions(undefined)).toEqual({ types: ["M", "m"], inversions: false, broken: false });
     expect(sanitizeChordEarOptions({ types: ["dim", "nonsense"] }).types).toEqual(["M", "m"]);
-    expect(sanitizeChordEarOptions({ types: ["dim", "aug", "x"], inversions: true, broken: true }))
-      .toEqual({ types: ["dim", "aug"], inversions: true, broken: true });
+    expect(sanitizeChordEarOptions({ types: ["dim", "aug", "x"], inversions: true, broken: true })).toEqual({
+      types: ["dim", "aug"],
+      inversions: true,
+      broken: true,
+    });
   });
 
   it("saved in settings, changed one at a time", () => {
@@ -114,12 +133,32 @@ describe("options", () => {
   });
 
   it("each chord is a drill record, grouped by quality", () => {
-    const r = chordEarDrillBody({ rootPc: 2, root: "D", type: "m", inversion: 1, notes: [] }, "Minor", ["M", "m"], true, false, 2300.4);
-    expect(r).toEqual({ kind: "drill", drill: "chordEar", prompt: "Minor",
-                        detail: { type: "m", rootPc: 2, inversion: 1, types: "M,m", guesses: "" }, outcome: "firstTry", ms: 2300 });
+    const r = chordEarDrillBody(
+      { rootPc: 2, root: "D", type: "m", inversion: 1, notes: [] },
+      "Minor",
+      ["M", "m"],
+      true,
+      false,
+      2300.4,
+    );
+    expect(r).toEqual({
+      kind: "drill",
+      drill: "chordEar",
+      prompt: "Minor",
+      detail: { type: "m", rootPc: 2, inversion: 1, types: "M,m", guesses: "" },
+      outcome: "firstTry",
+      ms: 2300,
+    });
     // The wrong answers given first, in order: what it was mistaken for
-    const missed = chordEarDrillBody({ rootPc: 0, root: "C", type: "aug", inversion: 0, notes: [] }, "Augmented", ["M", "m", "aug", "7"],
-                                     true, true, 5000, ["M", "7"]);
+    const missed = chordEarDrillBody(
+      { rootPc: 0, root: "C", type: "aug", inversion: 0, notes: [] },
+      "Augmented",
+      ["M", "m", "aug", "7"],
+      true,
+      true,
+      5000,
+      ["M", "7"],
+    );
     expect(missed).toMatchObject({ outcome: "corrected", detail: { guesses: "M,7" } });
   });
 });

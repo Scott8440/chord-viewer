@@ -10,7 +10,13 @@ import { buildKey } from "../theory";
 import type { Transport } from "../timing/transport";
 import { initialPerformance, reducePerformance, type PerformanceState } from "./performance";
 import {
-  SETTINGS, sameSetting, sanitizeLatency, sanitizeSettings, type ModeId, type SavedSettings, type Settings,
+  SETTINGS,
+  sameSetting,
+  sanitizeLatency,
+  sanitizeSettings,
+  type ModeId,
+  type SavedSettings,
+  type Settings,
   type SettingSpec,
 } from "./settings";
 
@@ -82,9 +88,10 @@ const merged = <T>(was: T, options: Partial<T>, spec: SettingSpec<T>) => spec.sa
 export function reduceApp(s: AppState, a: AppAction): AppState {
   switch (a.type) {
     case "input": {
-      const history = s.history.length >= HISTORY_LIMIT
-        ? [...s.history.slice(s.history.length - HISTORY_LIMIT + 1), a.event]
-        : [...s.history, a.event];
+      const history =
+        s.history.length >= HISTORY_LIMIT
+          ? [...s.history.slice(s.history.length - HISTORY_LIMIT + 1), a.event]
+          : [...s.history, a.event];
       return { ...s, perf: reducePerformance(s.perf, a.event), history };
     }
     case "setKey":

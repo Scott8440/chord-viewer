@@ -13,11 +13,14 @@ export function fitToStaffCorner(el: HTMLElement, card: HTMLElement, staffEl: HT
   function fit() {
     const svg = staffEl.querySelector("svg");
     if (!svg) return;
-    const s = svg.getBoundingClientRect(), c = card.getBoundingClientRect();
+    const s = svg.getBoundingClientRect(),
+      c = card.getBoundingClientRect();
     if (!s.width) return;
     // The drawing is scaled to fit the svg's box and centred in it (a short window letterboxes it)
-    const corner = staffCorner(svg.dataset.layout === "row"), scale = Math.min(s.width / corner.viewWidth, s.height / corner.viewHeight);
-    const left = s.left + (s.width - corner.viewWidth * scale) / 2, top = s.top + (s.height - corner.viewHeight * scale) / 2;
+    const corner = staffCorner(svg.dataset.layout === "row"),
+      scale = Math.min(s.width / corner.viewWidth, s.height / corner.viewHeight);
+    const left = s.left + (s.width - corner.viewWidth * scale) / 2,
+      top = s.top + (s.height - corner.viewHeight * scale) / 2;
     // Room to the right of the note column, and above the treble staff
     const wide = c.right - inset - (left + corner.left * scale) - GAP_PX;
     const tall = top + corner.bottom * scale - (c.top + inset) - GAP_PX;
@@ -29,9 +32,15 @@ export function fitToStaffCorner(el: HTMLElement, card: HTMLElement, staffEl: HT
   let layout: string | undefined;
   const svgWatch = new MutationObserver(() => {
     const now = staffEl.querySelector("svg")?.dataset.layout;
-    if (!el.style.width || now !== layout) { layout = now; fit(); }
+    if (!el.style.width || now !== layout) {
+      layout = now;
+      fit();
+    }
   });
   svgWatch.observe(staffEl, { childList: true });
   fit();
-  return () => { observer.disconnect(); svgWatch.disconnect(); };
+  return () => {
+    observer.disconnect();
+    svgWatch.disconnect();
+  };
 }

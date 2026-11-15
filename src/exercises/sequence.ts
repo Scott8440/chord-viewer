@@ -92,14 +92,42 @@ export type SequenceAction =
   /** The metronome started, stopped or changed (a new tempo keeps the run going; a new subdivision restarts it) */
   | { type: "setGrid"; grid: TimingGrid | null };
 
-export function initialSequence(exercise: SequenceExercise, held: number[] = [], grid: TimingGrid | null = null): SequenceState {
-  return { exercise, status: "ready", anchor: null, index: 0, mistakes: 0, lastWrong: null, startHint: false,
-           tracker: freshAttempt(held), times: [], grid, timings: [], result: null, runs: [] };
+export function initialSequence(
+  exercise: SequenceExercise,
+  held: number[] = [],
+  grid: TimingGrid | null = null,
+): SequenceState {
+  return {
+    exercise,
+    status: "ready",
+    anchor: null,
+    index: 0,
+    mistakes: 0,
+    lastWrong: null,
+    startHint: false,
+    tracker: freshAttempt(held),
+    times: [],
+    grid,
+    timings: [],
+    result: null,
+    runs: [],
+  };
 }
 
 /** The fields that put a run back to waiting for its first step */
-const ready = (): Pick<SequenceState, "status" | "anchor" | "index" | "mistakes" | "lastWrong" | "startHint" | "times" | "timings"> =>
-  ({ status: "ready", anchor: null, index: 0, mistakes: 0, lastWrong: null, startHint: false, times: [], timings: [] });
+const ready = (): Pick<
+  SequenceState,
+  "status" | "anchor" | "index" | "mistakes" | "lastWrong" | "startHint" | "times" | "timings"
+> => ({
+  status: "ready",
+  anchor: null,
+  index: 0,
+  mistakes: 0,
+  lastWrong: null,
+  startHint: false,
+  times: [],
+  timings: [],
+});
 
 /** The step being waited for: the next one in a run, or the first one before a run starts. */
 export const currentStep = (s: SequenceState): SequenceStep => s.exercise.steps[s.status === "playing" ? s.index : 0];
@@ -108,18 +136,26 @@ export function reduceSequence(s: SequenceState, a: SequenceAction): SequenceSta
   switch (a.type) {
     case "noteOn": {
       const step = currentStep(s);
-      if (step.kind !== "note") return s;    // chord steps are judged from the held keys
+      if (step.kind !== "note") return s; // chord steps are judged from the held keys
       const anchor = s.status === "playing" ? s.anchor : null;
-      const ok = anchor != null
-        ? a.note === anchor + step.offset
-        // No octave yet: the right pitch class in any octave sets it
-        : (a.note - step.offset - s.exercise.basePc) % 12 === 0;
+      const ok =
+        anchor != null
+          ? a.note === anchor + step.offset
+          : // No octave yet: the right pitch class in any octave sets it
+            (a.note - step.offset - s.exercise.basePc) % 12 === 0;
       // The note just played is still down: if a chord step comes next, it is not part of that chord's attempt
-      if (ok) return advance({ ...s, tracker: freshAttempt([...new Set([...s.tracker.prevHeld, a.note])]) },
-                             a.time, anchor ?? a.note - step.offset);
+      if (ok)
+        return advance(
+          { ...s, tracker: freshAttempt([...new Set([...s.tracker.prevHeld, a.note])]) },
+          a.time,
+          anchor ?? a.note - step.offset,
+        );
       if (s.status !== "playing") return s.startHint ? s : { ...s, startHint: true };
-      return { ...s, mistakes: s.mistakes + 1,
-               lastWrong: { kind: "note", expected: anchor == null ? null : anchor + step.offset, played: a.note } };
+      return {
+        ...s,
+        mistakes: s.mistakes + 1,
+        lastWrong: { kind: "note", expected: anchor == null ? null : anchor + step.offset, played: a.note },
+      };
     }
     case "held": {
       const step = currentStep(s);
@@ -149,13 +185,29 @@ export function reduceSequence(s: SequenceState, a: SequenceAction): SequenceSta
 /** The current step was played at `time`: start a run, move on, or finish. */
 function advance(s: SequenceState, time: number, anchor: number | null): SequenceState {
   const playing = s.status === "playing";
-  const timing = s.grid && judgeTime(s.grid, time, playing ? s.timings[s.timings.length - 1]?.slot ?? null : null);
+  const timing = s.grid && judgeTime(s.grid, time, playing ? (s.timings[s.timings.length - 1]?.slot ?? null) : null);
   const next: SequenceState = playing
-    ? { ...s, anchor, index: s.index + 1, lastWrong: null, times: [...s.times, time],
-        timings: timing ? [...s.timings, timing] : s.timings }
-    // Start (or start again) with the first step
-    : { ...s, status: "playing", anchor, index: 1, mistakes: 0, lastWrong: null, startHint: false, times: [time],
-        timings: timing ? [timing] : [], result: null };
+    ? {
+        ...s,
+        anchor,
+        index: s.index + 1,
+        lastWrong: null,
+        times: [...s.times, time],
+        timings: timing ? [...s.timings, timing] : s.timings,
+      }
+    : // Start (or start again) with the first step
+      {
+        ...s,
+        status: "playing",
+        anchor,
+        index: 1,
+        mistakes: 0,
+        lastWrong: null,
+        startHint: false,
+        times: [time],
+        timings: timing ? [timing] : [],
+        result: null,
+      };
   if (next.index < s.exercise.steps.length) return next;
   const result = runResult(next.times, next.mistakes, next.grid && timingSummary(next.grid, next.timings));
   return { ...next, status: "done", result, runs: [...next.runs, result] };
@@ -168,14 +220,25 @@ export function runResult(times: readonly number[], mistakes: number, timing: Ti
   if (!gaps.length) return { mistakes, durationMs, bpm: 0, evenness: 1, timing };
   const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length;
   const sd = Math.sqrt(gaps.reduce((a, g) => a + (g - mean) ** 2, 0) / gaps.length);
-  return { mistakes, durationMs, bpm: mean > 0 ? 60000 / mean : 0, evenness: mean > 0 ? Math.max(0, 1 - sd / mean) : 1, timing };
+  return {
+    mistakes,
+    durationMs,
+    bpm: mean > 0 ? 60000 / mean : 0,
+    evenness: mean > 0 ? Math.max(0, 1 - sd / mean) : 1,
+    timing,
+  };
 }
 
 /** How well a run went, beyond mistakes: on time against the metronome when both runs had one, else evenness. */
-const steadiness = (r: RunResult, other: RunResult) => r.timing && other.timing ? r.timing.onTime : r.evenness;
+const steadiness = (r: RunResult, other: RunResult) => (r.timing && other.timing ? r.timing.onTime : r.evenness);
 
 /** Best run so far: fewest mistakes, then most on time (or most even). */
 export function bestRun(runs: readonly RunResult[]): RunResult | null {
-  return runs.reduce<RunResult | null>((best, r) =>
-    !best || r.mistakes < best.mistakes || (r.mistakes === best.mistakes && steadiness(r, best) > steadiness(best, r)) ? r : best, null);
+  return runs.reduce<RunResult | null>(
+    (best, r) =>
+      !best || r.mistakes < best.mistakes || (r.mistakes === best.mistakes && steadiness(r, best) > steadiness(best, r))
+        ? r
+        : best,
+    null,
+  );
 }

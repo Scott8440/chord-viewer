@@ -21,9 +21,12 @@ export function initialNotePractice<P extends NotePrompt>(prompt: P): NotePracti
   return { prompt, status: "waiting", played: null, missed: false, answered: 0, firstTry: 0 };
 }
 
-export function reduceNotePractice<P extends NotePrompt>(s: NotePracticeState<P>, a: NotePracticeAction<P>): NotePracticeState<P> {
+export function reduceNotePractice<P extends NotePrompt>(
+  s: NotePracticeState<P>,
+  a: NotePracticeAction<P>,
+): NotePracticeState<P> {
   if (a.type !== "play") return movedOn(s, a, { played: null });
-  if (s.status === "correct") return s;   // already answered; ignore notes until the next prompt
+  if (s.status === "correct") return s; // already answered; ignore notes until the next prompt
   // Any octave counts
   return a.note % 12 === s.prompt.pc ? answeredRight(s, { played: a.note }) : answeredWrong(s, { played: a.note });
 }

@@ -41,20 +41,30 @@ const store = createStore(reduceApp, createAppState(loadSettings($<HTMLInputElem
 saveSettingsOnChange(store);
 // MIDI mapping: a mapped key presses its control (in the mode it was mapped in) instead of being played
 const midiMapper = createMidiMapper({
-  button: $<HTMLButtonElement>("midiMapBtn"), hint: $("midiMapHint"),
-  scope: () => store.getState().page === "progress" ? null : store.getState().settings.mode,
+  button: $<HTMLButtonElement>("midiMapBtn"),
+  hint: $("midiMapHint"),
+  scope: () => (store.getState().page === "progress" ? null : store.getState().settings.mode),
 });
-const input = (event: InputEvent) => { if (!midiMapper.handle(event)) store.dispatch({ type: "input", event }); };
+const input = (event: InputEvent) => {
+  if (!midiMapper.handle(event)) store.dispatch({ type: "input", event });
+};
 bindControls(store);
 const history = openHistory(deviceId(), () => mode.refresh?.());
 
 /* ---------------------------------------------------------------
    Views
    --------------------------------------------------------------- */
-const header = createHeaderView({
-  statusDot: $("statusDot"), statusText: $("statusText"), inputs: $("inputs"), retry: $("retry"),
-  pedal: $("pedal"), kbdOct: $("kbdOct"),
-}, (id, on) => midi.setEnabled(id, on));
+const header = createHeaderView(
+  {
+    statusDot: $("statusDot"),
+    statusText: $("statusText"),
+    inputs: $("inputs"),
+    retry: $("retry"),
+    pedal: $("pedal"),
+    kbdOct: $("kbdOct"),
+  },
+  (id, on) => midi.setEnabled(id, on),
+);
 store.subscribe(s => header.setPedal(pedalDown(s.perf)));
 
 const staff = createStaffView($("staff"));
@@ -82,16 +92,28 @@ const metronomeViews = {
     calibrationDialog.setSoundBlocked(blocked);
     const high = outputLatencyMs != null && outputLatencyMs > HIGH_OUTPUT_LATENCY_MS;
     $("outputLatencyNote").hidden = !high;
-    if (high) $("outputLatencyNote").textContent =
-      `Your audio output adds about ${outputLatencyMs} ms of delay (Bluetooth?). The click is sent early to make up ` +
-      `for it, but wired headphones or speakers keep it tightest.`;
+    if (high)
+      $("outputLatencyNote").textContent =
+        `Your audio output adds about ${outputLatencyMs} ms of delay (Bluetooth?). The click is sent early to make up ` +
+        `for it, but wired headphones or speakers keep it tightest.`;
   }),
   beat,
 };
-const chordName = createChordNameView({ root: $("freeView"), name: $("chordName"), sub: $("chordSub"), roman: $("roman"), alts: $("alts") });
+const chordName = createChordNameView({
+  root: $("freeView"),
+  name: $("chordName"),
+  sub: $("chordSub"),
+  roman: $("roman"),
+  alts: $("alts"),
+});
 const practice = createPracticeView({
-  label: $("practiceLabel"), prompt: $("practicePrompt"), sub: $("practiceSub"), feedback: $("practiceFeedback"), score: $("practiceScore"),
-  skip: $("practiceSkip"), stop: $("practiceStop"),
+  label: $("practiceLabel"),
+  prompt: $("practicePrompt"),
+  sub: $("practiceSub"),
+  feedback: $("practiceFeedback"),
+  score: $("practiceScore"),
+  skip: $("practiceSkip"),
+  stop: $("practiceStop"),
 });
 const tones = createTonePlayer();
 
@@ -100,8 +122,21 @@ const tones = createTonePlayer();
    --------------------------------------------------------------- */
 const modeDeps: ModeDeps = {
   store,
-  views: { staff, practice, circle, chordName, tones, degrees: degreeCircle, answers: answerBoard, roundViz, progress: progressView },
-  recorder: history.recorder, history: history.store, saved: history.saved, excerpts: loadExcerpts,
+  views: {
+    staff,
+    practice,
+    circle,
+    chordName,
+    tones,
+    degrees: degreeCircle,
+    answers: answerBoard,
+    roundViz,
+    progress: progressView,
+  },
+  recorder: history.recorder,
+  history: history.store,
+  saved: history.saved,
+  excerpts: loadExcerpts,
 };
 /**
  * Starts a mode and the page behaviours its `PAGE_SETUP` turns on. The circle of fifths starts hidden; modes where
@@ -109,7 +144,7 @@ const modeDeps: ModeDeps = {
  */
 function startMode(id: View): Mode {
   circle.render(null);
-  roundViz.render(null);   // the ear modes draw it
+  roundViz.render(null); // the ear modes draw it
   const mode = MODE_REGISTRY[id](modeDeps);
   const offIdle = pageSetup(id).fadeChordWhenIdle
     ? onIdle(store, IDLE_MS, { idle: () => chordName.setIdle(true), active: () => chordName.setIdle(false) })
@@ -137,7 +172,8 @@ store.subscribe((s, prev) => {
 });
 // Progress: a page of its own, opened and closed from the header (choosing a mode also goes back to practising)
 onPress("progressBtn", () =>
-  store.dispatch({ type: "setPage", page: store.getState().page === "progress" ? "practice" : "progress" }));
+  store.dispatch({ type: "setPage", page: store.getState().page === "progress" ? "practice" : "progress" }),
+);
 
 /* ---------------------------------------------------------------
    Input sources and buttons
@@ -155,21 +191,30 @@ onPress("practiceReplay", () => mode.replay?.());
 onPress("practiceStop", () => mode.toggleRunning?.());
 onPress("routineRestart", () => mode.restart?.());
 $("panic").onclick = panic;
-$("retry").onclick = () => { $("retry").hidden = true; header.showMidiStatus({ kind: "requesting" }); midi.start(); };
+$("retry").onclick = () => {
+  $("retry").hidden = true;
+  header.showMidiStatus({ kind: "requesting" });
+  midi.start();
+};
 
 midi.start();
 
 // Exposed for testing in the console: __chord.analyze([60,64,67])
 declare global {
-  interface Window { __chord: unknown }
+  interface Window {
+    __chord: unknown;
+  }
 }
 const now = () => performance.now();
 window.__chord = {
   setKey: (value: string) => store.dispatch({ type: "setKey", value }),
   analyze: (notes: number[]) => analyze(notes, store.getState().settings.key),
-  noteOn: (note: number, source = "console", channel = 0) => input({ type: "noteOn", note, velocity: 100, time: now(), source, channel }),
-  noteOff: (note: number, source = "console", channel = 0) => input({ type: "noteOff", note, velocity: 0, time: now(), source, channel }),
-  setPedal: (source: string, down: boolean, channel = 0) => input({ type: "pedal", down, time: now(), source, channel }),
-  allOff: (source?: string) => source ? input({ type: "allNotesOff", time: now(), source }) : panic(),
+  noteOn: (note: number, source = "console", channel = 0) =>
+    input({ type: "noteOn", note, velocity: 100, time: now(), source, channel }),
+  noteOff: (note: number, source = "console", channel = 0) =>
+    input({ type: "noteOff", note, velocity: 0, time: now(), source, channel }),
+  setPedal: (source: string, down: boolean, channel = 0) =>
+    input({ type: "pedal", down, time: now(), source, channel }),
+  allOff: (source?: string) => (source ? input({ type: "allNotesOff", time: now(), source }) : panic()),
   getState: () => store.getState(),
 };

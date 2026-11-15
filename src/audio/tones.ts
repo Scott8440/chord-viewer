@@ -21,7 +21,8 @@ export interface TonePlayer {
 
 /** The drone's tone: a low pass, and the saws' detune in cents (the slow wobble is the two saws beating: wider
  *  detune beats faster) */
-const DRONE_LOWPASS_HZ = 550, DRONE_DETUNE_CENTS = 1.5;
+const DRONE_LOWPASS_HZ = 550,
+  DRONE_DETUNE_CENTS = 1.5;
 
 const freq = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
@@ -32,13 +33,25 @@ const freq = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
  */
 function holdAt(param: AudioParam, t: number) {
   if (typeof param.cancelAndHoldAtTime === "function") param.cancelAndHoldAtTime(t);
-  else { const v = param.value; param.cancelScheduledValues(t); param.setValueAtTime(v, t); }
+  else {
+    const v = param.value;
+    param.cancelScheduledValues(t);
+    param.setValueAtTime(v, t);
+  }
 }
 
-const DRONE_GAIN = 0.07, DRONE_FADE_IN = 1.2, DRONE_FADE_OUT = 0.6;
-const NOTE_GAIN = 0.3, NOTE_DECAY = 3.2;
+const DRONE_GAIN = 0.07,
+  DRONE_FADE_IN = 1.2,
+  DRONE_FADE_OUT = 0.6;
+const NOTE_GAIN = 0.3,
+  NOTE_DECAY = 3.2;
 /** Piano-ish: partials (multiple, level); higher ones die away faster */
-const NOTE_PARTIALS = [[1, 1], [2, 0.45], [3, 0.2], [4, 0.1]] as const;
+const NOTE_PARTIALS = [
+  [1, 1],
+  [2, 0.45],
+  [3, 0.2],
+  [4, 0.1],
+] as const;
 
 export function createTonePlayer(): TonePlayer {
   let ctx: AudioContext | null = null;
@@ -50,7 +63,9 @@ export function createTonePlayer(): TonePlayer {
   function context(): AudioContext {
     if (!ctx) {
       ctx = audioContext();
-      ctx.addEventListener("statechange", () => { for (const l of listeners) l(); });
+      ctx.addEventListener("statechange", () => {
+        for (const l of listeners) l();
+      });
     }
     unlockAudio();
     return ctx;
@@ -73,8 +88,9 @@ export function createTonePlayer(): TonePlayer {
       return o;
     });
     filter.frequency.value = DRONE_LOWPASS_HZ;
-    saws.forEach((o, i) => o.detune.value = (i ? 1 : -1) * DRONE_DETUNE_CENTS);
-    const octave = c.createOscillator(), octaveGain = c.createGain();
+    saws.forEach((o, i) => (o.detune.value = (i ? 1 : -1) * DRONE_DETUNE_CENTS));
+    const octave = c.createOscillator(),
+      octaveGain = c.createGain();
     octave.frequency.value = freq(midi + 12);
     octaveGain.gain.value = 0.6;
     octave.connect(octaveGain).connect(out);
@@ -99,7 +115,8 @@ export function createTonePlayer(): TonePlayer {
       const c = context();
       const t = c.currentTime + delay;
       for (const [multiple, level] of NOTE_PARTIALS) {
-        const o = c.createOscillator(), g = c.createGain();
+        const o = c.createOscillator(),
+          g = c.createGain();
         o.frequency.value = freq(midi) * multiple;
         const decay = ring / multiple;
         g.gain.setValueAtTime(0, t);
@@ -120,7 +137,9 @@ export function createTonePlayer(): TonePlayer {
         // A quick fade from wherever it has got to, rather than a cut, so it doesn't click
         holdAt(n.gain.gain, t);
         n.gain.gain.setTargetAtTime(0, t, 0.015);
-        try { n.osc.stop(t + 0.1); } catch {}
+        try {
+          n.osc.stop(t + 0.1);
+        } catch {}
       }
       notes.clear();
     },

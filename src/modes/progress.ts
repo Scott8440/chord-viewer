@@ -7,10 +7,17 @@ import type { Mode } from "./performance";
 let selection: ProgressSelection = { range: "30", routine: null, exercise: null, drill: null };
 
 /** A new range, routine or exercise to show (then `refresh` the mode) */
-export const selectProgress = (s: ProgressSelection) => { selection = s; };
+export const selectProgress = (s: ProgressSelection) => {
+  selection = s;
+};
 
-export function startProgress({ views, history, saved }: {
-  views: { progress: ProgressView }; history: Promise<ProgressStore>;
+export function startProgress({
+  views,
+  history,
+  saved,
+}: {
+  views: { progress: ProgressView };
+  history: Promise<ProgressStore>;
   /** Whether history is kept between sessions (IndexedDB opened) */
   saved: () => boolean;
 }): Mode {
@@ -21,7 +28,10 @@ export function startProgress({ views, history, saved }: {
   }
   void show();
   return {
-    stop() { stopped = true; views.progress.clear(); },
+    stop() {
+      stopped = true;
+      views.progress.clear();
+    },
     refresh: () => void show(),
   };
 }

@@ -31,7 +31,13 @@ export interface ScoreParts {
 }
 
 const VALUES: Record<string, NoteValue> = {
-  whole: "w", half: "h", quarter: "q", eighth: "8", "16th": "16", "32nd": "32", "64th": "64",
+  whole: "w",
+  half: "h",
+  quarter: "q",
+  eighth: "8",
+  "16th": "16",
+  "32nd": "32",
+  "64th": "64",
 };
 const GRACE = /^(grace\d+(after)?|acciaccatura|appoggiatura)$/;
 const EPS = 1e-6;
@@ -44,19 +50,32 @@ const fraction = (s: string | undefined) => {
 
 const partName = (part: XmlElement) => {
   const inst = child(part, "Instrument");
-  return { id: textOf(inst, "instrumentId") ?? "", name: (textOf(part, "trackName") ?? textOf(inst, "trackName") ?? "").toLowerCase() };
+  return {
+    id: textOf(inst, "instrumentId") ?? "",
+    name: (textOf(part, "trackName") ?? textOf(inst, "trackName") ?? "").toLowerCase(),
+  };
 };
 const staffOf = (part: XmlElement, i: number) => {
   const staff = kids(part, "Staff")[i];
   // The instrument's clef for this staff: <clef> for the first, <clef staff="2"> for the second …
-  const instClef = kids(child(part, "Instrument"), "clef").find(c => (c.attrs.staff ?? "1") === String(i + 1))?.text.trim();
+  const instClef = kids(child(part, "Instrument"), "clef")
+    .find(c => (c.attrs.staff ?? "1") === String(i + 1))
+    ?.text.trim();
   return staff && { id: staff.attrs.id, clef: textOf(staff, "defaultClef") ?? instClef ?? "G" };
 };
 
 /** Plain values filling a gap, longest first (a voice sitting out part of a bar: drawn as nothing) */
 function spaces(length: number): ExcerptEvent[] | null {
   const out: ExcerptEvent[] = [];
-  const plain: [NoteValue, number][] = [["w", 1], ["h", 1 / 2], ["q", 1 / 4], ["8", 1 / 8], ["16", 1 / 16], ["32", 1 / 32], ["64", 1 / 64]];
+  const plain: [NoteValue, number][] = [
+    ["w", 1],
+    ["h", 1 / 2],
+    ["q", 1 / 4],
+    ["8", 1 / 8],
+    ["16", 1 / 16],
+    ["32", 1 / 32],
+    ["64", 1 / 64],
+  ];
   for (let left = length; left > EPS;) {
     const p = plain.find(([, len]) => len <= left + EPS);
     if (!p) return null;
@@ -69,7 +88,9 @@ function spaces(length: number): ExcerptEvent[] | null {
 /** Reads one staff, bar by bar */
 function readStaff(staff: XmlElement, defaultClef: string): StaffBar[] {
   const bars: StaffBar[] = [];
-  let key = 0, time: [number, number] = [4, 4], clef = defaultClef;
+  let key = 0,
+    time: [number, number] = [4, 4],
+    clef = defaultClef;
   /** Tuplets defined by id (version 2), and the ones open now (version 3: until <endTuplet/>) */
   const tupletDefs = new Map<string, [number, number]>();
 
@@ -80,20 +101,26 @@ function readStaff(staff: XmlElement, defaultClef: string): StaffBar[] {
     // (track mod 4); only its first voice is read, since the others are placed by absolute ticks
     const v3 = kids(measure, "voice");
     const voiceItems: XmlElement[][] = v3.length
-      ? v3.map((v, i) => i ? v.children : [...measure.children.filter(c => c.name !== "voice"), ...v.children])
+      ? v3.map((v, i) => (i ? v.children : [...measure.children.filter(c => c.name !== "voice"), ...v.children]))
       : [measure.children.filter(c => Number(textOf(c, "track") ?? 0) % 4 === 0)];
-    if (!v3.length && measure.children.some(c => c.name === "Chord" && Number(textOf(c, "track") ?? 0) % 4 !== 0)) problems.push("second voice");
+    if (!v3.length && measure.children.some(c => c.name === "Chord" && Number(textOf(c, "track") ?? 0) % 4 !== 0))
+      problems.push("second voice");
 
     const voices: ExcerptEvent[][] = [];
     voiceItems.forEach((items, vi) => {
       const events: ExcerptEvent[] = [];
       const open: [number, number][] = [];
       /** Where the next element goes, and where the last note or rest ended */
-      let at = 0, filled = 0;
+      let at = 0,
+        filled = 0;
       for (const el of items) {
         switch (el.name) {
-          case "KeySig": if (!vi) key = Number(textOf(el, "accidental") ?? textOf(el, "concertKey") ?? key); break;
-          case "TimeSig": if (!vi) time = [Number(textOf(el, "sigN")), Number(textOf(el, "sigD"))]; break;
+          case "KeySig":
+            if (!vi) key = Number(textOf(el, "accidental") ?? textOf(el, "concertKey") ?? key);
+            break;
+          case "TimeSig":
+            if (!vi) time = [Number(textOf(el, "sigN")), Number(textOf(el, "sigD"))];
+            break;
           case "Clef": {
             clef = textOf(el, "concertClefType") ?? clef;
             // One at the end of a bar is for the next; one in the middle can't be drawn here
@@ -109,25 +136,39 @@ function readStaff(staff: XmlElement, defaultClef: string): StaffBar[] {
             else if (ratio[0]) open.push(ratio);
             break;
           }
-          case "endTuplet": open.pop(); break;
+          case "endTuplet":
+            open.pop();
+            break;
           case "location": {
-            if (textOf(el, "measures")) { problems.push("time jump"); break; }
+            if (textOf(el, "measures")) {
+              problems.push("time jump");
+              break;
+            }
             at += fraction(textOf(el, "fractions")) ?? 0;
             break;
           }
-          case "tick": problems.push("time jump"); break;
-          case "Chord": case "Rest": {
-            if (el.children.some(c => GRACE.test(c.name))) break;   // ornaments: left out
+          case "tick":
+            problems.push("time jump");
+            break;
+          case "Chord":
+          case "Rest": {
+            if (el.children.some(c => GRACE.test(c.name))) break; // ornaments: left out
             if (child(el, "staffMove") || child(el, "move")) problems.push("cross-staff");
             if (child(el, "Tremolo")) problems.push("tremolo");
             const type = textOf(el, "durationType") ?? "";
             const ref = textOf(el, "Tuplet");
             const tuplet = ref ? tupletDefs.get(ref) : open[open.length - 1];
             if (open.length > 1) problems.push("nested tuplet");
-            if (at < filled - EPS) { problems.push("overlap"); break; }
+            if (at < filled - EPS) {
+              problems.push("overlap");
+              break;
+            }
             if (at > filled + EPS) {
               const gap = spaces(at - filled);
-              if (!gap) { problems.push("gap"); break; }
+              if (!gap) {
+                problems.push("gap");
+                break;
+              }
               events.push(...gap);
               filled = at;
             }
@@ -135,7 +176,10 @@ function readStaff(staff: XmlElement, defaultClef: string): StaffBar[] {
             if (type === "measure") e = { v: "w", bar: 1 };
             else {
               const v = VALUES[type];
-              if (!v) { problems.push(`value ${type}`); break; }
+              if (!v) {
+                problems.push(`value ${type}`);
+                break;
+              }
               e = { v };
               const dots = Number(textOf(el, "dots") ?? 0);
               if (dots) e.d = dots;
@@ -144,14 +188,18 @@ function readStaff(staff: XmlElement, defaultClef: string): StaffBar[] {
             if (el.name === "Chord") {
               const notes = kids(el, "Note").map((note): ExcerptNote => {
                 const n: ExcerptNote = { p: Number(textOf(note, "pitch")), s: Number(textOf(note, "tpc")) };
-                if (child(note, "Tie") || kids(note, "Spanner").some(sp => sp.attrs.type === "Tie" && child(sp, "next"))) n.tie = 1;
+                if (
+                  child(note, "Tie") ||
+                  kids(note, "Spanner").some(sp => sp.attrs.type === "Tie" && child(sp, "next"))
+                )
+                  n.tie = 1;
                 return n;
               });
               // Low to high, and a pitch once (a unison written twice is struck once)
               e.n = notes.sort((a, b) => a.p - b.p).filter((n, i, all) => !i || n.p !== all[i - 1].p);
             }
             events.push(e);
-            const len = e.bar ? fraction(measure.attrs.len) ?? time[0] / time[1] : eventLength(e);
+            const len = e.bar ? (fraction(measure.attrs.len) ?? time[0] / time[1]) : eventLength(e);
             at = filled = at + len;
             break;
           }
@@ -177,23 +225,37 @@ export function readMscx(src: string, scoreId: string): ScoreParts | null {
   const score = child(child(doc, "museScore"), "Score");
   if (!score) return null;
   const staffById = (id: string) => kids(score, "Staff").find(s => s.attrs.id === id);
-  let voice: StaffBar[] | null = null, piano: [StaffBar[], StaffBar[]] | null = null, titleStaff: XmlElement | undefined;
+  let voice: StaffBar[] | null = null,
+    piano: [StaffBar[], StaffBar[]] | null = null,
+    titleStaff: XmlElement | undefined;
   for (const part of kids(score, "Part")) {
     const { id, name } = partName(part);
-    const isVoice = id.startsWith("voice") || /voice|soprano|alto|tenor|bass|baritone|mezzo|singstimme|gesang/.test(name);
+    const isVoice =
+      id.startsWith("voice") || /voice|soprano|alto|tenor|bass|baritone|mezzo|singstimme|gesang/.test(name);
     const isPiano = id.startsWith("keyboard.piano") || /piano|klavier|pianoforte/.test(name);
     if (isVoice && !voice) {
-      const s = staffOf(part, 0), staff = s && staffById(s.id);
-      if (staff) { voice = readStaff(staff, s.clef); titleStaff ??= staff; }
+      const s = staffOf(part, 0),
+        staff = s && staffById(s.id);
+      if (staff) {
+        voice = readStaff(staff, s.clef);
+        titleStaff ??= staff;
+      }
     } else if (isPiano && !piano && kids(part, "Staff").length === 2) {
       const [r, l] = [staffOf(part, 0), staffOf(part, 1)];
       const [rs, ls] = [staffById(r.id), staffById(l.id)];
-      if (rs && ls) { piano = [readStaff(rs, r.clef), readStaff(ls, l.clef)]; titleStaff ??= rs; }
+      if (rs && ls) {
+        piano = [readStaff(rs, r.clef), readStaff(ls, l.clef)];
+        titleStaff ??= rs;
+      }
     }
   }
   if (!voice && !piano) return null;
   const first = kids(score, "Staff")[0] ?? titleStaff;
-  const title = kids(child(first, "VBox"), "Text").find(t => textOf(t, "style") === "Title")
-    ?.children.find(c => c.name === "text")?.text.replace(/\s+/g, " ").trim() ?? "";
+  const title =
+    kids(child(first, "VBox"), "Text")
+      .find(t => textOf(t, "style") === "Title")
+      ?.children.find(c => c.name === "text")
+      ?.text.replace(/\s+/g, " ")
+      .trim() ?? "";
   return { title, scoreId, voice, piano };
 }

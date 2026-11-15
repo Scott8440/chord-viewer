@@ -3,7 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { InputEvent } from "../src/input/events";
 import { createAppState, HISTORY_LIMIT, reduceApp } from "../src/state/app";
 
-const noteOn = (note: number, time = 0): InputEvent => ({ type: "noteOn", note, velocity: 100, time, source: "a", channel: 0 });
+const noteOn = (note: number, time = 0): InputEvent => ({
+  type: "noteOn",
+  note,
+  velocity: 100,
+  time,
+  source: "a",
+  channel: 0,
+});
 
 describe("app reducer", () => {
   it("builds the key context from the selector value", () => {
@@ -21,7 +28,10 @@ describe("app reducer", () => {
   });
 
   it("records events even when they change nothing else", () => {
-    const s = reduceApp(createAppState(), { type: "input", event: { type: "noteOff", note: 60, velocity: 0, time: 1, source: "a", channel: 0 } });
+    const s = reduceApp(createAppState(), {
+      type: "input",
+      event: { type: "noteOff", note: 60, velocity: 0, time: 1, source: "a", channel: 0 },
+    });
     expect(s.history).toHaveLength(1);
     expect(s.perf).toBe(createAppState().perf);
   });
@@ -33,7 +43,10 @@ describe("store", () => {
     const store = createStore((s: number, a: number) => s + a, 0);
     const calls: string[] = [];
     let offB = () => {};
-    store.subscribe(() => { calls.push("a"); offB(); });   // like the mode switcher stopping the old mode
+    store.subscribe(() => {
+      calls.push("a");
+      offB();
+    }); // like the mode switcher stopping the old mode
     offB = store.subscribe(() => calls.push("b"));
     store.dispatch(1);
     expect(calls).toEqual(["a"]);
@@ -53,8 +66,13 @@ describe("the Progress page", () => {
 
   it("choosing a mode goes back to practising, the same mode included", () => {
     const s = reduceApp(createAppState({ mode: "scales" }), { type: "setPage", page: "progress" });
-    expect(reduceApp(s, { type: "setMode", mode: "chords" })).toMatchObject({ page: "practice", settings: { mode: "chords" } });
-    expect(reduceApp(s, { type: "setMode", mode: "scales" })).toMatchObject({ page: "practice", settings: { mode: "scales" } });
+    expect(reduceApp(s, { type: "setMode", mode: "chords" })).toMatchObject({
+      page: "practice",
+      settings: { mode: "chords" },
+    });
+    expect(reduceApp(s, { type: "setMode", mode: "scales" })).toMatchObject({
+      page: "practice",
+      settings: { mode: "scales" },
+    });
   });
 });
-

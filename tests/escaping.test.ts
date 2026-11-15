@@ -42,17 +42,37 @@ describe("esc", () => {
 });
 
 /** A stand-in element: records what's written to innerHTML; anything queried is another stand-in */
-interface FakeEl { innerHTML: string; [k: string]: unknown }
+interface FakeEl {
+  innerHTML: string;
+  [k: string]: unknown;
+}
 let writes: string[] = [];
 function fakeEl(): FakeEl {
   let html = "";
   const el: FakeEl = {
-    get innerHTML() { return html; },
-    set innerHTML(v: string) { html = v; writes.push(v); },
-    clientWidth: 600, clientHeight: 200, offsetWidth: 100, offsetHeight: 40, hidden: false, className: "", textContent: "",
-    style: {}, dataset: {},
-    querySelector: () => fakeEl(), querySelectorAll: () => [],
-    setAttribute() {}, append() {}, replaceChildren() {}, addEventListener() {}, removeEventListener() {},
+    get innerHTML() {
+      return html;
+    },
+    set innerHTML(v: string) {
+      html = v;
+      writes.push(v);
+    },
+    clientWidth: 600,
+    clientHeight: 200,
+    offsetWidth: 100,
+    offsetHeight: 40,
+    hidden: false,
+    className: "",
+    textContent: "",
+    style: {},
+    dataset: {},
+    querySelector: () => fakeEl(),
+    querySelectorAll: () => [],
+    setAttribute() {},
+    append() {},
+    replaceChildren() {},
+    addEventListener() {},
+    removeEventListener() {},
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 600, height: 200 }),
     classList: { add() {}, remove() {}, toggle() {} },
   };
@@ -65,25 +85,86 @@ describe("the Progress page", () => {
   beforeEach(() => {
     writes = [];
     g.document = { createElement: () => fakeEl() };
-    g.ResizeObserver = class { observe() {} disconnect() {} };
+    g.ResizeObserver = class {
+      observe() {}
+      disconnect() {}
+    };
   });
-  afterEach(() => { g.document = saved.document; g.ResizeObserver = saved.ResizeObserver; });
+  afterEach(() => {
+    g.document = saved.document;
+    g.ResizeObserver = saved.ResizeObserver;
+  });
 
   const now = Date.now();
   const meta = (i: number) => ({ id: `id${i}`, v: RECORD_VERSION, at: now - i * 3_600_000, device: H });
   const tempo = { bpm: H, subdivision: H, strictness: H, latencyMs: 0 };
   const raw = [
-    { ...meta(1), kind: "drill", drill: "chords", prompt: H, detail: { type: H, key: H }, outcome: "corrected", ms: 1500 },
+    {
+      ...meta(1),
+      kind: "drill",
+      drill: "chords",
+      prompt: H,
+      detail: { type: H, key: H },
+      outcome: "corrected",
+      ms: 1500,
+    },
     { ...meta(2), kind: "drill", drill: "chords", prompt: H, detail: { type: H }, outcome: "firstTry", ms: 900 },
     { ...meta(3), kind: "drill", drill: "chords", prompt: H, detail: {}, outcome: "skipped", ms: 4000 },
-    { ...meta(4), kind: "drill", drill: "chordEar", prompt: H, detail: { type: H, guesses: `${H},M` }, outcome: "corrected", ms: 2000 },
+    {
+      ...meta(4),
+      kind: "drill",
+      drill: "chordEar",
+      prompt: H,
+      detail: { type: H, guesses: `${H},M` },
+      outcome: "corrected",
+      ms: 2000,
+    },
     { ...meta(5), kind: "drill", drill: H, prompt: H, detail: { x: H }, outcome: "corrected", ms: 2000 },
-    { ...meta(6), kind: "run", exercise: "scales", exerciseId: H, title: H, key: H, tempo, mistakes: 1, durationMs: 9000,
-      bpm: 100, evenness: 0.9, timing: { onTime: 0.8, meanOffsetMs: 5, spreadMs: 3, slips: 0, bpm: 100, subdivision: 1 }, routineSession: H },
-    { ...meta(7), kind: "run", exercise: H, exerciseId: H, title: H, key: H, tempo: null, mistakes: 0, durationMs: 5000,
-      bpm: 90, evenness: 0.7, timing: null, routineSession: null },
-    { ...meta(8), kind: "routine", session: H, routine: H, name: H, direction: H, startedAt: now - 9_000_000, durationMs: 60_000,
-      finished: true, totalItems: 12, items: [], totalMistakes: 3, tempo },
+    {
+      ...meta(6),
+      kind: "run",
+      exercise: "scales",
+      exerciseId: H,
+      title: H,
+      key: H,
+      tempo,
+      mistakes: 1,
+      durationMs: 9000,
+      bpm: 100,
+      evenness: 0.9,
+      timing: { onTime: 0.8, meanOffsetMs: 5, spreadMs: 3, slips: 0, bpm: 100, subdivision: 1 },
+      routineSession: H,
+    },
+    {
+      ...meta(7),
+      kind: "run",
+      exercise: H,
+      exerciseId: H,
+      title: H,
+      key: H,
+      tempo: null,
+      mistakes: 0,
+      durationMs: 5000,
+      bpm: 90,
+      evenness: 0.7,
+      timing: null,
+      routineSession: null,
+    },
+    {
+      ...meta(8),
+      kind: "routine",
+      session: H,
+      routine: H,
+      name: H,
+      direction: H,
+      startedAt: now - 9_000_000,
+      durationMs: 60_000,
+      finished: true,
+      totalItems: 12,
+      items: [],
+      totalMistakes: 3,
+      tempo,
+    },
     { ...meta(9), kind: "round", drill: "chordEar", size: 20, firstTry: 15, setup: H, durationMs: 60_000 },
   ];
   const file = JSON.stringify({ format: "chord-display-history", version: 1, exportedAt: now, records: raw });
@@ -118,28 +199,78 @@ describe("the Progress page", () => {
 describe("chart SVG", () => {
   const range = { from: 0, to: 7 * 86_400_000 };
   it("never puts series names, notes or colours into markup unescaped", () => {
-    const line = lineChartSvg({
-      kind: "line", range, format: v => `${v} ${H}`,
-      series: [{ name: H, color: `red" onload="alert(1)`, points: [{ at: 86_400_000, value: 1, note: H }, { at: 2 * 86_400_000, value: 2 }],
-                 dots: [{ at: 86_400_000, value: 1 }] }],
-    }, 400);
+    const line = lineChartSvg(
+      {
+        kind: "line",
+        range,
+        format: v => `${v} ${H}`,
+        series: [
+          {
+            name: H,
+            color: `red" onload="alert(1)`,
+            points: [
+              { at: 86_400_000, value: 1, note: H },
+              { at: 2 * 86_400_000, value: 2 },
+            ],
+            dots: [{ at: 86_400_000, value: 1 }],
+          },
+        ],
+      },
+      400,
+    );
     expectSafe(line.svg);
     expect(line.svg).not.toContain(`" onload`);
     // Tooltip rows are set as textContent by mountChart: the raw text stays raw there
     expect(line.anchors[0].rows[0].name).toBe(`${H} (${H})`);
-    const cols = columnChartSvg({ kind: "columns", name: H, color: `x"><script>`, range, days: [{ at: 86_400_000, value: 3 }], format: () => H }, 400);
+    const cols = columnChartSvg(
+      { kind: "columns", name: H, color: `x"><script>`, range, days: [{ at: 86_400_000, value: 3 }], format: () => H },
+      400,
+    );
     expectSafe(cols.svg);
   });
 });
 
 describe("practice presenters", () => {
   const FEATURES: ExcerptFeatures = {
-    notes: 2, bars: 1, keyAccidentals: 0, chromatic: 0, range: 2, ledger: 0, maxLeap: 2, stepShare: 1, values: 1,
-    shortest: 1 / 4, dotted: 0, ties: 0, tuplets: 0, rests: 0, syncopations: 0, compound: false, chord: 1, span: 0, voices: 1,
+    notes: 2,
+    bars: 1,
+    keyAccidentals: 0,
+    chromatic: 0,
+    range: 2,
+    ledger: 0,
+    maxLeap: 2,
+    stepShare: 1,
+    values: 1,
+    shortest: 1 / 4,
+    dotted: 0,
+    ties: 0,
+    tuplets: 0,
+    rests: 0,
+    syncopations: 0,
+    compound: false,
+    chord: 1,
+    span: 0,
+    voices: 1,
   };
   const tune: Excerpt = {
-    id: H, source: 0, key: 0, time: [2, 4], parts: { voice: FEATURES },
-    staves: [{ clef: "treble", voices: [[[{ v: "q", n: [{ p: 60, s: 14 }] }, { v: "q", n: [{ p: 62, s: 16 }] }]]] }],
+    id: H,
+    source: 0,
+    key: 0,
+    time: [2, 4],
+    parts: { voice: FEATURES },
+    staves: [
+      {
+        clef: "treble",
+        voices: [
+          [
+            [
+              { v: "q", n: [{ p: 60, s: 14 }] },
+              { v: "q", n: [{ p: 62, s: 16 }] },
+            ],
+          ],
+        ],
+      },
+    ],
   };
 
   it("sight reading: a hostile excerpt title and composer", () => {
@@ -155,7 +286,11 @@ describe("practice presenters", () => {
     expectSafe(d.promptHtml);
     expect(d.promptHtml).toContain(esc(HOSTILE[2]));
     const r = initialRoutine(routineById("scales-circle")!, "sharps", DEFAULT_EXERCISE_OPTIONS);
-    const hostile = { ...r, routine: { ...r.routine, name: H }, current: { ...r.current, exercise: { ...r.current.exercise, title: H } } };
+    const hostile = {
+      ...r,
+      routine: { ...r.routine, name: H },
+      current: { ...r.current, exercise: { ...r.current.exercise, title: H } },
+    };
     expectSafe(routineDisplay(hostile, "names").promptHtml);
   });
 
@@ -164,8 +299,15 @@ describe("practice presenters", () => {
   });
 
   it("round summary and round viz hold numbers only, even from odd history", () => {
-    const d = roundSummaryDisplay({ size: 20, firstTry: 10, durationMs: 1000,
-      comparison: { share: 0.5, previous: [Number(H), 0.4], last: 0.4, best: 0.4, average: 0.4 } }, H);
+    const d = roundSummaryDisplay(
+      {
+        size: 20,
+        firstTry: 10,
+        durationMs: 1000,
+        comparison: { share: 0.5, previous: [Number(H), 0.4], last: 0.4, best: 0.4, average: 0.4 },
+      },
+      H,
+    );
     expectSafe(d.promptHtml);
     const m = { outcomes: ["firstTry", "corrected", "skipped"] as const, average: 0.5 };
     for (const svg of [dotsSvg(m), ringSvg(m), lineSvg(m)]) expectSafe(svg);

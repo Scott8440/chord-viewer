@@ -77,7 +77,8 @@ export function matchTemplate(pcs: readonly number[], rootPc: number, template: 
 }
 
 function matchCompiled(played: ReadonlySet<number>, rootPc: number, c: CompiledTemplate): TemplateMatch {
-  const omitted: TemplateTone[] = [], missing: TemplateTone[] = [];
+  const omitted: TemplateTone[] = [],
+    missing: TemplateTone[] = [];
   const inChord = new Set<number>();
   for (const tone of c.tones) {
     const pc = (rootPc + tone.pc) % 12;
@@ -129,17 +130,43 @@ export interface ChordReading {
 }
 
 export type Analysis =
-  | { kind: "note" | "interval" | "unknown"; pcs: number[]; text: string; sub: string; alts: string[];
-      spell: null; best?: undefined; roman?: undefined; flats?: undefined; ranked?: undefined }
-  | { kind: "chord"; pcs: number[]; best: ChordReading; text: string; sub: string; roman: string;
-      alts: string[]; spell: (string | null)[]; flats: boolean;
+  | {
+      kind: "note" | "interval" | "unknown";
+      pcs: number[];
+      text: string;
+      sub: string;
+      alts: string[];
+      spell: null;
+      best?: undefined;
+      roman?: undefined;
+      flats?: undefined;
+      ranked?: undefined;
+    }
+  | {
+      kind: "chord";
+      pcs: number[];
+      best: ChordReading;
+      text: string;
+      sub: string;
+      roman: string;
+      alts: string[];
+      spell: (string | null)[];
+      flats: boolean;
       /** Every accepted reading, best first */
-      ranked: ChordReading[] };
+      ranked: ChordReading[];
+    };
 
-const ordinal = (n: number) => n + (n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th");
+const ordinal = (n: number) =>
+  n + (n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th");
 
-function buildReading(m: TemplateMatch, kind: ChordReading["kind"], bassPc: number, key: KeyContext | null,
-                      w: RecognizerWeights, extraPc: number | null = null): ChordReading {
+function buildReading(
+  m: TemplateMatch,
+  kind: ChordReading["kind"],
+  bassPc: number,
+  key: KeyContext | null,
+  w: RecognizerWeights,
+  extraPc: number | null = null,
+): ChordReading {
   const t = m.template;
   const c = COMPILED_BY_ID.get(t.id)!;
   const root = key ? key.spell[m.rootPc] : (t.minor ? ROOT_MINOR : ROOT_MAJOR)[m.rootPc];
@@ -165,13 +192,23 @@ function buildReading(m: TemplateMatch, kind: ChordReading["kind"], bassPc: numb
   } else if (bass) {
     reasons.push({ label: `${bass} in the bass (inversion)`, cost: w.inversion });
   }
-  if (extraPc != null) reasons.push({ label: `ignores ${spell[extraPc] || pcName(extraPc, key, root.includes("b"))} as an added tone`, cost: w.addedNote });
+  if (extraPc != null)
+    reasons.push({
+      label: `ignores ${spell[extraPc] || pcName(extraPc, key, root.includes("b"))} as an added tone`,
+      cost: w.addedNote,
+    });
   if (key) {
     // Prefer readings that fit the key: in-key root, in-key tones, and the tonic itself
-    if (!key.inKey.has(m.rootPc)) reasons.push({ label: `root outside ${key.label}`, cost: w.key.rootOutside, fromKey: true });
+    if (!key.inKey.has(m.rootPc))
+      reasons.push({ label: `root outside ${key.label}`, cost: w.key.rootOutside, fromKey: true });
     const omittedPcs = new Set(m.omitted.map(tone => (m.rootPc + tone.pc) % 12));
     const outside = tonePcs.filter(pc => !omittedPcs.has(pc) && !key.inKey.has(pc)).length;
-    if (outside) reasons.push({ label: `${outside} chord tone${outside > 1 ? "s" : ""} outside ${key.label}`, cost: w.key.toneOutside * outside, fromKey: true });
+    if (outside)
+      reasons.push({
+        label: `${outside} chord tone${outside > 1 ? "s" : ""} outside ${key.label}`,
+        cost: w.key.toneOutside * outside,
+        fromKey: true,
+      });
     if (m.rootPc === key.tonicPc) reasons.push({ label: "root is the tonic", cost: w.key.tonicRoot, fromKey: true });
   }
   for (const r of reasons) r.cost = Math.round(r.cost * 100) / 100;
@@ -179,7 +216,17 @@ function buildReading(m: TemplateMatch, kind: ChordReading["kind"], bassPc: numb
   const voicingCost = reasons.reduce((sum, r) => sum + (r.fromKey ? 0 : r.cost), 0);
 
   return {
-    kind, root, rootPc: m.rootPc, type: t.symbol, bass, cost, voicingCost, reasons, spell, alias: t.id, tonePcs,
+    kind,
+    root,
+    rootPc: m.rootPc,
+    type: t.symbol,
+    bass,
+    cost,
+    voicingCost,
+    reasons,
+    spell,
+    alias: t.id,
+    tonePcs,
     omitted: m.omitted.map(tone => tone.degree),
     flats: root.includes("b"),
     extra: extraPc,
@@ -189,9 +236,15 @@ function buildReading(m: TemplateMatch, kind: ChordReading["kind"], bassPc: numb
 }
 
 /** Every exact reading of `pcs` (bass first): each template on each played root, nothing missing or extra. */
-function exactReadings(pcs: readonly number[], kind: ChordReading["kind"], bassPc: number, key: KeyContext | null,
-                       w: RecognizerWeights, filter: (c: CompiledTemplate, rootPc: number) => boolean,
-                       extraPc: number | null = null): ChordReading[] {
+function exactReadings(
+  pcs: readonly number[],
+  kind: ChordReading["kind"],
+  bassPc: number,
+  key: KeyContext | null,
+  w: RecognizerWeights,
+  filter: (c: CompiledTemplate, rootPc: number) => boolean,
+  extraPc: number | null = null,
+): ChordReading[] {
   const played = new Set(pcs);
   const out: ChordReading[] = [];
   for (const rootPc of pcs) {
@@ -210,35 +263,63 @@ const TEMPLATE_ORDER = new Map(CHORD_TEMPLATES.map((t, i) => [t.id, i]));
 
 /** Ranks readings: cheapest first; ties go to root position, then the more common chord type. */
 function compareReadings(a: ChordReading, b: ChordReading): number {
-  return a.cost - b.cost
-    || KIND_ORDER[a.kind] - KIND_ORDER[b.kind]
-    || Number(!!a.bass) - Number(!!b.bass)
-    || TEMPLATE_ORDER.get(a.alias)! - TEMPLATE_ORDER.get(b.alias)!
-    || a.rootPc - b.rootPc;
+  return (
+    a.cost - b.cost ||
+    KIND_ORDER[a.kind] - KIND_ORDER[b.kind] ||
+    Number(!!a.bass) - Number(!!b.bass) ||
+    TEMPLATE_ORDER.get(a.alias)! - TEMPLATE_ORDER.get(b.alias)! ||
+    a.rootPc - b.rootPc
+  );
 }
 
 /** All readings of the pitch classes (bass first), cheapest first, before the max-cost cut. */
-export function chordReadings(pcs: readonly number[], key: KeyContext | null,
-                              w: RecognizerWeights = RECOGNIZER_WEIGHTS): ChordReading[] {
+export function chordReadings(
+  pcs: readonly number[],
+  key: KeyContext | null,
+  w: RecognizerWeights = RECOGNIZER_WEIGHTS,
+): ChordReading[] {
   const bassPc = pcs[0];
-  const readings = exactReadings(pcs, "plain", bassPc, key, w,
-    (c, rootPc) => !c.template.rootPosition || rootPc === bassPc);
+  const readings = exactReadings(
+    pcs,
+    "plain",
+    bassPc,
+    key,
+    w,
+    (c, rootPc) => !c.template.rootPosition || rootPc === bassPc,
+  );
 
   // Upper-structure slash chords (G/C, Bb/C, C/D): a simple chord in root position above
   // the bass, with the bass under it, when the plain readings are all awkward.
   const bestPlain = Math.min(Infinity, ...readings.map(r => r.cost));
   if (pcs.length >= 4 && bestPlain > w.upperOnlyAbove) {
     const upper = pcs.slice(1);
-    readings.push(...exactReadings(upper, "upper", bassPc, key, w,
-      (c, rootPc) => rootPc === upper[0] && !c.template.rootPosition && c.template.cost <= w.upperMaxBaseCost));
+    readings.push(
+      ...exactReadings(
+        upper,
+        "upper",
+        bassPc,
+        key,
+        w,
+        (c, rootPc) => rootPc === upper[0] && !c.template.rootPosition && c.template.cost <= w.upperMaxBaseCost,
+      ),
+    );
   }
 
   // Nothing fits? Try ignoring one non-bass note (passing / added tone).
   if (!readings.some(r => r.voicingCost <= w.maxCost) && pcs.length >= 4) {
     for (let i = 1; i < pcs.length; i++) {
       const sub = pcs.filter((_, j) => j !== i);
-      readings.push(...exactReadings(sub, "added", bassPc, key, w,
-        (c, rootPc) => !c.template.rootPosition || rootPc === bassPc, pcs[i]));
+      readings.push(
+        ...exactReadings(
+          sub,
+          "added",
+          bassPc,
+          key,
+          w,
+          (c, rootPc) => !c.template.rootPosition || rootPc === bassPc,
+          pcs[i],
+        ),
+      );
     }
   }
 
@@ -254,16 +335,34 @@ export function chordReadings(pcs: readonly number[], key: KeyContext | null,
 /* ---------------------------------------------------------------
    Analysis for display
    --------------------------------------------------------------- */
-const INTERVAL_NAMES = ["Unison", "Minor 2nd", "Major 2nd", "Minor 3rd", "Major 3rd", "Perfect 4th",
-  "Tritone", "Perfect 5th", "Minor 6th", "Major 6th", "Minor 7th", "Major 7th"];
+const INTERVAL_NAMES = [
+  "Unison",
+  "Minor 2nd",
+  "Major 2nd",
+  "Minor 3rd",
+  "Major 3rd",
+  "Perfect 4th",
+  "Tritone",
+  "Perfect 5th",
+  "Minor 6th",
+  "Major 6th",
+  "Minor 7th",
+  "Major 7th",
+];
 
 /** Names the chord formed by `notes` (MIDI numbers, sorted low to high) in the given key. */
-export function analyze(notes: readonly number[], key: KeyContext | null,
-                        w: RecognizerWeights = RECOGNIZER_WEIGHTS): Analysis | null {
+export function analyze(
+  notes: readonly number[],
+  key: KeyContext | null,
+  w: RecognizerWeights = RECOGNIZER_WEIGHTS,
+): Analysis | null {
   if (notes.length === 0) return null;
   // Unique pitch classes, ordered from the bass up
   const pcs: number[] = [];
-  for (const n of notes) { const pc = n % 12; if (!pcs.includes(pc)) pcs.push(pc); }
+  for (const n of notes) {
+    const pc = n % 12;
+    if (!pcs.includes(pc)) pcs.push(pc);
+  }
 
   if (pcs.length === 1) {
     return { kind: "note", pcs, text: pcName(pcs[0], key), sub: "Single note", alts: [], spell: null };
@@ -274,8 +373,14 @@ export function analyze(notes: readonly number[], key: KeyContext | null,
   if (ranked.length === 0) {
     if (pcs.length === 2) {
       const iv = (pcs[1] - pcs[0] + 12) % 12;
-      return { kind: "interval", pcs, text: pcName(pcs[0], key) + "–" + pcName(pcs[1], key),
-               sub: INTERVAL_NAMES[iv], alts: [], spell: null };
+      return {
+        kind: "interval",
+        pcs,
+        text: pcName(pcs[0], key) + "–" + pcName(pcs[1], key),
+        sub: INTERVAL_NAMES[iv],
+        alts: [],
+        spell: null,
+      };
     }
     return { kind: "unknown", pcs, text: "?", sub: "No chord match", alts: [], spell: null };
   }
@@ -286,11 +391,24 @@ export function analyze(notes: readonly number[], key: KeyContext | null,
     const ex = best.spell[best.extra] || pcName(best.extra, key, best.flats);
     sub += " with added " + ex;
   }
-  return { kind: "chord", pcs, best, text: best.text, sub,
-           roman: key ? romanFor(best, key) : "",
-           alts: ranked.slice(1).filter(r => r.cost <= best.cost + w.altWindow).slice(0, w.maxAlts)
-             .map(r => r.text + (r.extra != null ? "*" : "")),
-           spell: best.spell, flats: best.flats, ranked };
+  return {
+    kind: "chord",
+    pcs,
+    best,
+    text: best.text,
+    sub,
+    roman: key ? romanFor(best, key) : "",
+    alts: ranked
+      .slice(1)
+      .filter(r => r.cost <= best.cost + w.altWindow)
+      .slice(0, w.maxAlts)
+      .map(r => r.text + (r.extra != null ? "*" : "")),
+    spell: best.spell,
+    flats: best.flats,
+    ranked,
+  };
 }
 
-function capitalize(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}

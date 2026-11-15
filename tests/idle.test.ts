@@ -4,8 +4,10 @@ import { onIdle } from "../src/modes/performance";
 import { createAppState, reduceApp } from "../src/state/app";
 import { createStore } from "../src/state/store";
 
-const note = (type: "noteOn" | "noteOff", n: number) =>
-  ({ type: "input" as const, event: { type, note: n, velocity: type === "noteOn" ? 100 : 0, time: 0, source: "t", channel: 0 } });
+const note = (type: "noteOn" | "noteOff", n: number) => ({
+  type: "input" as const,
+  event: { type, note: n, velocity: type === "noteOn" ? 100 : 0, time: 0, source: "t", channel: 0 },
+});
 
 describe("onIdle", () => {
   beforeEach(() => vi.useFakeTimers());

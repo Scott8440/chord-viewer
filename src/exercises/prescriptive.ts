@@ -7,7 +7,12 @@ import { diatonicChordsExercise, tonicTriadExercise } from "./diatonicChords";
 import { MINOR_FORMS, SCALE_OCTAVES, scaleExercise, type MinorForm, type ScaleOctaves } from "./scales";
 import type { SequenceExercise } from "./sequence";
 import {
-  ARPEGGIO_INVERSIONS, arpeggioExercise, brokenChordExercise, chromaticExercise, fiveFingerExercise, type ArpeggioInversion,
+  ARPEGGIO_INVERSIONS,
+  arpeggioExercise,
+  brokenChordExercise,
+  chromaticExercise,
+  fiveFingerExercise,
+  type ArpeggioInversion,
 } from "./technique";
 
 /** Options shared by the prescriptive exercises; each exercise uses some of them. */
@@ -42,8 +47,17 @@ export type ExerciseOption = keyof ExerciseOptions;
 export const BPM_RANGE = { min: 30, max: 240 } as const;
 
 export const DEFAULT_EXERCISE_OPTIONS: ExerciseOptions = {
-  key: "C:major", progression: "circle-sharps", minorForm: "natural", octaves: 1, inversion: 0, sevenths: false, rootPosition: true,
-  metronome: false, bpm: 80, subdivision: 1, strictness: "strict",
+  key: "C:major",
+  progression: "circle-sharps",
+  minorForm: "natural",
+  octaves: 1,
+  inversion: 0,
+  sevenths: false,
+  rootPosition: true,
+  metronome: false,
+  bpm: 80,
+  subdivision: 1,
+  strictness: "strict",
 };
 
 /** Fills in anything missing or invalid (e.g. options saved by an older version) with the defaults. */
@@ -52,17 +66,25 @@ export function sanitizeExerciseOptions(raw: unknown): ExerciseOptions {
   const d = DEFAULT_EXERCISE_OPTIONS;
   return {
     key: typeof o.key === "string" && isKeyValue(o.key) ? o.key : d.key,
-    progression: (KEY_PROGRESSIONS as readonly unknown[]).includes(o.progression) ? o.progression as KeyProgression : d.progression,
-    minorForm: (MINOR_FORMS as readonly unknown[]).includes(o.minorForm) ? o.minorForm as MinorForm : d.minorForm,
-    octaves: (SCALE_OCTAVES as readonly unknown[]).includes(o.octaves) ? o.octaves as ScaleOctaves : d.octaves,
-    inversion: (ARPEGGIO_INVERSIONS as readonly unknown[]).includes(o.inversion) ? o.inversion as ArpeggioInversion : d.inversion,
+    progression: (KEY_PROGRESSIONS as readonly unknown[]).includes(o.progression)
+      ? (o.progression as KeyProgression)
+      : d.progression,
+    minorForm: (MINOR_FORMS as readonly unknown[]).includes(o.minorForm) ? (o.minorForm as MinorForm) : d.minorForm,
+    octaves: (SCALE_OCTAVES as readonly unknown[]).includes(o.octaves) ? (o.octaves as ScaleOctaves) : d.octaves,
+    inversion: (ARPEGGIO_INVERSIONS as readonly unknown[]).includes(o.inversion)
+      ? (o.inversion as ArpeggioInversion)
+      : d.inversion,
     sevenths: typeof o.sevenths === "boolean" ? o.sevenths : d.sevenths,
     rootPosition: typeof o.rootPosition === "boolean" ? o.rootPosition : d.rootPosition,
     metronome: typeof o.metronome === "boolean" ? o.metronome : d.metronome,
-    bpm: typeof o.bpm === "number" && Number.isFinite(o.bpm)
-      ? Math.min(BPM_RANGE.max, Math.max(BPM_RANGE.min, Math.round(o.bpm))) : d.bpm,
-    subdivision: (SUBDIVISIONS as readonly unknown[]).includes(o.subdivision) ? o.subdivision as Subdivision : d.subdivision,
-    strictness: (STRICTNESS as readonly unknown[]).includes(o.strictness) ? o.strictness as Strictness : d.strictness,
+    bpm:
+      typeof o.bpm === "number" && Number.isFinite(o.bpm)
+        ? Math.min(BPM_RANGE.max, Math.max(BPM_RANGE.min, Math.round(o.bpm)))
+        : d.bpm,
+    subdivision: (SUBDIVISIONS as readonly unknown[]).includes(o.subdivision)
+      ? (o.subdivision as Subdivision)
+      : d.subdivision,
+    strictness: (STRICTNESS as readonly unknown[]).includes(o.strictness) ? (o.strictness as Strictness) : d.strictness,
   };
 }
 

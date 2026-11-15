@@ -39,11 +39,12 @@ describe("next key", () => {
   });
 
   it("every progression from every key gives a key the pickers know", () => {
-    for (const mode of ["major", "minor"]) for (const t of ["C", "Db", "C#", "F#", "G#", "Bb", "B"]) {
-      const k = `${t}:${mode}`;
-      if (!isKeyValue(k)) continue;
-      for (const p of KEY_PROGRESSIONS) expect(isKeyValue(nextKey(k, p)), `${k} ${p}`).toBe(true);
-    }
+    for (const mode of ["major", "minor"])
+      for (const t of ["C", "Db", "C#", "F#", "G#", "Bb", "B"]) {
+        const k = `${t}:${mode}`;
+        if (!isKeyValue(k)) continue;
+        for (const p of KEY_PROGRESSIONS) expect(isKeyValue(nextKey(k, p)), `${k} ${p}`).toBe(true);
+      }
   });
 
   it("the option: round the circle by default, any known progression kept", () => {

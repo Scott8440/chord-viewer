@@ -21,8 +21,9 @@ describe("MIDI map", () => {
   });
 
   it("reads back only whole MIDI notes", () => {
-    expect(sanitizeMidiMap({ earChords: { "answer:M": 48, skip: 200, x: "C4", y: 1.5 }, bad: 3, empty: {} }))
-      .toEqual({ earChords: { "answer:M": 48 } });
+    expect(sanitizeMidiMap({ earChords: { "answer:M": 48, skip: 200, x: "C4", y: 1.5 }, bad: 3, empty: {} })).toEqual({
+      earChords: { "answer:M": 48 },
+    });
     expect(sanitizeMidiMap("nonsense")).toEqual({});
   });
 

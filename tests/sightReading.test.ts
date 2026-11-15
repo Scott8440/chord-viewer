@@ -2,11 +2,28 @@
 // or a chord at a time.
 import { describe, expect, it } from "vitest";
 import {
-  staffStep, transposeStaves, tupletGroups, writtenName, type Excerpt, type ExcerptFeatures, type ExcerptStaff,
+  staffStep,
+  transposeStaves,
+  tupletGroups,
+  writtenName,
+  type Excerpt,
+  type ExcerptFeatures,
+  type ExcerptStaff,
 } from "../src/exercises/excerpts";
 import {
-  excerptLevel, initialReading, keyFifths, makeExcerptPrompt, makeReadingPrompt, pickReadingKey, READING_KEYS,
-  READING_LEVEL_CHOICES, READING_RANGES, readingPool, reduceReading, sanitizeReadingOptions, type ReadingPrompt,
+  excerptLevel,
+  initialReading,
+  keyFifths,
+  makeExcerptPrompt,
+  makeReadingPrompt,
+  pickReadingKey,
+  READING_KEYS,
+  READING_LEVEL_CHOICES,
+  READING_RANGES,
+  readingPool,
+  reduceReading,
+  sanitizeReadingOptions,
+  type ReadingPrompt,
 } from "../src/exercises/sightReading";
 import { musicOf } from "../src/modes/sightReading";
 import { readingDrillBody } from "../src/progress/records";
@@ -21,9 +38,16 @@ describe("reading options", () => {
   it("default to the melody at level 1 in C major (4 notes on the treble staff when generated), and fall back on anything invalid", () => {
     const defaults = { level: 1, part: "voice", length: 4, range: "treble", key: "C:major" };
     expect(createAppState().settings.reading).toEqual(defaults);
-    expect(sanitizeReadingOptions({ level: 9, part: "feet", length: 7, range: "alto", key: "H:major" })).toEqual(defaults);
-    expect(sanitizeReadingOptions({ level: 0, part: "both", length: 8, range: "grand", key: "random" }))
-      .toEqual({ level: 0, part: "both", length: 8, range: "grand", key: "random" });
+    expect(sanitizeReadingOptions({ level: 9, part: "feet", length: 7, range: "alto", key: "H:major" })).toEqual(
+      defaults,
+    );
+    expect(sanitizeReadingOptions({ level: 0, part: "both", length: 8, range: "grand", key: "random" })).toEqual({
+      level: 0,
+      part: "both",
+      length: 8,
+      range: "grand",
+      key: "random",
+    });
     expect(READING_LEVEL_CHOICES).toEqual([1, 2, 3, 4, 5, 0]);
     expect(READING_KEYS).toHaveLength(25);
   });
@@ -46,7 +70,7 @@ describe("generated lines", () => {
     expect(readingPool(buildKey("C:major")!, "treble")).toEqual([60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81]);
     // Natural minor: no raised 7th against the signature
     expect(readingPool(buildKey("A:minor")!, "bass")).not.toContain(56);
-    expect(readingPool(buildKey("D:major")!, "bass")).toContain(42);   // F♯2
+    expect(readingPool(buildKey("D:major")!, "bass")).toContain(42); // F♯2
   });
 
   it("are the right length, in the key and range, never a 6th apart or the same note twice running", () => {
@@ -78,7 +102,11 @@ describe("generated lines", () => {
 });
 
 describe("playing it back", () => {
-  const line: ReadingPrompt = { keyValue: "C:major", range: "treble", steps: [[{ note: 64, name: "E4" }], [{ note: 67, name: "G4" }]] };
+  const line: ReadingPrompt = {
+    keyValue: "C:major",
+    range: "treble",
+    steps: [[{ note: 64, name: "E4" }], [{ note: 67, name: "G4" }]],
+  };
 
   it("needs the exact notes in order; a wrong one holds the step", () => {
     let s = reduceReading(initialReading(line), { type: "play", note: 79 });
@@ -89,18 +117,39 @@ describe("playing it back", () => {
   });
 
   it("takes a chord's notes together, in any order", () => {
-    const chords: ReadingPrompt = { ...line, steps: [[{ note: 60, name: "C4" }, { note: 64, name: "E4" }, { note: 67, name: "G4" }], line.steps[1]] };
+    const chords: ReadingPrompt = {
+      ...line,
+      steps: [
+        [
+          { note: 60, name: "C4" },
+          { note: 64, name: "E4" },
+          { note: 67, name: "G4" },
+        ],
+        line.steps[1],
+      ],
+    };
     let s = reduceReading(initialReading(chords), { type: "play", note: 67, time: 0 });
     s = reduceReading(s, { type: "play", note: 67, time: 10 });
     expect(s).toMatchObject({ index: 0, struck: [67], status: "waiting" });
     s = reduceReading(s, { type: "play", note: 60, time: 40 });
     s = reduceReading(s, { type: "play", note: 64, time: 120 });
     expect(s).toMatchObject({ index: 1, struck: [], status: "waiting", missed: false });
-    expect(sightReadingDisplay(reduceReading(s, { type: "play", note: 72, time: 200 })).feedback).toBe("✗ That was C5. Try again");
+    expect(sightReadingDisplay(reduceReading(s, { type: "play", note: 72, time: 200 })).feedback).toBe(
+      "✗ That was C5. Try again",
+    );
   });
 
   it("doesn't take a chord one note at a time: notes too far apart are a mistake and start again", () => {
-    const chords: ReadingPrompt = { ...line, steps: [[{ note: 60, name: "C4" }, { note: 64, name: "E4" }], line.steps[1]] };
+    const chords: ReadingPrompt = {
+      ...line,
+      steps: [
+        [
+          { note: 60, name: "C4" },
+          { note: 64, name: "E4" },
+        ],
+        line.steps[1],
+      ],
+    };
     let s = reduceReading(initialReading(chords), { type: "play", note: 60, time: 0 });
     // Nothing more in time: the attempt falls apart
     expect(reduceReading(s, { type: "expire", time: 100 })).toBe(s);
@@ -115,7 +164,16 @@ describe("playing it back", () => {
   });
 
   it("doesn't hold the rest of a chord played again against the next step", () => {
-    const chords: ReadingPrompt = { ...line, steps: [[{ note: 60, name: "C4" }, { note: 64, name: "E4" }], [{ note: 67, name: "G4" }]] };
+    const chords: ReadingPrompt = {
+      ...line,
+      steps: [
+        [
+          { note: 60, name: "C4" },
+          { note: 64, name: "E4" },
+        ],
+        [{ note: 67, name: "G4" }],
+      ],
+    };
     let s = reduceReading(initialReading(chords), { type: "play", note: 60, time: 0 });
     s = reduceReading(s, { type: "play", note: 62, time: 500 });
     expect(s).toMatchObject({ status: "wrong", struck: [] });
@@ -129,28 +187,69 @@ describe("playing it back", () => {
 
   it("is recorded by length and staff", () => {
     expect(readingDrillBody(line, true, false, 2400)).toEqual({
-      kind: "drill", drill: "reading", prompt: "2 notes, treble",
-      detail: { key: "C:major", range: "treble", length: 2, notes: "E4 G4" }, outcome: "firstTry", ms: 2400,
+      kind: "drill",
+      drill: "reading",
+      prompt: "2 notes, treble",
+      detail: { key: "C:major", range: "treble", length: 2, notes: "E4 G4" },
+      outcome: "firstTry",
+      ms: 2400,
     });
   });
 });
 
 const FEATURES: ExcerptFeatures = {
-  notes: 5, bars: 2, keyAccidentals: 2, chromatic: 0, range: 8, ledger: 0, maxLeap: 5, stepShare: 0.75, values: 2,
-  shortest: 1 / 8, dotted: 0, ties: 0, tuplets: 0, rests: 0, syncopations: 0, compound: false, chord: 1, span: 0, voices: 1,
+  notes: 5,
+  bars: 2,
+  keyAccidentals: 2,
+  chromatic: 0,
+  range: 8,
+  ledger: 0,
+  maxLeap: 5,
+  stepShare: 0.75,
+  values: 2,
+  shortest: 1 / 8,
+  dotted: 0,
+  ties: 0,
+  tuplets: 0,
+  rests: 0,
+  syncopations: 0,
+  compound: false,
+  chord: 1,
+  span: 0,
+  voices: 1,
 };
 /** D major, 3/4: F#4 G4 A4 (tied over) | A4 D5 rest */
 const tune: Excerpt = {
-  id: "1:1.0-2.1", source: 0, key: 2, time: [3, 4], parts: { voice: FEATURES },
-  staves: [{ clef: "treble", voices: [[
-    [{ v: "q", n: [{ p: 66, s: 20 }] }, { v: "8", n: [{ p: 67, s: 15 }] }, { v: "8", n: [{ p: 69, s: 17 }] }, { v: "q", n: [{ p: 69, s: 17, tie: 1 }] }],
-    [{ v: "q", n: [{ p: 69, s: 17 }] }, { v: "q", d: 1, n: [{ p: 74, s: 16 }] }, { v: "8" }],
-  ]] }],
+  id: "1:1.0-2.1",
+  source: 0,
+  key: 2,
+  time: [3, 4],
+  parts: { voice: FEATURES },
+  staves: [
+    {
+      clef: "treble",
+      voices: [
+        [
+          [
+            { v: "q", n: [{ p: 66, s: 20 }] },
+            { v: "8", n: [{ p: 67, s: 15 }] },
+            { v: "8", n: [{ p: 69, s: 17 }] },
+            { v: "q", n: [{ p: 69, s: 17, tie: 1 }] },
+          ],
+          [{ v: "q", n: [{ p: 69, s: 17 }] }, { v: "q", d: 1, n: [{ p: 74, s: 16 }] }, { v: "8" }],
+        ],
+      ],
+    },
+  ],
 };
 const SOURCE = { composer: "Franz Schubert", title: "Wiegenlied", scoreId: "1" };
 
 describe("transposeStaves", () => {
-  const spelled = (staves: ExcerptStaff[]) => staves[0].voices[0].flat().flatMap(e => e.n ?? []).map(n => writtenName(n.p, n.s));
+  const spelled = (staves: ExcerptStaff[]) =>
+    staves[0].voices[0]
+      .flat()
+      .flatMap(e => e.n ?? [])
+      .map(n => writtenName(n.p, n.s));
 
   it("moves to another signature, respelled, in the octave with the fewest ledger lines", () => {
     // D major down to C major: a whole step down keeps it on the staff
@@ -164,7 +263,7 @@ describe("transposeStaves", () => {
   });
 
   it("gives up rather than write more than a double sharp or flat", () => {
-    const sharp: ExcerptStaff[] = [{ clef: "treble", voices: [[[{ v: "q", n: [{ p: 68, s: 22 }] }]]] }];   // G♯4
+    const sharp: ExcerptStaff[] = [{ clef: "treble", voices: [[[{ v: "q", n: [{ p: 68, s: 22 }] }]]] }]; // G♯4
     expect(transposeStaves(sharp, -7, 7)).toBeNull();
   });
 
@@ -179,8 +278,20 @@ describe("transposeStaves", () => {
 describe("tupletGroups", () => {
   it("closes each group once it fills whole tuplet units", () => {
     const t: [number, number] = [3, 2];
-    expect(tupletGroups([{ v: "q" }, { v: "8", t }, { v: "8", t }, { v: "8", t }, { v: "8", t }, { v: "8", t }, { v: "8", t }]))
-      .toEqual([{ from: 1, to: 4, t }, { from: 4, to: 7, t }]);
+    expect(
+      tupletGroups([
+        { v: "q" },
+        { v: "8", t },
+        { v: "8", t },
+        { v: "8", t },
+        { v: "8", t },
+        { v: "8", t },
+        { v: "8", t },
+      ]),
+    ).toEqual([
+      { from: 1, to: 4, t },
+      { from: 4, to: 7, t },
+    ]);
     // A quarter and an 8th make a triplet of 8ths
     expect(tupletGroups([{ v: "q", t }, { v: "8", t }, { v: "h" }])).toEqual([{ from: 0, to: 2, t }]);
     expect(tupletGroups([{ v: "h" }])).toEqual([]);
@@ -194,8 +305,11 @@ describe("song prompts", () => {
     const p = makeExcerptPrompt(tune, SOURCE, "voice", 2, "A:minor")!;
     expect(p).toMatchObject({ keyValue: "A:minor", range: "treble" });
     expect(namesOf(p)).toEqual(["E4", "F4", "G4", "G4", "C5"]);
-    expect(p.music!.stepOf[0][0]).toEqual([[0, 1, 2, 3], [3, 4, -1]]);
-    expect(excerptLevel(tune, "voice")).toBe(2);   // a 4th and a range over a 5th: past level 1
+    expect(p.music!.stepOf[0][0]).toEqual([
+      [0, 1, 2, 3],
+      [3, 4, -1],
+    ]);
+    expect(excerptLevel(tune, "voice")).toBe(2); // a 4th and a range over a 5th: past level 1
     expect(excerptLevel(tune, "rh")).toBe(0);
   });
 
@@ -217,18 +331,41 @@ describe("song prompts", () => {
     expect(d.promptHtml).toContain("Franz Schubert");
     expect(d.sub).toBe("G major / E minor · level 2 · note 1 of 5");
     expect(readingDrillBody(p, true, true, 1000)).toEqual({
-      kind: "drill", drill: "reading", prompt: "Songs, level 2",
+      kind: "drill",
+      drill: "reading",
+      prompt: "Songs, level 2",
       detail: { key: "G:major", part: "voice", level: 2, excerpt: "1:1.0-2.1", length: 5, notes: "B4 C5 D5 D5 G5" },
-      outcome: "corrected", ms: 1000,
+      outcome: "corrected",
+      ms: 1000,
     });
     expect(readingLoadingDisplay(true).label).toBe("Couldn't load the songs");
   });
 
   it("read a piano hand, or both hands together as one step per moment", () => {
     const piano: Excerpt = {
-      id: "2:1-1", source: 0, key: 0, time: [2, 4], parts: { rh: FEATURES, lh: FEATURES, both: FEATURES },
+      id: "2:1-1",
+      source: 0,
+      key: 0,
+      time: [2, 4],
+      parts: { rh: FEATURES, lh: FEATURES, both: FEATURES },
       staves: [
-        { clef: "treble", voices: [[[{ v: "q", n: [{ p: 64, s: 18 }, { p: 67, s: 15 }] }, { v: "q", n: [{ p: 65, s: 13 }] }]]] },
+        {
+          clef: "treble",
+          voices: [
+            [
+              [
+                {
+                  v: "q",
+                  n: [
+                    { p: 64, s: 18 },
+                    { p: 67, s: 15 },
+                  ],
+                },
+                { v: "q", n: [{ p: 65, s: 13 }] },
+              ],
+            ],
+          ],
+        },
         { clef: "bass", voices: [[[{ v: "h", n: [{ p: 48, s: 14 }] }]]] },
       ],
     };

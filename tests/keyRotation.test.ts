@@ -4,12 +4,21 @@ import { pickChordKey } from "../src/exercises/chordPractice";
 import { pickTonic } from "../src/exercises/earTraining";
 import { answeredRight, answeredWrong, movedOn, type Judged } from "../src/exercises/judging";
 import {
-  countInKey, keyRotation, pickKey, PROMPTS_PER_KEY, randomKey, rotateKey, type KeyRotation,
+  countInKey,
+  keyRotation,
+  pickKey,
+  PROMPTS_PER_KEY,
+  randomKey,
+  rotateKey,
+  type KeyRotation,
 } from "../src/exercises/keyRotation";
 import { pickReadingKey } from "../src/exercises/sightReading";
 import { KEY_MAJORS } from "../src/theory";
 
-const seq = (...values: number[]) => { let i = 0; return () => values[i++ % values.length]; };
+const seq = (...values: number[]) => {
+  let i = 0;
+  return () => values[i++ % values.length];
+};
 
 describe("picking a key", () => {
   it("keeps a fixed choice and never picks the previous key at random", () => {
@@ -29,12 +38,12 @@ describe("picking a key", () => {
 });
 
 describe("rotating keys", () => {
-  const pick = (choice: string, previous: string) => choice === "random" ? previous + "'" : choice;
+  const pick = (choice: string, previous: string) => (choice === "random" ? previous + "'" : choice);
   /** Prompts asked one after another from a fresh start, as the modes do: the first prompt counts too */
   function run(choice: string, prompts: number): KeyRotation<string>[] {
     let r = keyRotation("C");
     const out: KeyRotation<string>[] = [];
-    for (let i = 0; i < prompts; i++) out.push(r = rotateKey(r, choice, pick));
+    for (let i = 0; i < prompts; i++) out.push((r = rotateKey(r, choice, pick)));
     return out;
   }
 
@@ -62,7 +71,9 @@ describe("rotating keys", () => {
 });
 
 describe("the shared judging state", () => {
-  interface S extends Judged<string> { extra: number }
+  interface S extends Judged<string> {
+    extra: number;
+  }
   const s: S = { prompt: "a", status: "waiting", missed: false, answered: 3, firstTry: 2, extra: 1 };
 
   it("counts a right answer, right first time unless missed", () => {
@@ -74,9 +85,19 @@ describe("the shared judging state", () => {
 
   it("moves on: a skip counts as answered unless it already was", () => {
     const wrong = answeredWrong(s, { extra: 9 });
-    expect(movedOn(wrong, { type: "next", prompt: "b" }, { extra: 0 }))
-      .toEqual({ ...s, prompt: "b", status: "waiting", missed: false, extra: 0 });
-    expect(movedOn(wrong, { type: "skip", prompt: "b" })).toMatchObject({ prompt: "b", answered: 4, firstTry: 2, extra: 9 });
+    expect(movedOn(wrong, { type: "next", prompt: "b" }, { extra: 0 })).toEqual({
+      ...s,
+      prompt: "b",
+      status: "waiting",
+      missed: false,
+      extra: 0,
+    });
+    expect(movedOn(wrong, { type: "skip", prompt: "b" })).toMatchObject({
+      prompt: "b",
+      answered: 4,
+      firstTry: 2,
+      extra: 9,
+    });
     expect(movedOn(answeredRight(s), { type: "skip", prompt: "b" })).toMatchObject({ answered: 4, firstTry: 3 });
   });
 });

@@ -5,8 +5,16 @@
 // signature), within the chosen staff's range, moving mostly by small steps and leaps the way written lines do.
 import { requireKey, keySignature, spellNote, type KeyContext } from "../theory";
 import {
-  excerptSteps, partStaves, READING_LEVELS, readingLevel, transposeStaves, writtenName, type Excerpt, type ExcerptSource,
-  type ExcerptStaff, type ReadingPart,
+  excerptSteps,
+  partStaves,
+  READING_LEVELS,
+  readingLevel,
+  transposeStaves,
+  writtenName,
+  type Excerpt,
+  type ExcerptSource,
+  type ExcerptStaff,
+  type ReadingPart,
 } from "./excerpts";
 import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
 import { pickKey } from "./keyRotation";
@@ -18,8 +26,8 @@ export const DEFAULT_READING_LENGTH = 4;
 
 /** Which staff the notes are on, as MIDI ranges: each staff plus a ledger line or two either side */
 export const READING_RANGES = {
-  treble: { label: "Treble", low: 60, high: 81 },   // C4–A5
-  bass: { label: "Bass", low: 40, high: 60 },       // E2–C4
+  treble: { label: "Treble", low: 60, high: 81 }, // C4–A5
+  bass: { label: "Bass", low: 40, high: 60 }, // E2–C4
   grand: { label: "Both staves", low: 40, high: 81 },
 } as const;
 export type ReadingRange = keyof typeof READING_RANGES;
@@ -32,7 +40,10 @@ export const READING_LEVEL_CHOICES: readonly number[] = [...READING_LEVELS.map((
 
 /** What to read from the songs */
 export const READING_PARTS: Record<ReadingPart, string> = {
-  voice: "Melody", rh: "Piano, right hand", lh: "Piano, left hand", both: "Piano, both hands",
+  voice: "Melody",
+  rh: "Piano, right hand",
+  lh: "Piano, left hand",
+  both: "Piano, both hands",
 };
 
 export interface ReadingOptions {
@@ -45,22 +56,31 @@ export interface ReadingOptions {
   key: string;
 }
 export const DEFAULT_READING_OPTIONS: ReadingOptions = {
-  level: 1, part: "voice", length: DEFAULT_READING_LENGTH, range: "treble", key: "C:major",
+  level: 1,
+  part: "voice",
+  length: DEFAULT_READING_LENGTH,
+  range: "treble",
+  key: "C:major",
 };
 
 export function sanitizeReadingOptions(raw: unknown): ReadingOptions {
   const o = (raw && typeof raw === "object" ? raw : {}) as Partial<Record<keyof ReadingOptions, unknown>>;
   return {
-    level: READING_LEVEL_CHOICES.includes(o.level as number) ? o.level as number : DEFAULT_READING_OPTIONS.level,
-    part: typeof o.part === "string" && o.part in READING_PARTS ? o.part as ReadingPart : DEFAULT_READING_OPTIONS.part,
-    length: READING_LENGTHS.includes(o.length as number) ? o.length as number : DEFAULT_READING_OPTIONS.length,
-    range: typeof o.range === "string" && o.range in READING_RANGES ? o.range as ReadingRange : DEFAULT_READING_OPTIONS.range,
-    key: READING_KEYS.includes(o.key as string) ? o.key as string : DEFAULT_READING_OPTIONS.key,
+    level: READING_LEVEL_CHOICES.includes(o.level as number) ? (o.level as number) : DEFAULT_READING_OPTIONS.level,
+    part:
+      typeof o.part === "string" && o.part in READING_PARTS ? (o.part as ReadingPart) : DEFAULT_READING_OPTIONS.part,
+    length: READING_LENGTHS.includes(o.length as number) ? (o.length as number) : DEFAULT_READING_OPTIONS.length,
+    range:
+      typeof o.range === "string" && o.range in READING_RANGES
+        ? (o.range as ReadingRange)
+        : DEFAULT_READING_OPTIONS.range,
+    key: READING_KEYS.includes(o.key as string) ? (o.key as string) : DEFAULT_READING_OPTIONS.key,
   };
 }
 
 /** The key to read in: the chosen one, or a random one other than the last */
-export const pickReadingKey = (rng: Rng, choice: string, previous?: string): string => pickKey(rng, choice, ALL_KEYS, previous);
+export const pickReadingKey = (rng: Rng, choice: string, previous?: string): string =>
+  pickKey(rng, choice, ALL_KEYS, previous);
 
 export interface ReadingNote {
   /** MIDI */
@@ -104,13 +124,19 @@ export function keyFifths(key: KeyContext): number {
 
 /** A song's passage in a key (its signature: a minor tune moved to G major's signature reads as E minor), or null
  *  if it can't be written there */
-export function makeExcerptPrompt(e: Excerpt, source: ExcerptSource, part: ReadingPart, level: number,
-                                  keyValue: string): ReadingPrompt | null {
+export function makeExcerptPrompt(
+  e: Excerpt,
+  source: ExcerptSource,
+  part: ReadingPart,
+  level: number,
+  keyValue: string,
+): ReadingPrompt | null {
   const staves = transposeStaves(partStaves(e, part), e.key, keyFifths(requireKey(keyValue)));
   if (!staves) return null;
   const { steps, stepOf } = excerptSteps(staves, e.time);
   return {
-    keyValue, range: staves.length > 1 ? "grand" : staves[0].clef,
+    keyValue,
+    range: staves.length > 1 ? "grand" : staves[0].clef,
     steps: steps.map(s => s.notes.map(n => ({ note: n.p, name: writtenName(n.p, n.s) }))),
     music: { id: e.id, source, part, level, time: e.time, staves, stepOf, ...(e.arranged ? { arranged: true } : {}) },
   };
@@ -145,8 +171,13 @@ export const noteName = (midi: number, key: KeyContext) => {
  * A line of `length` notes in the key and range: the first anywhere, then each a different note no more than a 6th
  * from the one before (small steps more likely than leaps). Never the same line twice running.
  */
-export function makeReadingPrompt(rng: Rng, keyValue: string, range: ReadingRange, length: number,
-                                  previous?: ReadingPrompt): ReadingPrompt {
+export function makeReadingPrompt(
+  rng: Rng,
+  keyValue: string,
+  range: ReadingRange,
+  length: number,
+  previous?: ReadingPrompt,
+): ReadingPrompt {
   const key = requireKey(keyValue);
   const pool = readingPool(key, range);
   for (let tries = 0; ; tries++) {
@@ -155,12 +186,17 @@ export function makeReadingPrompt(rng: Rng, keyValue: string, range: ReadingRang
       const last = notes[notes.length - 1];
       const near = pool.filter(n => n !== last && Math.abs(n - last) <= MAX_LEAP);
       // Steps (up to a 3rd) twice as likely as leaps
-      const weighted = near.flatMap(n => Math.abs(n - last) <= 4 ? [n, n] : [n]);
+      const weighted = near.flatMap(n => (Math.abs(n - last) <= 4 ? [n, n] : [n]));
       notes.push(pick(rng, weighted.length ? weighted : pool));
     }
-    const same = previous && !previous.music && previous.keyValue === keyValue && previous.steps.length === notes.length &&
+    const same =
+      previous &&
+      !previous.music &&
+      previous.keyValue === keyValue &&
+      previous.steps.length === notes.length &&
       previous.steps.every((s, i) => s[0].note === notes[i]);
-    if (!same || tries > 20) return { keyValue, range, steps: notes.map(note => [{ note, name: noteName(note, key) }]) };
+    if (!same || tries > 20)
+      return { keyValue, range, steps: notes.map(note => [{ note, name: noteName(note, key) }]) };
   }
 }
 
@@ -194,8 +230,18 @@ export type ReadingAction =
   | MoveOn<ReadingPrompt>;
 
 export function initialReading(prompt: ReadingPrompt): ReadingState {
-  return { prompt, index: 0, struck: [], attemptAt: null, status: "waiting", played: null, missed: false, finished: null,
-           answered: 0, firstTry: 0 };
+  return {
+    prompt,
+    index: 0,
+    struck: [],
+    attemptAt: null,
+    status: "waiting",
+    played: null,
+    missed: false,
+    finished: null,
+    answered: 0,
+    firstTry: 0,
+  };
 }
 
 /** A chord attempt whose notes didn't all come within CHORD_WINDOW_MS: a mistake, played again from the start */
@@ -211,13 +257,14 @@ const apart = (s: ReadingState): ReadingState => answeredWrong(s, { struck: [], 
 export function reduceReading(s: ReadingState, a: ReadingAction): ReadingState {
   switch (a.type) {
     case "play": {
-      if (s.status === "correct") return s;   // done; ignore notes until the next line
+      if (s.status === "correct") return s; // done; ignore notes until the next line
       const step = s.prompt.steps[s.index];
       const time = a.time ?? 0;
       const late = s.attemptAt != null && time - s.attemptAt > CHORD_WINDOW_MS;
       const cur = late ? apart(s) : s;
       if (!step.some(n => n.note === a.note)) {
-        const spill = s.finished?.notes.includes(a.note) && a.time != null && a.time - s.finished.time <= CHORD_SPILL_MS;
+        const spill =
+          s.finished?.notes.includes(a.note) && a.time != null && a.time - s.finished.time <= CHORD_SPILL_MS;
         return spill ? cur : answeredWrong(cur, { played: a.note });
       }
       const struck = cur.struck.includes(a.note) ? cur.struck : [...cur.struck, a.note];

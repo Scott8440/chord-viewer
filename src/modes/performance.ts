@@ -28,13 +28,19 @@ export const sounding = (s: AppState) => soundingNotes(s.perf, s.settings.includ
 /** The grid timed exercises are judged on: the transport while it runs, with the exercise's metronome options. */
 export function timingGrid(s: AppState): TimingGrid | null {
   const { metronome, subdivision, strictness } = s.settings.exercise;
-  return metronome && s.transport ? { transport: s.transport, subdivision, strictness, latencyMs: s.settings.latencyMs } : null;
+  return metronome && s.transport
+    ? { transport: s.transport, subdivision, strictness, latencyMs: s.settings.latencyMs }
+    : null;
 }
 
 /** Calls `change` whenever the timing grid may have changed (the transport, the exercise options or the latency). */
 export function onTimingGrid(store: AppStore, change: (grid: TimingGrid | null) => void): () => void {
   return store.subscribe((s, prev) => {
-    if (s.transport !== prev.transport || s.settings.exercise !== prev.settings.exercise || s.settings.latencyMs !== prev.settings.latencyMs)
+    if (
+      s.transport !== prev.transport ||
+      s.settings.exercise !== prev.settings.exercise ||
+      s.settings.latencyMs !== prev.settings.latencyMs
+    )
       change(timingGrid(s));
   });
 }
@@ -47,12 +53,16 @@ export const heldNotes = (s: AppState) => [...s.perf.held.keys()].sort((a, b) =>
  * `keyOf` gives the key to draw and spell in: the header key in free play, the exercise's own key in practice
  * modes (which never use the header key). Call `schedule()` when that key changes.
  */
-export function createPerformanceDrawer(store: AppStore, views: { staff: StaffView },
-                                        keyOf: () => KeyContext | null = () => store.getState().settings.key,
-                                        /** A melody to draw left to right, with the held notes at its next step;
-                                         *  or written music, drawn as it is (no held notes) */
-                                        rowOf: () => StaffRow | StaffMusic | null = () => null) {
-  let frameQueued = false, frame = 0;
+export function createPerformanceDrawer(
+  store: AppStore,
+  views: { staff: StaffView },
+  keyOf: () => KeyContext | null = () => store.getState().settings.key,
+  /** A melody to draw left to right, with the held notes at its next step;
+   *  or written music, drawn as it is (no held notes) */
+  rowOf: () => StaffRow | StaffMusic | null = () => null,
+) {
+  let frameQueued = false,
+    frame = 0;
   function schedule() {
     if (frameQueued) return;
     frameQueued = true;
@@ -65,7 +75,9 @@ export function createPerformanceDrawer(store: AppStore, views: { staff: StaffVi
       views.staff.render(notes, result, key, pedalOnlyNotes(s.perf), rowOf());
     });
   }
-  const unsubscribe = store.subscribe((s, prev) => { if (s.perf !== prev.perf || s.settings !== prev.settings) schedule(); });
+  const unsubscribe = store.subscribe((s, prev) => {
+    if (s.perf !== prev.perf || s.settings !== prev.settings) schedule();
+  });
   schedule();
   return {
     schedule,
@@ -82,10 +94,13 @@ export function createPerformanceDrawer(store: AppStore, views: { staff: StaffVi
  * of the held keys with the time of the event that caused it. Note-ons are reported before the held keys.
  * Nothing is reported while a latency calibration is listening.
  */
-export function onPlayerInput(store: AppStore, handlers: {
-  noteOn?(note: number, time: number): void;
-  held?(notes: number[], time: number): void;
-}): () => void {
+export function onPlayerInput(
+  store: AppStore,
+  handlers: {
+    noteOn?(note: number, time: number): void;
+    held?(notes: number[], time: number): void;
+  },
+): () => void {
   return store.subscribe((s, prev) => {
     // The history gains exactly one event per input dispatch
     if (s.history === prev.history) return;
@@ -108,7 +123,9 @@ export function onIdle(store: AppStore, ms: number, handlers: { idle(): void; ac
   let timer: ReturnType<typeof setTimeout> | undefined;
   function wait() {
     clearTimeout(timer);
-    timer = setTimeout(() => { if (!sounding(store.getState()).length) handlers.idle(); }, ms);
+    timer = setTimeout(() => {
+      if (!sounding(store.getState()).length) handlers.idle();
+    }, ms);
   }
   const unsubscribe = store.subscribe((s, prev) => {
     if (s.history === prev.history) return;
@@ -116,5 +133,8 @@ export function onIdle(store: AppStore, ms: number, handlers: { idle(): void; ac
     wait();
   });
   wait();
-  return () => { unsubscribe(); clearTimeout(timer); };
+  return () => {
+    unsubscribe();
+    clearTimeout(timer);
+  };
 }

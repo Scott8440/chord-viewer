@@ -31,8 +31,15 @@ import { startSightReading } from "./sightReading";
 export interface ModeDeps {
   store: AppStore;
   views: {
-    staff: StaffView; practice: PracticeView; circle: CircleView; chordName: ChordNameView; tones: TonePlayer;
-    degrees: DegreeCircleView; answers: AnswerBoard; roundViz: RoundVizView; progress: ProgressView;
+    staff: StaffView;
+    practice: PracticeView;
+    circle: CircleView;
+    chordName: ChordNameView;
+    tones: TonePlayer;
+    degrees: DegreeCircleView;
+    answers: AnswerBoard;
+    roundViz: RoundVizView;
+    progress: ProgressView;
   };
   recorder: Recorder;
   /** Practice history, for the Progress page and the ear modes' rounds */

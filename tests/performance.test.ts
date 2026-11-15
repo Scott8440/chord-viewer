@@ -1,11 +1,38 @@
 // Performance reducer: held notes, pedal sustain, multiple sources, all-notes-off and panic.
 import { describe, expect, it } from "vitest";
 import type { InputEvent } from "../src/input/events";
-import { initialPerformance, pedalDown, pedalOnlyNotes, reducePerformance, soundingNotes, type PerformanceState } from "../src/state/performance";
+import {
+  initialPerformance,
+  pedalDown,
+  pedalOnlyNotes,
+  reducePerformance,
+  soundingNotes,
+  type PerformanceState,
+} from "../src/state/performance";
 
-const on = (note: number, source = "a", channel = 0): InputEvent => ({ type: "noteOn", note, velocity: 100, time: 0, source, channel });
-const off = (note: number, source = "a", channel = 0): InputEvent => ({ type: "noteOff", note, velocity: 0, time: 0, source, channel });
-const pedal = (down: boolean, source = "a", channel = 0): InputEvent => ({ type: "pedal", down, time: 0, source, channel });
+const on = (note: number, source = "a", channel = 0): InputEvent => ({
+  type: "noteOn",
+  note,
+  velocity: 100,
+  time: 0,
+  source,
+  channel,
+});
+const off = (note: number, source = "a", channel = 0): InputEvent => ({
+  type: "noteOff",
+  note,
+  velocity: 0,
+  time: 0,
+  source,
+  channel,
+});
+const pedal = (down: boolean, source = "a", channel = 0): InputEvent => ({
+  type: "pedal",
+  down,
+  time: 0,
+  source,
+  channel,
+});
 const run = (...events: InputEvent[]) => events.reduce(reducePerformance, initialPerformance);
 const sounding = (s: PerformanceState, sus = true) => soundingNotes(s, sus);
 
@@ -64,8 +91,11 @@ describe("performance reducer", () => {
   });
 
   it("all-notes-off releases one source on every channel, leaving others and the pedal alone", () => {
-    const s = run(pedal(true, "a"), on(60, "a", 0), on(64, "a", 3), on(67, "b"), on(72, "a"), off(72, "a"),
-                  { type: "allNotesOff", time: 0, source: "a" });
+    const s = run(pedal(true, "a"), on(60, "a", 0), on(64, "a", 3), on(67, "b"), on(72, "a"), off(72, "a"), {
+      type: "allNotesOff",
+      time: 0,
+      source: "a",
+    });
     expect([...s.held.keys()]).toEqual([67]);
     expect([...s.sustained]).toEqual([72]);
     expect(pedalDown(s)).toBe(true);

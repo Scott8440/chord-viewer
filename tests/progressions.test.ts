@@ -1,8 +1,16 @@
 // Progression practice: progression data, prompts, judging chord by chord, and display.
 import { describe, expect, it } from "vitest";
 import {
-  initialProgression, makeProgressionPrompt, progressionById, progressionChords, PROGRESSIONS, progressionsWhere,
-  reduceProgression, type ProgressionAction, type ProgressionPrompt, type ProgressionState,
+  initialProgression,
+  makeProgressionPrompt,
+  progressionById,
+  progressionChords,
+  PROGRESSIONS,
+  progressionsWhere,
+  reduceProgression,
+  type ProgressionAction,
+  type ProgressionPrompt,
+  type ProgressionState,
 } from "../src/exercises/progressions";
 import { analyze, buildKey, KEY_MAJORS, KEY_MINORS, matchTemplate, prettyAcc, templateById } from "../src/theory";
 import { progressionDisplay } from "../src/views/practice";
@@ -19,7 +27,9 @@ const voice = (c: { rootPc: number; type: string }) => {
   return [...m.missing, ...m.omitted].map(t => 48 + c.rootPc + t.pc).sort((a, b) => a - b);
 };
 
-const C = [48, 52, 55], F = [48, 53, 57], G = [47, 50, 55];   // C, F/C, G/B: common-tone voicings
+const C = [48, 52, 55],
+  F = [48, 53, 57],
+  G = [47, 50, 55]; // C, F/C, G/B: common-tone voicings
 const CIVVI = prompt("I-IV-V-I", "C:major");
 
 describe("progression data", () => {
@@ -38,7 +48,12 @@ describe("progression data", () => {
 
   it("spells chords from the key", () => {
     expect(prompt("ii-V-I", "Bb:major").chords.map(c => c.root)).toEqual(["C", "F", "Bb"]);
-    expect(prompt("i-VII-VI-V", "A:minor").chords.map(c => c.root + templateById(c.type)!.symbol)).toEqual(["Am", "G", "F", "E"]);
+    expect(prompt("i-VII-VI-V", "A:minor").chords.map(c => c.root + templateById(c.type)!.symbol)).toEqual([
+      "Am",
+      "G",
+      "F",
+      "E",
+    ]);
   });
 
   it("has unique ids, positive weights and at least one tag each", () => {
@@ -101,7 +116,8 @@ describe("makeProgressionPrompt", () => {
   it("does not repeat the same progression in the same key", () => {
     const pool = progressionsWhere({ mode: "major" }).filter(p => p.id === "ii-V-I" || p.id === "I-IV-V-I");
     const prev = prompt("ii-V-I", "C:major");
-    for (let i = 0; i < 50; i++) expect(makeProgressionPrompt(Math.random, buildKey("C:major"), prev, pool).id).toBe("I-IV-V-I");
+    for (let i = 0; i < 50; i++)
+      expect(makeProgressionPrompt(Math.random, buildKey("C:major"), prev, pool).id).toBe("I-IV-V-I");
   });
 });
 
@@ -115,8 +131,19 @@ describe("reduceProgression", () => {
 
   it("accepts legato: common tones held, without lifting every key", () => {
     // C E G -> keep C, E->F, G->A (F/C) -> C->B, F->D, A->G (G/B) -> back to C
-    const s = run(initialProgression(CIVVI), held(48, 52, 55), held(48, 55), held(48, 53, 55), held(48, 53, 57),
-                  held(53, 57), held(47, 53, 57), held(47, 50, 57), held(47, 50, 55), held(48, 50, 55), held(48, 52, 55));
+    const s = run(
+      initialProgression(CIVVI),
+      held(48, 52, 55),
+      held(48, 55),
+      held(48, 53, 55),
+      held(48, 53, 57),
+      held(53, 57),
+      held(47, 53, 57),
+      held(47, 50, 57),
+      held(47, 50, 55),
+      held(48, 50, 55),
+      held(48, 52, 55),
+    );
     expect(s).toMatchObject({ status: "done", chordsFirstTry: 4 });
   });
 
@@ -126,7 +153,7 @@ describe("reduceProgression", () => {
   });
 
   it("judges a wrong attempt when keys are pressed and then all released", () => {
-    let s = run(initialProgression(CIVVI), held(...C), held(), held(50, 53, 57), held());   // Dm instead of F
+    let s = run(initialProgression(CIVVI), held(...C), held(), held(50, 53, 57), held()); // Dm instead of F
     expect(s).toMatchObject({ index: 1, status: "wrong", attempt: [50, 53, 57], missed: true });
     s = run(s, held(...F));
     expect(s).toMatchObject({ index: 2, status: "playing", chordsAnswered: 2, chordsFirstTry: 1 });
@@ -144,7 +171,7 @@ describe("reduceProgression", () => {
   it("needs a re-strike when the next progression starts with the chord still held", () => {
     let s = run(initialProgression(CIVVI), held(...C), held(), held(...F), held(), held(...G), held(), held(...C));
     s = run(s, { type: "next", prompt: prompt("I-V-vi-IV", "C:major") });
-    expect(s.index).toBe(0);                       // holding C does not count until played again
+    expect(s.index).toBe(0); // holding C does not count until played again
     s = run(s, held(), held(...C));
     expect(s.index).toBe(1);
   });
@@ -152,22 +179,31 @@ describe("reduceProgression", () => {
 
 describe("progressionDisplay", () => {
   it("shows the row, marks progress, and reveals the other notation for played chords", () => {
-    const s = run(initialProgression(prompt("ii-V-I", "Bb:major")), held(48, 51, 55));   // Cm
+    const s = run(initialProgression(prompt("ii-V-I", "Bb:major")), held(48, 51, 55)); // Cm
     const roman = progressionDisplay(s, "roman");
     expect(roman.sub).toBe("ii–V–I in B♭ major");
-    expect(roman.promptHtml).toMatch(/^<span class="step done"><span class="main">ii<\/span><span class="other">Cm<\/span>/);
-    expect(roman.promptHtml).toContain('<span class="step current"><span class="main">V</span><span class="other">&nbsp;</span>');
+    expect(roman.promptHtml).toMatch(
+      /^<span class="step done"><span class="main">ii<\/span><span class="other">Cm<\/span>/,
+    );
+    expect(roman.promptHtml).toContain(
+      '<span class="step current"><span class="main">V</span><span class="other">&nbsp;</span>',
+    );
     expect(roman.promptHtml).toContain('<span class="step upcoming"><span class="main">I</span>');
     const names = progressionDisplay(s, "names");
-    expect(names.promptHtml).toMatch(/^<span class="step done"><span class="main">Cm<\/span><span class="other">ii<\/span>/);
+    expect(names.promptHtml).toMatch(
+      /^<span class="step done"><span class="main">Cm<\/span><span class="other">ii<\/span>/,
+    );
     expect(names.score).toBe("1 / 1 chords right first time");
   });
 
   it("gives chord feedback for the current chord, and a finish message", () => {
-    let s = run(initialProgression(CIVVI), held(...C), held(), held(48, 52, 57), held());   // Am/C instead of F
+    let s = run(initialProgression(CIVVI), held(...C), held(), held(48, 52, 57), held()); // Am/C instead of F
     expect(progressionDisplay(s, "roman").feedback).toBe("✗ That was Am/C (vi). Replace E with F");
     s = run(s, held(...F), held(), held(...G), held(), held(...C));
-    expect(progressionDisplay(s, "roman")).toMatchObject({ status: "correct", feedback: "✓ Progression complete",
-                                                          score: "3 / 4 chords right first time · 1 progression" });
+    expect(progressionDisplay(s, "roman")).toMatchObject({
+      status: "correct",
+      feedback: "✓ Progression complete",
+      score: "3 / 4 chords right first time · 1 progression",
+    });
   });
 });

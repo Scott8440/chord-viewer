@@ -6,7 +6,14 @@ const parse = (...bytes: number[]) => parseMidiMessage(bytes, 12.5, "in1");
 
 describe("parseMidiMessage", () => {
   it("parses note-on with channel, velocity and the event's timestamp", () => {
-    expect(parse(0x93, 60, 90)).toEqual({ type: "noteOn", note: 60, velocity: 90, time: 12.5, source: "in1", channel: 3 });
+    expect(parse(0x93, 60, 90)).toEqual({
+      type: "noteOn",
+      note: 60,
+      velocity: 90,
+      time: 12.5,
+      source: "in1",
+      channel: 3,
+    });
   });
 
   it("treats note-off and note-on with velocity 0 as note-off", () => {
@@ -26,8 +33,8 @@ describe("parseMidiMessage", () => {
   });
 
   it("ignores other messages", () => {
-    expect(parse(0xb0, 1, 50)).toBeNull();   // mod wheel
-    expect(parse(0xe0, 0, 64)).toBeNull();   // pitch bend
-    expect(parse(0xf8)).toBeNull();          // clock
+    expect(parse(0xb0, 1, 50)).toBeNull(); // mod wheel
+    expect(parse(0xe0, 0, 64)).toBeNull(); // pitch bend
+    expect(parse(0xf8)).toBeNull(); // clock
   });
 });

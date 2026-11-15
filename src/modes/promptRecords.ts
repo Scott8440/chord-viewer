@@ -13,11 +13,15 @@ export interface PromptRecords<S> {
 }
 
 /** `body` makes the record from the state holding the prompt (`answered` false: skipped) and the time taken */
-export function createPromptRecords<S extends Judged<unknown>>(recorder: Recorder,
-                                                             body: (s: S, answered: boolean, ms: number) => RecordBody): PromptRecords<S> {
+export function createPromptRecords<S extends Judged<unknown>>(
+  recorder: Recorder,
+  body: (s: S, answered: boolean, ms: number) => RecordBody,
+): PromptRecords<S> {
   let shownAt = Date.now();
   return {
-    shown() { shownAt = Date.now(); },
+    shown() {
+      shownAt = Date.now();
+    },
     changed(prev, now, skipped) {
       if (now.status === "correct" && prev.status !== "correct") recorder.record(body(now, true, Date.now() - shownAt));
       else if (skipped && prev.status !== "correct") recorder.record(body(prev, false, Date.now() - shownAt));

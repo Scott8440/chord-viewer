@@ -20,18 +20,26 @@ export function uuid(): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
-export function createRecorder(store: Promise<ProgressStore>, device: string,
-                               now: () => number = Date.now, newId: () => string = uuid): Recorder {
+export function createRecorder(
+  store: Promise<ProgressStore>,
+  device: string,
+  now: () => number = Date.now,
+  newId: () => string = uuid,
+): Recorder {
   const listeners = new Set<(r: ProgressRecord) => void>();
   return {
     record(body) {
       const record = { ...body, id: newId(), v: RECORD_VERSION, at: now(), device } as ProgressRecord;
-      store.then(s => s.add(record)).then(() => listeners.forEach(l => l(record)))
+      store
+        .then(s => s.add(record))
+        .then(() => listeners.forEach(l => l(record)))
         .catch(e => console.error("Couldn't save practice history", e));
     },
     onRecorded(listener) {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
+      return () => {
+        listeners.delete(listener);
+      };
     },
   };
 }

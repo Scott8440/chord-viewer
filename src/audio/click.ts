@@ -35,9 +35,10 @@ export function createClickPlayer(onStatus: (status: ClickStatus) => void = () =
     const latency = running && ctx ? Math.round(outputLatency(ctx) * 1000) : null;
     const status = { blocked: !!transport && !!ctx && !running, outputLatencyMs: latency };
     // Only real changes (a few ms of jitter isn't one)
-    const moved = (status.outputLatencyMs == null) !== (last.outputLatencyMs == null) ||
+    const moved =
+      (status.outputLatencyMs == null) !== (last.outputLatencyMs == null) ||
       Math.abs((status.outputLatencyMs ?? 0) - (last.outputLatencyMs ?? 0)) >= 10;
-    if (status.blocked !== last.blocked || moved) onStatus(last = status);
+    if (status.blocked !== last.blocked || moved) onStatus((last = status));
   }
 
   /** Audio-clock time (s) at which a sound is heard at performance time `ms`; output latency included */
@@ -51,7 +52,8 @@ export function createClickPlayer(onStatus: (status: ClickStatus) => void = () =
   }
 
   function click(c: AudioContext, at: number, accent: boolean) {
-    const osc = c.createOscillator(), gain = c.createGain();
+    const osc = c.createOscillator(),
+      gain = c.createGain();
     osc.frequency.value = accent ? 1600 : 1000;
     gain.gain.setValueAtTime(accent ? 0.5 : 0.3, at);
     gain.gain.exponentialRampToValueAtTime(0.001, at + 0.04);
@@ -80,7 +82,13 @@ export function createClickPlayer(onStatus: (status: ClickStatus) => void = () =
   return {
     follow(t) {
       transport = t;
-      if (!t) { clearInterval(timer); timer = undefined; lastClick = -Infinity; report(); return; }
+      if (!t) {
+        clearInterval(timer);
+        timer = undefined;
+        lastClick = -Infinity;
+        report();
+        return;
+      }
       if (!ctx) {
         ctx = audioContext();
         ctx.addEventListener("statechange", report);

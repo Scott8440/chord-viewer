@@ -9,7 +9,7 @@ import { esc } from "../html";
 import { stepHtml, type StepState } from "./steps";
 import { and, capitalize } from "./text";
 
-export const inversionName = (n: number) => n === 0 ? "root position" : `${["1st", "2nd", "3rd"][n - 1]} inversion`;
+export const inversionName = (n: number) => (n === 0 ? "root position" : `${["1st", "2nd", "3rd"][n - 1]} inversion`);
 
 /**
  * Figured-bass figures for an inversion: triads "", 6, 6/4; sevenths 7, 6/5, 4/3, 4/2.
@@ -31,7 +31,8 @@ export function romanHtml(numeral: string, inversion?: number): string {
   const raised = quality + (figures.length === 1 ? figures[0] : "");
   let html = esc(base);
   if (raised) html += `<span class="ext">${esc(raised)}</span>`;
-  if (figures.length === 2) html += `<span class="fig"><span>${esc(figures[0])}</span><span>${esc(figures[1])}</span></span>`;
+  if (figures.length === 2)
+    html += `<span class="fig"><span>${esc(figures[0])}</span><span>${esc(figures[1])}</span></span>`;
   return html;
 }
 
@@ -40,7 +41,8 @@ export function describeMiss(prompt: ChordPrompt, notes: number[], key: KeyConte
   const root = prompt.root;
   // Chord tones are spelled as in the prompted chord; wrong notes like the key, or the prompt's sharps/flats
   const tone = (interval: string) => prettyAcc(Note.transpose(root, interval));
-  const wrong = (pc: number) => prettyAcc(pcName(pc, key, root.includes("b") ? true : root.includes("#") ? false : undefined));
+  const wrong = (pc: number) =>
+    prettyAcc(pcName(pc, key, root.includes("b") ? true : root.includes("#") ? false : undefined));
   const fix = chordCorrections(notes, prompt);
   const actions = [
     ...fix.replace.map(r => `replace ${wrong(r.from)} with ${tone(r.to.interval)}`),
@@ -56,14 +58,18 @@ export function describeMiss(prompt: ChordPrompt, notes: number[], key: KeyConte
   // Name what was played, unless it already is the chord with a tone left out; with Roman prompts add its numeral
   const played = analyze(notes, key);
   const numeral = prompt.roman && played?.roman ? ` (${played.roman})` : "";
-  const that = played && played.kind !== "unknown" && !hasChordTones(notes, prompt, { allowOmissions: true })
-    ? `That was ${prettyAcc(played.text)}${numeral}. ` : "";
+  const that =
+    played && played.kind !== "unknown" && !hasChordTones(notes, prompt, { allowOmissions: true })
+      ? `That was ${prettyAcc(played.text)}${numeral}. `
+      : "";
   return that + todo;
 }
 
 /** A chord's name with its required bass, e.g. "Cmaj7/E" */
 export function chordName(c: ChordPrompt): string {
-  return c.root + requireTemplate(c.type).symbol + (c.inversion && c.inversion.number > 0 ? "/" + c.inversion.bass : "");
+  return (
+    c.root + requireTemplate(c.type).symbol + (c.inversion && c.inversion.number > 0 ? "/" + c.inversion.bass : "")
+  );
 }
 
 /** How a chord is asked for in a prompt style: "Cmaj7/E" or "Imaj7" (with figures when an inversion is required) */

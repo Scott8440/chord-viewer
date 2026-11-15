@@ -3,7 +3,15 @@
 // cancels, Esc again or the button ends mapping). Then that key presses the control instead of playing a note, in the
 // mode it was mapped in. Mapped controls show their key in a corner badge. Saved in localStorage.
 import type { InputEvent } from "../input/events";
-import { assignNote, clearTarget, midiNoteName, noteFor, sanitizeMidiMap, targetFor, type MidiMap } from "../input/midiMap";
+import {
+  assignNote,
+  clearTarget,
+  midiNoteName,
+  noteFor,
+  sanitizeMidiMap,
+  targetFor,
+  type MidiMap,
+} from "../input/midiMap";
 import { loadJson, saveItem } from "./safeStorage";
 
 const STORAGE = "chordDisplay.midiMap";
@@ -40,7 +48,8 @@ export function createMidiMapper(o: {
     const scope = o.scope();
     for (const el of controls()) {
       const note = scope ? noteFor(map, scope, el.dataset.midiMap!) : undefined;
-      if (note == null) delete el.dataset.midiLabel; else el.dataset.midiLabel = midiNoteName(note);
+      if (note == null) delete el.dataset.midiLabel;
+      else el.dataset.midiLabel = midiNoteName(note);
       el.classList.toggle("midiWaiting", el.dataset.midiMap === waiting);
     }
   }
@@ -48,10 +57,15 @@ export function createMidiMapper(o: {
   new MutationObserver(() => {
     if (queued) return;
     queued = true;
-    requestAnimationFrame(() => { queued = false; refresh(); });
+    requestAnimationFrame(() => {
+      queued = false;
+      refresh();
+    });
   }).observe(document.body, { childList: true, subtree: true });
 
-  function say(text: string) { o.hint.textContent = text; }
+  function say(text: string) {
+    o.hint.textContent = text;
+  }
   function setMapping(on: boolean) {
     mapping = on;
     waiting = null;
@@ -62,40 +76,54 @@ export function createMidiMapper(o: {
     refresh();
   }
 
-  o.button.onclick = () => { o.button.blur(); setMapping(!mapping); };
+  o.button.onclick = () => {
+    o.button.blur();
+    setMapping(!mapping);
+  };
 
   // While mapping, a click on a mappable control picks it instead of pressing it
-  document.addEventListener("click", e => {
-    if (!mapping) return;
-    const el = (e.target as HTMLElement).closest<HTMLElement>("[data-midi-map]");
-    if (!el) return;
-    e.preventDefault();
-    e.stopPropagation();
-    (el as HTMLButtonElement).blur?.();
-    if (!o.scope()) return;
-    waiting = el.dataset.midiMap!;
-    say(`Press a key for “${nameOf(el)}” · Delete clears it · Esc cancels`);
-    refresh();
-  }, { capture: true });
+  document.addEventListener(
+    "click",
+    e => {
+      if (!mapping) return;
+      const el = (e.target as HTMLElement).closest<HTMLElement>("[data-midi-map]");
+      if (!el) return;
+      e.preventDefault();
+      e.stopPropagation();
+      (el as HTMLButtonElement).blur?.();
+      if (!o.scope()) return;
+      waiting = el.dataset.midiMap!;
+      say(`Press a key for “${nameOf(el)}” · Delete clears it · Esc cancels`);
+      refresh();
+    },
+    { capture: true },
+  );
 
   // Esc and Delete belong to mapping while it's on (not to Clear, or the computer-key notes)
-  window.addEventListener("keydown", e => {
-    if (!mapping || !["Escape", "Delete", "Backspace"].includes(e.key)) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    const scope = o.scope();
-    if (e.key === "Escape") {
-      if (waiting) { waiting = null; say("Click a highlighted control, then press a key on your keyboard to map it"); refresh(); }
-      else setMapping(false);
-    } else if (waiting && scope) {
-      map = clearTarget(map, scope, waiting);
-      save();
-      const el = visible(waiting);
-      say(`Cleared the key for “${el ? nameOf(el) : waiting}”`);
-      waiting = null;
-      refresh();
-    }
-  }, { capture: true });
+  window.addEventListener(
+    "keydown",
+    e => {
+      if (!mapping || !["Escape", "Delete", "Backspace"].includes(e.key)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const scope = o.scope();
+      if (e.key === "Escape") {
+        if (waiting) {
+          waiting = null;
+          say("Click a highlighted control, then press a key on your keyboard to map it");
+          refresh();
+        } else setMapping(false);
+      } else if (waiting && scope) {
+        map = clearTarget(map, scope, waiting);
+        save();
+        const el = visible(waiting);
+        say(`Cleared the key for “${el ? nameOf(el) : waiting}”`);
+        waiting = null;
+        refresh();
+      }
+    },
+    { capture: true },
+  );
 
   return {
     handle(event) {
@@ -108,7 +136,9 @@ export function createMidiMapper(o: {
         map = assignNote(map, scope, waiting, event.note);
         save();
         const el = visible(waiting);
-        say(`${midiNoteName(event.note)} now presses “${el ? nameOf(el) : waiting}” · click another control, or MIDI map to finish`);
+        say(
+          `${midiNoteName(event.note)} now presses “${el ? nameOf(el) : waiting}” · click another control, or MIDI map to finish`,
+        );
         waiting = null;
         refresh();
         pressed.add(key);

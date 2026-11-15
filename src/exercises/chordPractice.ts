@@ -12,18 +12,40 @@ import { ALL_KEYS } from "./romanPrompts";
 
 /** Chord types offered in the filter, grouped as shown. Ids are chord template ids. */
 export const CHORD_PRACTICE_GROUPS: readonly { label: string; types: readonly { id: string; label: string }[] }[] = [
-  { label: "Triads", types: [
-    { id: "M", label: "Major" }, { id: "m", label: "Minor" }, { id: "dim", label: "Dim" }, { id: "aug", label: "Aug" },
-    { id: "sus2", label: "Sus2" }, { id: "sus4", label: "Sus4" },
-  ] },
-  { label: "Sixths and sevenths", types: [
-    { id: "6", label: "6" }, { id: "m6", label: "m6" }, { id: "maj7", label: "maj7" }, { id: "7", label: "7" },
-    { id: "m7", label: "m7" }, { id: "m7b5", label: "m7b5" }, { id: "dim7", label: "dim7" },
-    { id: "mMaj7", label: "m(maj7)" }, { id: "7sus4", label: "7sus4" },
-  ] },
-  { label: "Ninths", types: [
-    { id: "add9", label: "add9" }, { id: "9", label: "9" }, { id: "maj9", label: "maj9" }, { id: "m9", label: "m9" },
-  ] },
+  {
+    label: "Triads",
+    types: [
+      { id: "M", label: "Major" },
+      { id: "m", label: "Minor" },
+      { id: "dim", label: "Dim" },
+      { id: "aug", label: "Aug" },
+      { id: "sus2", label: "Sus2" },
+      { id: "sus4", label: "Sus4" },
+    ],
+  },
+  {
+    label: "Sixths and sevenths",
+    types: [
+      { id: "6", label: "6" },
+      { id: "m6", label: "m6" },
+      { id: "maj7", label: "maj7" },
+      { id: "7", label: "7" },
+      { id: "m7", label: "m7" },
+      { id: "m7b5", label: "m7b5" },
+      { id: "dim7", label: "dim7" },
+      { id: "mMaj7", label: "m(maj7)" },
+      { id: "7sus4", label: "7sus4" },
+    ],
+  },
+  {
+    label: "Ninths",
+    types: [
+      { id: "add9", label: "add9" },
+      { id: "9", label: "9" },
+      { id: "maj9", label: "maj9" },
+      { id: "m9", label: "m9" },
+    ],
+  },
 ];
 
 export const CHORD_PRACTICE_TYPES: readonly string[] = CHORD_PRACTICE_GROUPS.flatMap(g => g.types.map(t => t.id));
@@ -34,7 +56,7 @@ export const DEFAULT_CHORD_TYPES: readonly string[] = ["M", "m"];
  * "random" (a new key every PROMPTS_PER_KEY prompts), or a key value: then only that key's diatonic chords come up.
  */
 export const CHORD_KEYS: readonly string[] = ["none", "random", ...ALL_KEYS];
-export const sanitizeChordKey = (v: unknown): string => CHORD_KEYS.includes(v as string) ? v as string : "none";
+export const sanitizeChordKey = (v: unknown): string => (CHORD_KEYS.includes(v as string) ? (v as string) : "none");
 
 /** The key for the next prompts: the chosen one, or a random one other than the previous (null for "none") */
 export const pickChordKey = (rng: Rng, choice: string, previous?: string | null): string | null =>
@@ -50,7 +72,12 @@ export function sanitizeChordTypes(ids: readonly string[]): string[] {
  * Picks a chord to ask for: a random root and one of the allowed types, never the same chord twice in a row.
  * The root is spelled from the key if one is set, otherwise the conventional way (Db major, C# minor).
  */
-export function makeChordPrompt(rng: Rng, types: readonly string[], key: KeyContext | null, previous?: ChordPrompt): ChordPrompt {
+export function makeChordPrompt(
+  rng: Rng,
+  types: readonly string[],
+  key: KeyContext | null,
+  previous?: ChordPrompt,
+): ChordPrompt {
   let rootPc: number, type: string;
   do {
     rootPc = randomInt(rng, 12);
@@ -75,14 +102,25 @@ export type ChordPracticeAction =
   | { type: "skip"; prompt: ChordPrompt; held: number[] };
 
 export function initialChordPractice(prompt: ChordPrompt, held: number[] = []): ChordPracticeState {
-  return { prompt, status: "waiting", tracker: freshAttempt(held), attempt: null, missed: false, answered: 0, firstTry: 0 };
+  return {
+    prompt,
+    status: "waiting",
+    tracker: freshAttempt(held),
+    attempt: null,
+    missed: false,
+    answered: 0,
+    firstTry: 0,
+  };
 }
 
-export function reduceChordPractice(s: ChordPracticeState, a: ChordPracticeAction,
-                                    opts: ChordMatchOptions = DEFAULT_CHORD_MATCH): ChordPracticeState {
+export function reduceChordPractice(
+  s: ChordPracticeState,
+  a: ChordPracticeAction,
+  opts: ChordMatchOptions = DEFAULT_CHORD_MATCH,
+): ChordPracticeState {
   // The keys held as the new prompt comes up are its starting point
   if (a.type !== "held") return movedOn(s, a, { tracker: freshAttempt(a.held), attempt: null });
-  if (s.status === "correct") return s;   // answered; ignore input until the next prompt
+  if (s.status === "correct") return s; // answered; ignore input until the next prompt
   const { attempt: tracker, outcome } = trackAttempt(s.tracker, a.notes, notes => isChord(notes, s.prompt, opts));
   if (outcome.kind === "match") return answeredRight(s, { tracker, attempt: a.notes });
   if (outcome.kind === "miss") return answeredWrong(s, { tracker, attempt: outcome.notes });

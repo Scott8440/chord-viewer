@@ -9,8 +9,23 @@ import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/pres
 import { sanitizeRoutineOptions, type RoutineOptions } from "../exercises/routines";
 import { isKeyValue, type KeyContext } from "../theory";
 
-export const MODES = ["free", "reading", "chords", "progressions", "scales", "diatonic", "fiveFinger", "arpeggios", "brokenChords", "chromatic", "routines", "ear", "earMelody", "earChords"] as const;
-export type ModeId = typeof MODES[number];
+export const MODES = [
+  "free",
+  "reading",
+  "chords",
+  "progressions",
+  "scales",
+  "diatonic",
+  "fiveFinger",
+  "arpeggios",
+  "brokenChords",
+  "chromatic",
+  "routines",
+  "ear",
+  "earMelody",
+  "earChords",
+] as const;
+export type ModeId = (typeof MODES)[number];
 
 export interface Settings {
   /** Header key selector value, e.g. "C:major", or "" for none. Free play only; exercises never use it. */
@@ -67,16 +82,18 @@ export interface SettingSpec<T> {
 }
 
 export const LATENCY_RANGE = { min: -200, max: 300 } as const;
-export const sanitizeLatency = (v: unknown) => typeof v === "number" && Number.isFinite(v)
-  ? Math.min(LATENCY_RANGE.max, Math.max(LATENCY_RANGE.min, Math.round(v))) : 0;
+export const sanitizeLatency = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v)
+    ? Math.min(LATENCY_RANGE.max, Math.max(LATENCY_RANGE.min, Math.round(v)))
+    : 0;
 
-const oneOf = <T>(values: readonly T[], v: unknown, fallback: T): T => values.includes(v as T) ? v as T : fallback;
+const oneOf = <T>(values: readonly T[], v: unknown, fallback: T): T => (values.includes(v as T) ? (v as T) : fallback);
 const saved = (key: string, format: "string" | "json" | "flag") => ({ key: `chordDisplay.${key}`, format });
 
 export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> } = {
-  keyValue: { storage: saved("key", "string"), sanitize: v => typeof v === "string" && isKeyValue(v) ? v : "" },
+  keyValue: { storage: saved("key", "string"), sanitize: v => (typeof v === "string" && isKeyValue(v) ? v : "") },
   // Not in localStorage: it comes from the footer checkbox, which the browser restores itself
-  includeSustained: { sanitize: v => typeof v === "boolean" ? v : true },
+  includeSustained: { sanitize: v => (typeof v === "boolean" ? v : true) },
   // Sight reading's mode id was "notes" (from the note practice it replaced), so a saved "notes" opens it
   mode: { storage: saved("mode", "string"), sanitize: v => oneOf(MODES, v === "notes" ? "reading" : v, "free") },
   chordTypes: {
@@ -112,8 +129,8 @@ export function sanitizeSettings(saved: SavedSettings): Omit<Settings, "key"> {
   return out as unknown as Omit<Settings, "key">;
 }
 
-const sameItems = (a: unknown, b: unknown) => a === b ||
-  (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => x === b[i]));
+const sameItems = (a: unknown, b: unknown) =>
+  a === b || (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => x === b[i]));
 
 /**
  * Whether two values of a setting are the same: equal, arrays with the same items, or option objects whose fields
@@ -122,7 +139,10 @@ const sameItems = (a: unknown, b: unknown) => a === b ||
 export function sameSetting(a: unknown, b: unknown): boolean {
   if (sameItems(a, b)) return true;
   if (!a || !b || typeof a !== "object" || typeof b !== "object" || Array.isArray(a) || Array.isArray(b)) return false;
-  const ka = Object.keys(a), kb = Object.keys(b);
-  return ka.length === kb.length &&
-    ka.every(k => k in b && sameItems((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+  const ka = Object.keys(a),
+    kb = Object.keys(b);
+  return (
+    ka.length === kb.length &&
+    ka.every(k => k in b && sameItems((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]))
+  );
 }

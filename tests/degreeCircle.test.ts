@@ -11,7 +11,7 @@ describe("degree circle", () => {
   });
 
   it("goes clockwise, with notes outside the scale halfway between their neighbours", () => {
-    expect(degreePoint(2).x).toBeGreaterThan(150);   // 2 is right of the top
+    expect(degreePoint(2).x).toBeGreaterThan(150); // 2 is right of the top
     const [two, flatThree, three] = [2, 3, 4].map(degreePoint);
     const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
     expect(dist(flatThree, two)).toBeCloseTo(dist(flatThree, three));

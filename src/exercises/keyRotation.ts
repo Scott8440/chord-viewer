@@ -9,7 +9,8 @@ export const PROMPTS_PER_KEY = 10;
 /** A random key from `keys`, never `previous` (so a new key is always a change) */
 export function randomKey(rng: Rng, keys: readonly string[], previous?: string | null): string {
   let k: string;
-  do k = pick(rng, keys); while (k === previous);
+  do k = pick(rng, keys);
+  while (k === previous);
   return k;
 }
 
@@ -33,6 +34,10 @@ export const countInKey = <K>(r: KeyRotation<K>): KeyRotation<K> => ({ key: r.ke
  * The key for the next prompt: the same one, or, when the choice is "random" and this key has had its
  * PROMPTS_PER_KEY prompts, a new one (`pick` is given the choice and the key so far, to avoid it).
  */
-export function rotateKey<K>(r: KeyRotation<K>, choice: string, pick: (choice: string, previous: K) => K): KeyRotation<K> {
+export function rotateKey<K>(
+  r: KeyRotation<K>,
+  choice: string,
+  pick: (choice: string, previous: K) => K,
+): KeyRotation<K> {
   return countInKey(choice === "random" && r.inKey >= PROMPTS_PER_KEY ? keyRotation(pick(choice, r.key)) : r);
 }

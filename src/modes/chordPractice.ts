@@ -1,6 +1,11 @@
 // Chord practice mode: asks for a chord, judges the held keys, and moves on after a correct answer.
 import {
-  type ChordPracticeAction, type ChordPracticeState, initialChordPractice, makeChordPrompt, pickChordKey, reduceChordPractice,
+  type ChordPracticeAction,
+  type ChordPracticeState,
+  initialChordPractice,
+  makeChordPrompt,
+  pickChordKey,
+  reduceChordPractice,
 } from "../exercises/chordPractice";
 import type { ChordPrompt } from "../exercises/chordPrompt";
 import { withInversion } from "../exercises/inversions";
@@ -24,8 +29,16 @@ const promptKey = (p: ChordPrompt) => {
   return value ? buildKey(value) : null;
 };
 
-export function startChordPractice({ store, views, recorder = noRecorder, rng = Math.random }: {
-  store: AppStore; views: { staff: StaffView; practice: PracticeView }; recorder?: Recorder; rng?: Rng;
+export function startChordPractice({
+  store,
+  views,
+  recorder = noRecorder,
+  rng = Math.random,
+}: {
+  store: AppStore;
+  views: { staff: StaffView; practice: PracticeView };
+  recorder?: Recorder;
+  rng?: Rng;
 }): Mode {
   const settings = () => store.getState().settings;
   // Exercises don't use the header key; chord practice has its own (see CHORD_KEYS). With none, Roman numeral
@@ -35,15 +48,20 @@ export function startChordPractice({ store, views, recorder = noRecorder, rng = 
     const { promptStyle, chordTypes, inversions, chordKey } = settings();
     keys = rotateKey(keys, chordKey, (choice, before) => pickChordKey(rng, choice, before));
     const key = keys.key ? requireKey(keys.key) : null;
-    const prompt = promptStyle === "roman" ? makeRomanPrompt(rng, chordTypes, key, previous)
-      : key ? makeDiatonicNamePrompt(rng, chordTypes, key, previous)
-      : makeChordPrompt(rng, chordTypes, null, previous);
+    const prompt =
+      promptStyle === "roman"
+        ? makeRomanPrompt(rng, chordTypes, key, previous)
+        : key
+          ? makeDiatonicNamePrompt(rng, chordTypes, key, previous)
+          : makeChordPrompt(rng, chordTypes, null, previous);
     return inversions ? withInversion(rng, prompt) : prompt;
   };
   let state: ChordPracticeState = initialChordPractice(newPrompt(), heldNotes(store.getState()));
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
   // Answered, or skipped before being answered (a new prompt from a settings change isn't a skip)
-  const records = createPromptRecords<ChordPracticeState>(recorder, (s, answered, ms) => chordDrillBody(s.prompt, answered, s.missed, ms));
+  const records = createPromptRecords<ChordPracticeState>(recorder, (s, answered, ms) =>
+    chordDrillBody(s.prompt, answered, s.missed, ms),
+  );
   // The staff follows the prompt's key, if it has one
   const drawer = createPerformanceDrawer(store, views, () => promptKey(state.prompt));
 
@@ -56,18 +74,25 @@ export function startChordPractice({ store, views, recorder = noRecorder, rng = 
     if (state.prompt !== prev.prompt) drawer.schedule();
     clearTimeout(nextTimer);
     if (state.status === "correct") {
-      nextTimer = setTimeout(() => apply({ type: "next", prompt: newPrompt(state.prompt), held: heldNotes(store.getState()) }), NEXT_PROMPT_MS);
+      nextTimer = setTimeout(
+        () => apply({ type: "next", prompt: newPrompt(state.prompt), held: heldNotes(store.getState()) }),
+        NEXT_PROMPT_MS,
+      );
     }
   }
 
   const offInput = onPlayerInput(store, { held: notes => apply({ type: "held", notes }) });
   const offSettings = store.subscribe((s, prev) => {
     // A new key starts its count afresh
-    if (s.settings.chordKey !== prev.settings.chordKey) keys = keyRotation(pickChordKey(rng, s.settings.chordKey, keys.key));
+    if (s.settings.chordKey !== prev.settings.chordKey)
+      keys = keyRotation(pickChordKey(rng, s.settings.chordKey, keys.key));
     // A new prompt style or key needs a new prompt; a narrower filter may rule out the current chord
-    if (s.settings.promptStyle !== prev.settings.promptStyle || s.settings.inversions !== prev.settings.inversions ||
-        s.settings.chordKey !== prev.settings.chordKey ||
-        (s.settings.chordTypes !== prev.settings.chordTypes && !s.settings.chordTypes.includes(state.prompt.type))) {
+    if (
+      s.settings.promptStyle !== prev.settings.promptStyle ||
+      s.settings.inversions !== prev.settings.inversions ||
+      s.settings.chordKey !== prev.settings.chordKey ||
+      (s.settings.chordTypes !== prev.settings.chordTypes && !s.settings.chordTypes.includes(state.prompt.type))
+    ) {
       apply({ type: "next", prompt: newPrompt(state.prompt), held: heldNotes(s) });
     }
   });

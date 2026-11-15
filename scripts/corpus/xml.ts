@@ -10,21 +10,28 @@ export interface XmlElement {
 }
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
-const decode = (s: string) => s.replace(/&(#x[0-9a-f]+|#\d+|\w+);/gi, (m, e: string) =>
-  e[0] === "#" ? String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10))
-    : ENTITIES[e] ?? m);
+const decode = (s: string) =>
+  s.replace(/&(#x[0-9a-f]+|#\d+|\w+);/gi, (m, e: string) =>
+    e[0] === "#"
+      ? String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10))
+      : (ENTITIES[e] ?? m),
+  );
 
 export function parseXml(src: string): XmlElement {
   const root: XmlElement = { name: "#document", attrs: {}, children: [], text: "" };
   const stack = [root];
-  const tag = /<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<!\[CDATA\[([\s\S]*?)\]\]>|<(\/?)([\w:.-]+)((?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>/g;
+  const tag =
+    /<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<!\[CDATA\[([\s\S]*?)\]\]>|<(\/?)([\w:.-]+)((?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>/g;
   let last = 0;
   for (let m: RegExpExecArray | null; (m = tag.exec(src));) {
     const top = stack[stack.length - 1];
     if (m.index > last) top.text += decode(src.slice(last, m.index));
     last = tag.lastIndex;
-    if (m[1] !== undefined) { top.text += m[1]; continue; }
-    if (!m[3]) continue;   // comment or declaration
+    if (m[1] !== undefined) {
+      top.text += m[1];
+      continue;
+    }
+    if (!m[3]) continue; // comment or declaration
     if (m[2]) {
       if (top.name !== m[3]) throw new Error(`Mismatched </${m[3]}> (open: <${top.name}>)`);
       top.text = top.text.trim();

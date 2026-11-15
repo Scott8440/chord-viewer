@@ -16,7 +16,10 @@ export interface DegreeCircleView {
   ping(semitones: number, kind: PingKind): void;
 }
 
-const SIZE = 300, C = SIZE / 2, RADIUS = 104, NODE_R = 24;
+const SIZE = 300,
+  C = SIZE / 2,
+  RADIUS = 104,
+  NODE_R = 24;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 /** Where each semitone above the tonic sits, in degree steps round the circle: scale notes on their node, the
@@ -35,12 +38,16 @@ export function degreeCircleSvg(offered: readonly string[]): string {
   const nodes = EAR_DEGREES.map(d => {
     const { x, y } = degreePoint(d.semitones);
     const on = offered.includes(d.id);
-    return `<g class="node${on ? " on" : ""}" data-semitones="${d.semitones}">` +
+    return (
+      `<g class="node${on ? " on" : ""}" data-semitones="${d.semitones}">` +
       `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${NODE_R}"/>` +
-      `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}">${esc(d.label)}</text></g>`;
+      `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}">${esc(d.label)}</text></g>`
+    );
   }).join("");
-  return `<svg class="degrees" viewBox="0 0 ${SIZE} ${SIZE}" role="img" aria-label="Scale degrees">` +
-    `<circle class="ring" cx="${C}" cy="${C}" r="${RADIUS}"/>${nodes}<g class="pings"></g></svg>`;
+  return (
+    `<svg class="degrees" viewBox="0 0 ${SIZE} ${SIZE}" role="img" aria-label="Scale degrees">` +
+    `<circle class="ring" cx="${C}" cy="${C}" r="${RADIUS}"/>${nodes}<g class="pings"></g></svg>`
+  );
 }
 
 export function createDegreeCircle(el: HTMLElement): DegreeCircleView {
@@ -48,7 +55,7 @@ export function createDegreeCircle(el: HTMLElement): DegreeCircleView {
   return {
     render(offered) {
       const key = offered.join(",");
-      if (key === shown) return;   // keep pings in flight
+      if (key === shown) return; // keep pings in flight
       shown = key;
       el.innerHTML = degreeCircleSvg(offered);
     },
@@ -75,7 +82,8 @@ export function createDegreeCircle(el: HTMLElement): DegreeCircleView {
         // Not a scale degree: a passing node with its name, between the neighbours
         const g = document.createElementNS(SVG_NS, "g");
         g.setAttribute("class", `node passing ${kind}`);
-        g.innerHTML = `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${NODE_R * 0.8}"/>` +
+        g.innerHTML =
+          `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${NODE_R * 0.8}"/>` +
           `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}">${esc(prettyAcc(degreeName(pc)))}</text>`;
         g.addEventListener("animationend", () => g.remove());
         pings.append(g);

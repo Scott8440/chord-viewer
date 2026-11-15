@@ -2,8 +2,19 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_EXERCISE_OPTIONS, type ExerciseOptions } from "../src/exercises/prescriptive";
 import {
-  chromaticKeys, circleOfFifths, DIRECTION_NAMES, eachKey, initialRoutine, itemExercise, reduceRoutine, routineById, routineSummary, ROUTINES,
-  sanitizeRoutineOptions, type RoutineAction, type RoutineState,
+  chromaticKeys,
+  circleOfFifths,
+  DIRECTION_NAMES,
+  eachKey,
+  initialRoutine,
+  itemExercise,
+  reduceRoutine,
+  routineById,
+  routineSummary,
+  ROUTINES,
+  sanitizeRoutineOptions,
+  type RoutineAction,
+  type RoutineState,
 } from "../src/exercises/routines";
 import type { SequenceExercise } from "../src/exercises/sequence";
 import { createAppState, reduceApp } from "../src/state/app";
@@ -20,12 +31,13 @@ function playExercise(ex: SequenceExercise, gap = 200, mistakeAt = -1): RoutineA
   const out: RoutineAction[] = [];
   const anchor = 60 + ex.basePc;
   ex.steps.forEach((st, i) => {
-    if (i === mistakeAt) out.push({ type: "noteOn", note: anchor + 1 + (st.kind === "note" ? st.offset : 0), time: clock += gap });
-    if (st.kind === "note") out.push({ type: "noteOn", note: anchor + st.offset, time: clock += gap });
+    if (i === mistakeAt)
+      out.push({ type: "noteOn", note: anchor + 1 + (st.kind === "note" ? st.offset : 0), time: (clock += gap) });
+    if (st.kind === "note") out.push({ type: "noteOn", note: anchor + st.offset, time: (clock += gap) });
     else {
       const m = matchTemplate([], st.chord.rootPc, st.chord.type);
       const notes = [...m.missing, ...m.omitted].map(t => 48 + st.chord.rootPc + t.pc).sort((a, b) => a - b);
-      out.push({ type: "held", notes, time: clock += gap }, { type: "held", notes: [], time: clock += 1 });
+      out.push({ type: "held", notes, time: (clock += gap) }, { type: "held", notes: [], time: (clock += 1) });
     }
   });
   return out;
@@ -34,21 +46,45 @@ const playCurrent = (s: RoutineState, mistakeAt = -1) => run(s, ...playExercise(
 
 describe("circle of fifths", () => {
   it("goes sharps first or flats first, starting on C", () => {
-    expect(circleOfFifths("sharps").map(k => k.split(":")[0]).join(" ")).toBe("C G D A E B F# Db Ab Eb Bb F");
-    expect(circleOfFifths("flats").map(k => k.split(":")[0]).join(" ")).toBe("C F Bb Eb Ab Db F# B E A D G");
+    expect(
+      circleOfFifths("sharps")
+        .map(k => k.split(":")[0])
+        .join(" "),
+    ).toBe("C G D A E B F# Db Ab Eb Bb F");
+    expect(
+      circleOfFifths("flats")
+        .map(k => k.split(":")[0])
+        .join(" "),
+    ).toBe("C F Bb Eb Ab Db F# B E A D G");
   });
 
   it("chromatic order: up or down by semitones from C, spelled as on the circle", () => {
-    expect(chromaticKeys("sharps").map(k => k.split(":")[0]).join(" ")).toBe("C Db D Eb E F F# G Ab A Bb B");
-    expect(chromaticKeys("flats").map(k => k.split(":")[0]).join(" ")).toBe("C B Bb A Ab G F# F E Eb D Db");
+    expect(
+      chromaticKeys("sharps")
+        .map(k => k.split(":")[0])
+        .join(" "),
+    ).toBe("C Db D Eb E F F# G Ab A Bb B");
+    expect(
+      chromaticKeys("flats")
+        .map(k => k.split(":")[0])
+        .join(" "),
+    ).toBe("C B Bb A Ab G F# F E Eb D Db");
     expect(chromaticKeys("sharps").every(k => k.endsWith(":major"))).toBe(true);
   });
 
   it("major scales chromatic: each major scale once, in chromatic order, its directions named up and down", () => {
     const r = routineById("scales-chromatic")!;
     expect(r.order).toBe("chromatic");
-    expect(r.items("sharps").map(i => [i.exercise, i.options.key]).slice(0, 3))
-      .toEqual([["scales", "C:major"], ["scales", "Db:major"], ["scales", "D:major"]]);
+    expect(
+      r
+        .items("sharps")
+        .map(i => [i.exercise, i.options.key])
+        .slice(0, 3),
+    ).toEqual([
+      ["scales", "C:major"],
+      ["scales", "Db:major"],
+      ["scales", "D:major"],
+    ]);
     expect(r.items("flats")).toHaveLength(12);
     expect(DIRECTION_NAMES[r.order].sharps.long).toBe("Up (C D♭ D …)");
     expect(DIRECTION_NAMES[routineById("scales-circle")!.order].flats.arrow).toBe("↺");
@@ -67,7 +103,7 @@ describe("routines", () => {
   it("build each item from the player's settings, with the item's key", () => {
     const ex = itemExercise({ exercise: "scales", options: { key: "D:major" } }, { ...base, octaves: 2 });
     expect(ex.title).toBe("D major");
-    expect(ex.steps).toHaveLength(29);   // two octaves, from the settings
+    expect(ex.steps).toHaveLength(29); // two octaves, from the settings
   });
 });
 
@@ -81,7 +117,7 @@ describe("reduceRoutine", () => {
     expect(s.current.exercise.title).toBe("G major");
     expect(s.current.status).toBe("ready");
     // The previous result shows until the next key starts
-    s = run(s, { type: "noteOn", note: 67, time: clock += 200 });
+    s = run(s, { type: "noteOn", note: 67, time: (clock += 200) });
     expect(s.previous).toBeNull();
   });
 
@@ -100,7 +136,7 @@ describe("reduceRoutine", () => {
     expect(sum).toMatchObject({ finished: 11, clean: 10, skipped: 1, totalMistakes: 1 });
     expect(sum.weakest.map(w => w.index)).toEqual([5]);
     expect(sum.durationMs).toBeGreaterThan(0);
-    expect(run(s, { type: "noteOn", note: 60, time: 0 })).toBe(s);   // nothing happens after the end
+    expect(run(s, { type: "noteOn", note: 60, time: 0 })).toBe(s); // nothing happens after the end
   });
 
   it("hands over from a scale to the key's chords without counting the scale's last note against them", () => {
@@ -108,7 +144,7 @@ describe("reduceRoutine", () => {
     s = playCurrent(s);
     expect(s.current.exercise.title).toBe("C major triads");
     // The scale's last note (C) is still down when the triads begin; letting go of it is not a wrong chord
-    s = run(s, { type: "held", notes: [60], time: clock += 10 }, { type: "held", notes: [], time: clock += 10 });
+    s = run(s, { type: "held", notes: [60], time: (clock += 10) }, { type: "held", notes: [], time: (clock += 10) });
     expect(s.current).toMatchObject({ mistakes: 0, startHint: false });
     s = playCurrent(s);
     expect(s).toMatchObject({ index: 2, outcomes: [{ mistakes: 0 }, { mistakes: 0 }] });
@@ -127,7 +163,9 @@ describe("routineDisplay", () => {
   it("shows the overview, progress and the previous key's result", () => {
     const s = playCurrent(initialRoutine(scales, "sharps", base), 3);
     const d = routineDisplay(s, "names");
-    expect(d.promptHtml).toMatch(/^<div class="routineRow"><span class="step flawed"><span class="main">C<\/span><\/span><span class="step current"><span class="main">G<\/span>/);
+    expect(d.promptHtml).toMatch(
+      /^<div class="routineRow"><span class="step flawed"><span class="main">C<\/span><\/span><span class="step current"><span class="main">G<\/span>/,
+    );
     expect(d.sub).toBe("2 / 12");
     expect(d.feedback).toMatch(/^C major: 1 mistake · /);
     expect(d.score).toBe("1 / 12 done · 0 clean");
@@ -137,12 +175,18 @@ describe("routineDisplay", () => {
   it("groups a key's exercises into one entry, saying which part is up", () => {
     let s = initialRoutine(routineById("scale-triads-circle")!, "sharps", base);
     const entries = (html: string) => html.match(/<span class="step [a-z]+">/g)!.length;
-    expect(entries(routineDisplay(s, "names").promptHtml)).toBe(12 + 15);   // 12 keys, then the scale's own row
-    expect(routineDisplay(s, "names").promptHtml).toContain('<span class="step current"><span class="main">C</span><span class="other">scale</span>');
+    expect(entries(routineDisplay(s, "names").promptHtml)).toBe(12 + 15); // 12 keys, then the scale's own row
+    expect(routineDisplay(s, "names").promptHtml).toContain(
+      '<span class="step current"><span class="main">C</span><span class="other">scale</span>',
+    );
     s = playCurrent(s);
-    expect(routineDisplay(s, "names").promptHtml).toContain('<span class="step current"><span class="main">C</span><span class="other">chords</span>');
+    expect(routineDisplay(s, "names").promptHtml).toContain(
+      '<span class="step current"><span class="main">C</span><span class="other">chords</span>',
+    );
     s = playCurrent(s);
-    expect(routineDisplay(s, "names").promptHtml).toMatch(/^<div class="routineRow"><span class="step done"><span class="main">C<\/span><span class="other">&nbsp;<\/span>/);
+    expect(routineDisplay(s, "names").promptHtml).toMatch(
+      /^<div class="routineRow"><span class="step done"><span class="main">C<\/span><span class="other">&nbsp;<\/span>/,
+    );
   });
 
   it("summarizes the routine at the end", () => {
@@ -158,7 +202,11 @@ describe("routineDisplay", () => {
 describe("routine settings", () => {
   it("default to the first routine, sharps first, starting on C, and ignore bad values", () => {
     expect(createAppState().settings.routine).toEqual({ id: "scales-circle", direction: "sharps", start: "C:major" });
-    expect(sanitizeRoutineOptions({ id: "nope", direction: "sideways" })).toEqual({ id: "scales-circle", direction: "sharps", start: "C:major" });
+    expect(sanitizeRoutineOptions({ id: "nope", direction: "sideways" })).toEqual({
+      id: "scales-circle",
+      direction: "sharps",
+      start: "C:major",
+    });
     const s = reduceApp(createAppState(), { type: "setRoutineOptions", options: { direction: "flats" } });
     expect(s.settings.routine).toEqual({ id: "scales-circle", direction: "flats", start: "C:major" });
     expect(reduceApp(s, { type: "setRoutineOptions", options: { direction: "flats" } })).toBe(s);
@@ -167,7 +215,11 @@ describe("routine settings", () => {
 
 describe("major triads, up an octave", () => {
   const triads = routineById("major-triads-octave")!;
-  const roots = (start: string, d: "sharps" | "flats" = "sharps") => triads.items(d, start).map(i => i.options.key!.split(":")[0]).join(" ");
+  const roots = (start: string, d: "sharps" | "flats" = "sharps") =>
+    triads
+      .items(d, start)
+      .map(i => i.options.key!.split(":")[0])
+      .join(" ");
 
   it("walks the 13 major triads from the chosen root to its octave, up or down", () => {
     expect(triads.startsOn).toBe(true);
@@ -181,7 +233,12 @@ describe("major triads, up an octave", () => {
     const [first] = triads.items("sharps", "Bb:major");
     const ex = itemExercise(first, base);
     expect(ex).toMatchObject({ id: "triad:Bb:major:root", title: "Bb major triad", keyValue: "Bb:major" });
-    expect(ex.steps).toEqual([{ kind: "chord", chord: expect.objectContaining({ root: "Bb", type: "M", inversion: expect.objectContaining({ number: 0 }) }) }]);
+    expect(ex.steps).toEqual([
+      {
+        kind: "chord",
+        chord: expect.objectContaining({ root: "Bb", type: "M", inversion: expect.objectContaining({ number: 0 }) }),
+      },
+    ]);
     const any = itemExercise(first, { ...base, rootPosition: false });
     expect(any.id).toBe("triad:Bb:major:any");
     expect((any.steps[0] as { chord: { inversion?: unknown } }).chord.inversion).toBeUndefined();
@@ -205,4 +262,3 @@ describe("major triads, up an octave", () => {
     expect(reduceApp(t, { type: "setRoutineOptions", options: { start: "G:major" } })).toBe(t);
   });
 });
-

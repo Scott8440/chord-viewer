@@ -15,7 +15,11 @@ export interface ChordNameView {
 }
 
 export function createChordNameView(els: {
-  root: HTMLElement; name: HTMLElement; sub: HTMLElement; roman: HTMLElement; alts: HTMLElement;
+  root: HTMLElement;
+  name: HTMLElement;
+  sub: HTMLElement;
+  roman: HTMLElement;
+  alts: HTMLElement;
 }): ChordNameView {
   let lastResult: Analysis | null = null;
   let fadeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -24,22 +28,35 @@ export function createChordNameView(els: {
   function clear() {
     lastResult = null;
     els.name.classList.remove("stale");
-    els.name.innerHTML = ""; els.sub.textContent = "Play something"; els.roman.textContent = ""; els.alts.innerHTML = "";
+    els.name.innerHTML = "";
+    els.sub.textContent = "Play something";
+    els.roman.textContent = "";
+    els.alts.innerHTML = "";
   }
 
   return {
-    reset() { lastResult = null; },
+    reset() {
+      lastResult = null;
+    },
     setIdle(idle) {
       clearTimeout(fadeTimer);
       // Nothing to fade when "Play something" is already showing
       const fading = idle && !!lastResult;
       els.root.classList.toggle("fading", fading);
-      if (fading) fadeTimer = setTimeout(() => { clear(); els.root.classList.remove("fading"); }, FADE_MS);
+      if (fading)
+        fadeTimer = setTimeout(() => {
+          clear();
+          els.root.classList.remove("fading");
+        }, FADE_MS);
     },
     render(result) {
       if (!result) {
         els.name.classList.toggle("stale", !!lastResult);
-        if (!lastResult) { els.name.innerHTML = ""; els.sub.textContent = "Play something"; els.roman.textContent = ""; }
+        if (!lastResult) {
+          els.name.innerHTML = "";
+          els.sub.textContent = "Play something";
+          els.roman.textContent = "";
+        }
         return;
       }
       lastResult = result;
@@ -62,9 +79,11 @@ export function chordSymbolHtml(root: string, type: string, bass = ""): string {
   let html = esc(root[0]) + (root.length > 1 ? `<span class="acc">${esc(prettyAcc(root.slice(1)))}</span>` : "");
   // Quality letters stay full size; numeric extensions get raised
   const m = type.match(/^(m(?!aj)|dim|aug|sus\d?|maj|M)?(.*)$/)!;
-  const qual = m[1] || "", ext = m[2] || "";
+  const qual = m[1] || "",
+    ext = m[2] || "";
   html += esc(qual);
   if (ext) html += `<span class="ext">${esc(prettyAcc(ext))}</span>`;
-  if (bass) html += `<span class="bass">/${esc(bass[0])}${bass.length > 1 ? `<span class="acc">${esc(prettyAcc(bass.slice(1)))}</span>` : ""}</span>`;
+  if (bass)
+    html += `<span class="bass">/${esc(bass[0])}${bass.length > 1 ? `<span class="acc">${esc(prettyAcc(bass.slice(1)))}</span>` : ""}</span>`;
   return html;
 }

@@ -6,11 +6,15 @@ export function audioContext(): AudioContext {
   if (ctx) return ctx;
   // iOS: play through the ring/silent switch, like a music app (Safari 16.4+; elsewhere this does nothing)
   const session = (navigator as { audioSession?: { type: string } }).audioSession;
-  if (session) try { session.type = "playback"; } catch {}
+  if (session)
+    try {
+      session.type = "playback";
+    } catch {}
   ctx = new AudioContext();
   // Listen in the capture phase so nothing can swallow it, and on every gesture event, since browsers differ in which
   // count (iOS wants touchend or click, not pointerdown)
-  for (const type of ["pointerdown", "touchend", "click", "keydown"]) addEventListener(type, unlockAudio, { capture: true });
+  for (const type of ["pointerdown", "touchend", "click", "keydown"])
+    addEventListener(type, unlockAudio, { capture: true });
   return ctx;
 }
 

@@ -9,7 +9,11 @@ const DIR = "public/reading";
 const OLD = [`${DIR}/lieder.json`, `${DIR}/lieder-piano.json`];
 
 const old = OLD.map(path => {
-  const f = JSON.parse(readFileSync(path, "utf8")) as ExcerptCollection & { version: number; credit: string; sources: ExcerptSource[] };
+  const f = JSON.parse(readFileSync(path, "utf8")) as ExcerptCollection & {
+    version: number;
+    credit: string;
+    sources: ExcerptSource[];
+  };
   if (f.version !== 2) throw new Error(`${path}: version ${f.version}, not 2`);
   return f;
 });

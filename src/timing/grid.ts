@@ -4,10 +4,10 @@ import { beatAt, beatMs, timeOfBeat, type Transport } from "./transport";
 
 /** Steps per beat: quarters, eighths or sixteenths */
 export const SUBDIVISIONS = [1, 2, 4] as const;
-export type Subdivision = typeof SUBDIVISIONS[number];
+export type Subdivision = (typeof SUBDIVISIONS)[number];
 
 export const STRICTNESS = ["strict", "loose"] as const;
-export type Strictness = typeof STRICTNESS[number];
+export type Strictness = (typeof STRICTNESS)[number];
 /** How far from the slot still counts as on time (capped by slot length, see `windowMs`) */
 export const WINDOW_MS: Record<Strictness, number> = { strict: 50, loose: 80 };
 
@@ -76,8 +76,10 @@ export function timingSummary(g: TimingGrid, timings: readonly StepTiming[]): Ti
   const spread = onSlot.length ? Math.sqrt(onSlot.reduce((a, o) => a + (o - mean) ** 2, 0) / onSlot.length) : 0;
   return {
     onTime: timings.length ? timings.filter(t => timingVerdict(g, t) === "onTime").length / timings.length : 1,
-    meanOffsetMs: mean, spreadMs: spread,
+    meanOffsetMs: mean,
+    spreadMs: spread,
     slips: timings.filter(t => t.slipped).length,
-    bpm: g.transport.bpm, subdivision: g.subdivision,
+    bpm: g.transport.bpm,
+    subdivision: g.subdivision,
   };
 }

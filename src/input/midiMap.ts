@@ -33,8 +33,9 @@ export function sanitizeMidiMap(raw: unknown): MidiMap {
     const scope = RENAMED_SCOPES.get(saved) ?? saved;
     // Mappings saved under the new id win over any left under the old one
     if (scope !== saved && scope in (raw as Record<string, unknown>)) continue;
-    const kept = Object.entries(targets as Record<string, unknown>)
-      .filter(([, n]) => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= 127);
+    const kept = Object.entries(targets as Record<string, unknown>).filter(
+      ([, n]) => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= 127,
+    );
     if (kept.length) out[scope] = Object.fromEntries(kept) as Record<string, number>;
   }
   return out;

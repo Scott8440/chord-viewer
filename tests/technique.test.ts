@@ -3,12 +3,18 @@ import { describe, expect, it } from "vitest";
 import { PRESCRIPTIVE, DEFAULT_EXERCISE_OPTIONS } from "../src/exercises/prescriptive";
 import { routineById } from "../src/exercises/routines";
 import { initialSequence, reduceSequence, type SequenceExercise } from "../src/exercises/sequence";
-import { arpeggioExercise, brokenChordExercise, chromaticExercise, fiveFingerExercise } from "../src/exercises/technique";
+import {
+  arpeggioExercise,
+  brokenChordExercise,
+  chromaticExercise,
+  fiveFingerExercise,
+} from "../src/exercises/technique";
 import { exerciseLabel } from "../src/progress/stats";
 import { buildKey } from "../src/theory";
 
-const notes = (e: SequenceExercise) => e.steps.map(s => s.kind === "note" ? s.offset : "chord");
-const names = (e: SequenceExercise) => e.steps.map(s => s.kind === "note" ? s.name : `${s.chord.root}${s.chord.type}`);
+const notes = (e: SequenceExercise) => e.steps.map(s => (s.kind === "note" ? s.offset : "chord"));
+const names = (e: SequenceExercise) =>
+  e.steps.map(s => (s.kind === "note" ? s.name : `${s.chord.root}${s.chord.type}`));
 
 describe("five-finger patterns", () => {
   it("are the first five notes up and down, then the tonic chord in root position", () => {
@@ -38,8 +44,31 @@ describe("broken chords", () => {
   it("break the tonic chord in each position, low–middle–high–middle, up to the root and back", () => {
     const e = brokenChordExercise(buildKey("C:major")!, 1);
     expect(names(e)).toEqual([
-      "C", "E", "G", "E", "E", "G", "C", "G", "G", "C", "E", "C", "C",
-      "C", "E", "C", "G", "G", "C", "G", "E", "E", "G", "E", "C",
+      "C",
+      "E",
+      "G",
+      "E",
+      "E",
+      "G",
+      "C",
+      "G",
+      "G",
+      "C",
+      "E",
+      "C",
+      "C",
+      "C",
+      "E",
+      "C",
+      "G",
+      "G",
+      "C",
+      "G",
+      "E",
+      "E",
+      "G",
+      "E",
+      "C",
     ]);
     expect(notes(e).slice(0, 13)).toEqual([0, 4, 7, 4, 4, 7, 12, 7, 7, 12, 16, 12, 12]);
     expect(brokenChordExercise(buildKey("C:major")!, 2).steps).toHaveLength(2 * 24 + 1);
@@ -68,10 +97,12 @@ describe("as prescriptive exercises", () => {
   });
 
   it("are labelled in progress charts, and go round the circle in the technique routine", () => {
-    expect(exerciseLabel({ exercise: "arpeggios", exerciseId: "arpeggio:G:major:1:2", title: "G major arpeggio" }))
-      .toBe("G major arpeggio, first inversion, 2 octaves");
-    expect(exerciseLabel({ exercise: "chromatic", exerciseId: "chromatic:C:1", title: "Chromatic scale from C" }))
-      .toBe("Chromatic scale from C, 1 octave");
+    expect(
+      exerciseLabel({ exercise: "arpeggios", exerciseId: "arpeggio:G:major:1:2", title: "G major arpeggio" }),
+    ).toBe("G major arpeggio, first inversion, 2 octaves");
+    expect(exerciseLabel({ exercise: "chromatic", exerciseId: "chromatic:C:1", title: "Chromatic scale from C" })).toBe(
+      "Chromatic scale from C, 1 octave",
+    );
     const items = routineById("technique-circle")!.items("sharps");
     expect(items.slice(0, 4).map(i => i.exercise)).toEqual(["fiveFinger", "scales", "arpeggios", "brokenChords"]);
     expect(items).toHaveLength(48);

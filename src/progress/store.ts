@@ -24,17 +24,27 @@ const byTime = (a: ProgressRecord, b: ProgressRecord) => a.at - b.at || (a.id < 
 export function createMemoryStore(initial: readonly ProgressRecord[] = []): ProgressStore {
   const records = new Map(initial.map(r => [r.id, r]));
   return {
-    async add(r) { if (!records.has(r.id)) records.set(r.id, r); },
-    async all() { return [...records.values()].sort(byTime); },
+    async add(r) {
+      if (!records.has(r.id)) records.set(r.id, r);
+    },
+    async all() {
+      return [...records.values()].sort(byTime);
+    },
     async ofKind<K extends ProgressRecord["kind"]>(kind: K) {
       return [...records.values()].filter((r): r is OfKind<K> => r.kind === kind).sort(byTime);
     },
     async merge(rs) {
       let added = 0;
-      for (const r of rs) if (!records.has(r.id)) { records.set(r.id, r); added++; }
+      for (const r of rs)
+        if (!records.has(r.id)) {
+          records.set(r.id, r);
+          added++;
+        }
       return added;
     },
-    async count() { return records.size; },
+    async count() {
+      return records.size;
+    },
   };
 }
 

@@ -31,7 +31,8 @@ export const measured = (c: Calibration): number[] =>
   c.offsets.slice(CALIBRATION_WARMUP).filter(o => Math.abs(o) <= STRAY_MS);
 
 const median = (xs: readonly number[]) => {
-  const s = [...xs].sort((a, b) => a - b), m = s.length >> 1;
+  const s = [...xs].sort((a, b) => a - b),
+    m = s.length >> 1;
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 

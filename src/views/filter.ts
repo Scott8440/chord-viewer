@@ -11,8 +11,13 @@ export interface FilterView {
 }
 
 /** `onChange` gets the new selection; fewer than `min` items (default 1) can't be left selected. */
-export function createFilterView(els: { summary: HTMLElement; body: HTMLElement }, groups: readonly FilterGroup[],
-                                 summaryLabel: string, onChange: (selected: string[]) => void, min = 1): FilterView {
+export function createFilterView(
+  els: { summary: HTMLElement; body: HTMLElement },
+  groups: readonly FilterGroup[],
+  summaryLabel: string,
+  onChange: (selected: string[]) => void,
+  min = 1,
+): FilterView {
   const boxes = new Map<string, { cb: HTMLInputElement; label: HTMLLabelElement }>();
   const labelOf = new Map<string, string>();
   for (const group of groups) {
@@ -28,9 +33,12 @@ export function createFilterView(els: { summary: HTMLElement; body: HTMLElement 
       const cb = document.createElement("input");
       cb.type = "checkbox";
       cb.onchange = () => {
-        cb.blur();   // so computer-key note input keeps working
+        cb.blur(); // so computer-key note input keeps working
         const selected = [...boxes].filter(([, b]) => b.cb.checked).map(([id]) => id);
-        if (selected.length < min) { cb.checked = true; return; }   // keep at least `min`
+        if (selected.length < min) {
+          cb.checked = true;
+          return;
+        } // keep at least `min`
         onChange(selected);
       };
       label.append(cb, document.createTextNode(prettyAcc(t.label)));

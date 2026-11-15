@@ -6,7 +6,14 @@
 // ear-drill runner's (earDrill.ts); this adds the drone, its introduction and stopping while the window is away.
 import type { TonePlayer } from "../audio/tones";
 import {
-  degreeNote, EAR_DEGREES, makeEarPrompt, pickTonic, tonicMidi, type EarAction, type EarOptions, type EarPrompt,
+  degreeNote,
+  EAR_DEGREES,
+  makeEarPrompt,
+  pickTonic,
+  tonicMidi,
+  type EarAction,
+  type EarOptions,
+  type EarPrompt,
   type EarState,
 } from "../exercises/earTraining";
 import { countInKey, keyRotation, rotateKey } from "../exercises/keyRotation";
@@ -36,9 +43,18 @@ const ROUND_END_FADE_S = 2.5;
 /** Leaving the window (another app or tab) fades the drone out over this long */
 const AWAY_FADE_S = 3;
 
-export function startEarTraining({ store, views, recorder = noRecorder, history = null, rng = Math.random }: {
-  store: AppStore; views: { practice: PracticeView; tones: TonePlayer; degrees: DegreeCircleView; roundViz: RoundVizView };
-  recorder?: Recorder; history?: Promise<ProgressStore> | null; rng?: Rng;
+export function startEarTraining({
+  store,
+  views,
+  recorder = noRecorder,
+  history = null,
+  rng = Math.random,
+}: {
+  store: AppStore;
+  views: { practice: PracticeView; tones: TonePlayer; degrees: DegreeCircleView; roundViz: RoundVizView };
+  recorder?: Recorder;
+  history?: Promise<ProgressStore> | null;
+  rng?: Rng;
 }): Mode {
   const options = () => store.getState().settings.ear;
   let keys = keyRotation(pickTonic(rng, options().tonic));
@@ -84,7 +100,11 @@ export function startEarTraining({ store, views, recorder = noRecorder, history 
         introTimers.push(setTimeout(() => views.degrees.ping(semitones, "hear"), (at + heard) * 1000));
       });
       delay = DRONE_LEAD_S + (steps.length - 1) * INTRO_GAP_S + INTRO_PAUSE_S;
-      introTimers.push(setTimeout(() => { introTimers = []; }, delay * 1000));
+      introTimers.push(
+        setTimeout(() => {
+          introTimers = [];
+        }, delay * 1000),
+      );
     }
     views.tones.play(state.prompt.note, delay);
   }
@@ -96,35 +116,44 @@ export function startEarTraining({ store, views, recorder = noRecorder, history 
     droneKey = null;
   }
 
-  const drill = createEarDrill<EarPrompt, EarState, EarAction, EarOptions>(store, views, {
-    drill: "ear",
-    options: s => s.settings.ear,
-    setup: () => `degrees:${options().degrees.join(",")}`,
-    initial: initialNotePractice(newPrompt()),
-    reduce: reduceNotePractice,
-    nextPrompt: newPrompt,
-    // Introduced again (in `restarted`), since the degrees on offer may have changed
-    freshPrompt(o, before, previous) {
-      if (o.tonic !== before.tonic) keys = keyRotation(pickTonic(rng, o.tonic, tonic()));
-      keys = countInKey(keys);
-      return makeEarPrompt(rng, tonic(), o.degrees, previous);
+  const drill = createEarDrill<EarPrompt, EarState, EarAction, EarOptions>(
+    store,
+    views,
+    {
+      drill: "ear",
+      options: s => s.settings.ear,
+      setup: () => `degrees:${options().degrees.join(",")}`,
+      initial: initialNotePractice(newPrompt()),
+      reduce: reduceNotePractice,
+      nextPrompt: newPrompt,
+      // Introduced again (in `restarted`), since the degrees on offer may have changed
+      freshPrompt(o, before, previous) {
+        if (o.tonic !== before.tonic) keys = keyRotation(pickTonic(rng, o.tonic, tonic()));
+        keys = countInKey(keys);
+        return makeEarPrompt(rng, tonic(), o.degrees, previous);
+      },
+      nextPromptMs: NEXT_PROMPT_MS,
+      record: (s, answered, ms) => earDrillBody(s.prompt, options().degrees, answered, s.missed, ms),
+      sound,
+      // The note again, not the introduction
+      replay: s => views.tones.play(s.prompt.note),
+      silence,
+      display: earDisplay,
+      summaryDisplay: summary => roundSummaryDisplay(summary, "Scale degrees"),
+      rendered: () => views.degrees.render(options().degrees),
+      judged(a, now) {
+        if (a.type === "play")
+          views.degrees.ping(a.note - tonicMidi(tonic()), now.status === "correct" ? "correct" : "wrong");
+      },
+      // The drone fades away under the round's last note
+      roundOver: () => silence(ROUND_END_FADE_S),
+      restarted: () => {
+        droneKey = null;
+      },
     },
-    nextPromptMs: NEXT_PROMPT_MS,
-    record: (s, answered, ms) => earDrillBody(s.prompt, options().degrees, answered, s.missed, ms),
-    sound,
-    // The note again, not the introduction
-    replay: s => views.tones.play(s.prompt.note),
-    silence,
-    display: earDisplay,
-    summaryDisplay: summary => roundSummaryDisplay(summary, "Scale degrees"),
-    rendered: () => views.degrees.render(options().degrees),
-    judged(a, now) {
-      if (a.type === "play") views.degrees.ping(a.note - tonicMidi(tonic()), now.status === "correct" ? "correct" : "wrong");
-    },
-    // The drone fades away under the round's last note
-    roundOver: () => silence(ROUND_END_FADE_S),
-    restarted: () => { droneKey = null; },
-  }, recorder, history);
+    recorder,
+    history,
+  );
 
   /** Paused by leaving the window (another app, another tab): carries on when the player comes back */
   let pausedAway = false;
@@ -142,12 +171,14 @@ export function startEarTraining({ store, views, recorder = noRecorder, history 
   }
   /** When `back` last resumed: coming back by clicking Start would otherwise resume on focus, then stop on the click */
   let backAt = -Infinity;
-  const onVisibility = () => document.hidden ? away() : back();
+  const onVisibility = () => (document.hidden ? away() : back());
 
   const offInput = onPlayerInput(store, { noteOn: note => drill.answer({ type: "play", note }) });
   // No controller needed: 1–7 play that degree, so they're judged like any other note
-  const offDegreeKeys = createDegreeKeys(event => store.dispatch({ type: "input", event }),
-    digit => degreeNote(tonicMidi(tonic()), digit));
+  const offDegreeKeys = createDegreeKeys(
+    event => store.dispatch({ type: "input", event }),
+    digit => degreeNote(tonicMidi(tonic()), digit),
+  );
   window.addEventListener("blur", away);
   window.addEventListener("focus", back);
   document.addEventListener("visibilitychange", onVisibility);

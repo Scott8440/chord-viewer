@@ -31,14 +31,32 @@ function fakeTones(blocked = false) {
   /** The notes of each `play`, in order, and when a cut-off came */
   const calls: ({ play: number; delay: number } | { stop: true } | { drone: number | null; fadeOut?: number })[] = [];
   const tones: TonePlayer & { log: string[]; calls: typeof calls; unblock(): void } = {
-    log, calls,
-    drone(midi, fadeOut) { calls.push({ drone: midi, fadeOut }); log.push(`drone ${midi}`); },
-    play(midi, delay = 0) { calls.push({ play: midi, delay }); log.push(`play ${midi}`); },
-    stopNotes() { calls.push({ stop: true }); log.push("stop"); },
+    log,
+    calls,
+    drone(midi, fadeOut) {
+      calls.push({ drone: midi, fadeOut });
+      log.push(`drone ${midi}`);
+    },
+    play(midi, delay = 0) {
+      calls.push({ play: midi, delay });
+      log.push(`play ${midi}`);
+    },
+    stopNotes() {
+      calls.push({ stop: true });
+      log.push("stop");
+    },
     blocked: () => blocked,
-    onBlockedChange(l) { listeners.add(l); return () => { listeners.delete(l); }; },
+    onBlockedChange(l) {
+      listeners.add(l);
+      return () => {
+        listeners.delete(l);
+      };
+    },
     latency: () => 0,
-    unblock() { blocked = false; listeners.forEach(l => l()); },
+    unblock() {
+      blocked = false;
+      listeners.forEach(l => l());
+    },
   };
   return tones;
 }
@@ -54,16 +72,32 @@ function lastSounded(tones: ReturnType<typeof fakeTones>): number[] {
 }
 
 function fakeBoard() {
-  const answer = new Set<(id: string) => void>(), replay = new Set<() => void>(), next = new Set<() => void>();
+  const answer = new Set<(id: string) => void>(),
+    replay = new Set<() => void>(),
+    next = new Set<() => void>();
   const shown: { boxes?: readonly AnswerBox[]; next?: string }[] = [];
-  const on = <T>(set: Set<T>) => (l: T) => { set.add(l); return () => { set.delete(l); }; };
+  const on =
+    <T>(set: Set<T>) =>
+    (l: T) => {
+      set.add(l);
+      return () => {
+        set.delete(l);
+      };
+    };
   const board: AnswerBoard = {
-    render: boxes => { shown.push({ boxes }); },
-    renderNext: label => { shown.push({ next: label }); },
-    onAnswer: on(answer), onReplay: on(replay), onNext: on(next),
+    render: boxes => {
+      shown.push({ boxes });
+    },
+    renderNext: label => {
+      shown.push({ next: label });
+    },
+    onAnswer: on(answer),
+    onReplay: on(replay),
+    onNext: on(next),
   };
   return {
-    ...board, shown,
+    ...board,
+    shown,
     press: (id: string) => answer.forEach(l => l(id)),
     replay: () => replay.forEach(l => l()),
     next: () => next.forEach(l => l()),
@@ -74,10 +108,19 @@ function setup(blocked = false) {
   const store = createStore(reduceApp, createAppState());
   const tones = fakeTones(blocked);
   const displays: PracticeDisplay[] = [];
-  const practice = { render: (d: PracticeDisplay) => { displays.push(d); } };
+  const practice = {
+    render: (d: PracticeDisplay) => {
+      displays.push(d);
+    },
+  };
   const roundViz = { render: () => {} };
   const records: RecordBody[] = [];
-  const recorder: Recorder = { record: b => { records.push(b); }, onRecorded: () => () => {} };
+  const recorder: Recorder = {
+    record: b => {
+      records.push(b);
+    },
+    onRecorded: () => () => {},
+  };
   const shown = () => displays[displays.length - 1];
   const play = (note: number) => {
     store.dispatch({ type: "input", event: { type: "noteOn", note, velocity: 100, time: 0, source: "t", channel: 0 } });
@@ -91,7 +134,13 @@ let win: EventTarget, doc: EventTarget & { hidden: boolean; focused: boolean; ha
 beforeEach(() => {
   vi.useFakeTimers();
   win = new EventTarget();
-  doc = Object.assign(new EventTarget(), { hidden: false, focused: true, hasFocus() { return doc.focused; } });
+  doc = Object.assign(new EventTarget(), {
+    hidden: false,
+    focused: true,
+    hasFocus() {
+      return doc.focused;
+    },
+  });
   vi.stubGlobal("window", win);
   vi.stubGlobal("document", doc);
   vi.stubGlobal("requestAnimationFrame", (f: () => void) => setTimeout(f, 16));
@@ -107,11 +156,17 @@ describe("chord qualities", () => {
     const t = setup(blocked);
     const answers = fakeBoard();
     const mode = startEarChords({
-      store: t.store, views: { practice: t.practice, tones: t.tones, answers, roundViz: t.roundViz }, recorder: t.recorder, rng: seeded(),
+      store: t.store,
+      views: { practice: t.practice, tones: t.tones, answers, roundViz: t.roundViz },
+      recorder: t.recorder,
+      rng: seeded(),
     });
     /** Major and minor triads in root position (the default options): the 3rd gives it away */
-    const right = () => { const n = lastSounded(t.tones); return n[1] - n[0] === 4 ? "M" : "m"; };
-    const wrong = () => right() === "M" ? "m" : "M";
+    const right = () => {
+      const n = lastSounded(t.tones);
+      return n[1] - n[0] === 4 ? "M" : "m";
+    };
+    const wrong = () => (right() === "M" ? "m" : "M");
     return { ...t, answers, mode, right, wrong };
   }
 
@@ -134,7 +189,9 @@ describe("chord qualities", () => {
     expect(t.shown().skipHidden).toBe(true);
     expect(t.answers.shown[t.answers.shown.length - 1]).toEqual({ next: "Next round" });
     expect(t.records.filter(r => r.kind === "drill")).toHaveLength(ROUND_SIZE);
-    expect(t.records.filter(r => r.kind === "round")).toEqual([expect.objectContaining({ drill: "chordEar", size: ROUND_SIZE, firstTry: ROUND_SIZE })]);
+    expect(t.records.filter(r => r.kind === "round")).toEqual([
+      expect.objectContaining({ drill: "chordEar", size: ROUND_SIZE, firstTry: ROUND_SIZE }),
+    ]);
     // Next round: a new chord, and the count starts again
     t.answers.next();
     expect(t.tones.calls.length).toBeGreaterThan(plays);
@@ -157,9 +214,9 @@ describe("chord qualities", () => {
     const t = start();
     for (let i = 0; i < ROUND_SIZE - 1; i++) t.mode.skip!();
     t.answers.press(t.right());
-    t.answers.next();   // not showing yet: nothing
+    t.answers.next(); // not showing yet: nothing
     expect(t.shown().status).toBe("correct");
-    t.mode.skip!();     // Skip reveals it
+    t.mode.skip!(); // Skip reveals it
     expect(t.shown().skipHidden).toBe(true);
   });
 
@@ -183,7 +240,7 @@ describe("chord qualities", () => {
     expect(lastSounded(t.tones)).toEqual(chord);
     win.dispatchEvent(Object.assign(new Event("keydown"), { key: t.right() === "M" ? "1" : "2" }));
     expect(t.shown().status).toBe("correct");
-    expect(t.mode.replay).toBeUndefined();   // the board's Replay is the only one
+    expect(t.mode.replay).toBeUndefined(); // the board's Replay is the only one
   });
 
   it("Stop silences it and ignores answers; Start plays the chord again; Skip while stopped starts on a new one", () => {
@@ -223,8 +280,8 @@ describe("chord qualities", () => {
 
   it("stopping the mode with timers pending: no more renders, sounds or records", async () => {
     const t = start();
-    t.answers.press(t.wrong());   // a replay pending
-    t.answers.press(t.right());   // the next chord pending
+    t.answers.press(t.wrong()); // a replay pending
+    t.answers.press(t.right()); // the next chord pending
     t.mode.stop();
     const counts = [t.displays.length, t.tones.calls.length, t.records.length, t.answers.shown.length];
     await vi.advanceTimersByTimeAsync(10_000);
@@ -247,7 +304,7 @@ describe("chord qualities", () => {
     t.mode.skip!();
     t.store.dispatch({ type: "setEarChordOptions", options: { broken: true } });
     expect(t.shown().score).toBe(`Round: 0 / ${ROUND_SIZE}`);
-    expect(t.records).toHaveLength(1);   // the skip only
+    expect(t.records).toHaveLength(1); // the skip only
   });
 });
 
@@ -256,12 +313,23 @@ describe("scale degrees", () => {
     const t = setup();
     if (o.tonic) t.store.dispatch({ type: "setEarOptions", options: { tonic: o.tonic } });
     const pings: string[] = [];
-    const degrees = { render: () => {}, ping: (semitones: number, kind: string) => { pings.push(`${semitones} ${kind}`); } };
+    const degrees = {
+      render: () => {},
+      ping: (semitones: number, kind: string) => {
+        pings.push(`${semitones} ${kind}`);
+      },
+    };
     const mode = startEarTraining({
-      store: t.store, views: { practice: t.practice, tones: t.tones, degrees, roundViz: t.roundViz }, recorder: t.recorder, rng: seeded(7),
+      store: t.store,
+      views: { practice: t.practice, tones: t.tones, degrees, roundViz: t.roundViz },
+      recorder: t.recorder,
+      rng: seeded(7),
     });
     /** The note to find: the last one played */
-    const target = () => { const n = lastSounded(t.tones); return n[n.length - 1]; };
+    const target = () => {
+      const n = lastSounded(t.tones);
+      return n[n.length - 1];
+    };
     return { ...t, pings, mode, target };
   }
 
@@ -316,7 +384,13 @@ describe("scale degrees", () => {
     await vi.advanceTimersByTimeAsync(SUMMARY_DELAY_MS);
     expect(t.shown().skipLabel).toBe("Next round");
     t.mode.skip!();
-    expect(t.tones.calls.slice(-5).map(c => "play" in c ? c.play : c)).toEqual([{ drone: 48 }, 60, 67, 72, t.target()]);
+    expect(t.tones.calls.slice(-5).map(c => ("play" in c ? c.play : c))).toEqual([
+      { drone: 48 },
+      60,
+      67,
+      72,
+      t.target(),
+    ]);
     expect(t.records.filter(r => r.kind === "drill")).toHaveLength(ROUND_SIZE);
   });
 
@@ -334,7 +408,8 @@ describe("scale degrees", () => {
     // Between rounds: nothing to pause, and coming back starts nothing
     for (let i = 0; i < ROUND_SIZE; i++) t.mode.skip!();
     await vi.advanceTimersByTimeAsync(0);
-    const summary = t.shown(), calls = t.tones.calls.length;
+    const summary = t.shown(),
+      calls = t.tones.calls.length;
     win.dispatchEvent(new Event("blur"));
     win.dispatchEvent(new Event("focus"));
     doc.hidden = true;
@@ -354,7 +429,7 @@ describe("scale degrees", () => {
     t.play(note);
     expect(t.shown().label).toBe("Stopped");
     t.mode.toggleRunning!();
-    expect(t.tones.calls.slice(-5).map(c => "play" in c ? c.play : c)).toEqual([{ drone: 48 }, 60, 67, 72, note]);
+    expect(t.tones.calls.slice(-5).map(c => ("play" in c ? c.play : c))).toEqual([{ drone: 48 }, 60, 67, 72, note]);
   });
 
   it("with a random tonic, moves to a new key after PROMPTS_PER_KEY prompts", () => {
@@ -368,7 +443,7 @@ describe("scale degrees", () => {
 
   it("stopping the mode mid-introduction: no more pings, sounds or renders", async () => {
     const t = start({ tonic: "C" });
-    t.play(t.target() + 1);   // a replay pending too
+    t.play(t.target() + 1); // a replay pending too
     t.mode.stop();
     const counts = [t.displays.length, t.tones.calls.length, t.records.length, t.pings.length];
     await vi.advanceTimersByTimeAsync(10_000);
@@ -385,7 +460,10 @@ describe("melodies", () => {
     t.store.dispatch({ type: "setEarOptions", options: { tonic: "C" } });
     const staff = { render: vi.fn() };
     const mode: Mode = startEarMelody({
-      store: t.store, views: { staff, practice: t.practice, tones: t.tones, roundViz: t.roundViz } as never, recorder: t.recorder, rng: seeded(3),
+      store: t.store,
+      views: { staff, practice: t.practice, tones: t.tones, roundViz: t.roundViz } as never,
+      recorder: t.recorder,
+      rng: seeded(3),
     });
     return { ...t, staff, mode };
   }
@@ -393,7 +471,7 @@ describe("melodies", () => {
   it("is played back note by note; a wrong note plays the melody again a second later", async () => {
     const t = start();
     const melody = lastSounded(t.tones);
-    expect(melody).toHaveLength(4);   // the root and 3 notes
+    expect(melody).toHaveLength(4); // the root and 3 notes
     t.play(melody[0]);
     t.play(melody[1] + 12);
     expect(t.shown().feedback).toMatch(/wrong octave/);
@@ -418,7 +496,9 @@ describe("melodies", () => {
     for (let i = 0; i < ROUND_SIZE; i++) t.mode.skip!();
     await vi.advanceTimersByTimeAsync(0);
     expect(t.shown().label).toBe("Melodies: round complete");
-    expect(t.records.filter(r => r.kind === "round")).toEqual([expect.objectContaining({ drill: "melody", firstTry: 0 })]);
+    expect(t.records.filter(r => r.kind === "round")).toEqual([
+      expect.objectContaining({ drill: "melody", firstTry: 0 }),
+    ]);
     t.mode.stop();
     const n = t.displays.length;
     await vi.advanceTimersByTimeAsync(5000);
@@ -430,9 +510,28 @@ describe("recording prompts", () => {
   it("records once when answered or skipped unanswered, timed from when the prompt was shown", async () => {
     const { createPromptRecords } = await import("../src/modes/promptRecords");
     const out: RecordBody[] = [];
-    const records = createPromptRecords<{ prompt: string; status: "waiting" | "wrong" | "correct"; missed: boolean; answered: number; firstTry: number }>(
-      { record: b => { out.push(b); }, onRecorded: () => () => {} },
-      (s, answered, ms) => ({ kind: "drill", drill: "ear", prompt: s.prompt, detail: {}, outcome: answered ? "firstTry" : "skipped", ms }));
+    const records = createPromptRecords<{
+      prompt: string;
+      status: "waiting" | "wrong" | "correct";
+      missed: boolean;
+      answered: number;
+      firstTry: number;
+    }>(
+      {
+        record: b => {
+          out.push(b);
+        },
+        onRecorded: () => () => {},
+      },
+      (s, answered, ms) => ({
+        kind: "drill",
+        drill: "ear",
+        prompt: s.prompt,
+        detail: {},
+        outcome: answered ? "firstTry" : "skipped",
+        ms,
+      }),
+    );
     const waiting = { prompt: "a", status: "waiting" as const, missed: false, answered: 0, firstTry: 0 };
     vi.advanceTimersByTime(400);
     records.changed(waiting, { ...waiting, status: "correct" }, false);

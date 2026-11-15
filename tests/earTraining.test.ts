@@ -1,15 +1,27 @@
 // Ear training: prompts, options and judging.
 import { describe, expect, it } from "vitest";
 import {
-  degreeName, degreeNote, initialMelody, makeEarPrompt, makeMelodyPrompt, pickTonic, reduceMelody, sanitizeEarOptions, tonicMidi,
-  type EarPrompt, type MelodyPrompt,
+  degreeName,
+  degreeNote,
+  initialMelody,
+  makeEarPrompt,
+  makeMelodyPrompt,
+  pickTonic,
+  reduceMelody,
+  sanitizeEarOptions,
+  tonicMidi,
+  type EarPrompt,
+  type MelodyPrompt,
 } from "../src/exercises/earTraining";
 import { initialNotePractice, reduceNotePractice } from "../src/exercises/notePractice";
 import { earDrillBody, melodyDrillBody } from "../src/progress/records";
 import { createAppState, reduceApp } from "../src/state/app";
 import { KEY_MAJORS } from "../src/theory";
 
-const seq = (...values: number[]) => { let i = 0; return () => values[i++ % values.length]; };
+const seq = (...values: number[]) => {
+  let i = 0;
+  return () => values[i++ % values.length];
+};
 
 describe("tonicMidi", () => {
   it("puts every tonic between F♯3 and F4", () => {
@@ -27,7 +39,13 @@ describe("tonicMidi", () => {
 describe("makeEarPrompt", () => {
   it("plays the chosen degree above the tonic, in the chosen octave, spelled in the key", () => {
     // Each pick is two rng calls: the degree (of 1 and 5), then the octave
-    expect(makeEarPrompt(seq(0.9, 0), "Eb", ["1", "5"])).toEqual({ keyValue: "Eb:major", degree: "5", note: 70, pc: 10, name: "Bb" });
+    expect(makeEarPrompt(seq(0.9, 0), "Eb", ["1", "5"])).toEqual({
+      keyValue: "Eb:major",
+      degree: "5",
+      note: 70,
+      pc: 10,
+      name: "Bb",
+    });
     expect(makeEarPrompt(seq(0.9, 0.9), "Eb", ["1", "5"])).toMatchObject({ degree: "5", note: 82 });
     expect(makeEarPrompt(seq(0), "Eb", ["1", "5"])).toMatchObject({ degree: "1", note: 63, name: "Eb" });
     expect(makeEarPrompt(seq(0), "D", ["7"])).toMatchObject({ degree: "7", note: 73, name: "C#" });
@@ -36,19 +54,25 @@ describe("makeEarPrompt", () => {
   it("uses two octaves for every degree", () => {
     const notes = new Set<number>();
     let p: EarPrompt | undefined;
-    for (let i = 0; i < 300; i++) { p = makeEarPrompt(Math.random, "C", ["1", "5"], p); notes.add(p.note); }
+    for (let i = 0; i < 300; i++) {
+      p = makeEarPrompt(Math.random, "C", ["1", "5"], p);
+      notes.add(p.note);
+    }
     expect([...notes].sort((a, b) => a - b)).toEqual([60, 67, 72, 79]);
   });
 
   it("only asks for the allowed degrees", () => {
     const seen = new Set<string>();
     let p: EarPrompt | undefined;
-    for (let i = 0; i < 300; i++) { p = makeEarPrompt(Math.random, "G", ["1", "3", "5"], p); seen.add(p.degree); }
+    for (let i = 0; i < 300; i++) {
+      p = makeEarPrompt(Math.random, "G", ["1", "3", "5"], p);
+      seen.add(p.degree);
+    }
     expect([...seen].sort()).toEqual(["1", "3", "5"]);
   });
 
   it("never plays the same note twice in a row, but may repeat a degree in another octave", () => {
-    const prev = makeEarPrompt(seq(0), "C", ["1", "5"]);   // C4
+    const prev = makeEarPrompt(seq(0), "C", ["1", "5"]); // C4
     expect(makeEarPrompt(seq(0, 0, 0, 0.9), "C", ["1", "5"], prev)).toMatchObject({ degree: "1", note: 72 });
     expect(makeEarPrompt(seq(0, 0, 0.9, 0), "C", ["1", "5"], prev)).toMatchObject({ degree: "5", note: 67 });
     // A new key may start on the same degree and octave
@@ -84,23 +108,34 @@ describe("options", () => {
   });
 
   it("keeps known degrees in scale order and rejects unknown tonics and lengths", () => {
-    expect(sanitizeEarOptions({ tonic: "H", degrees: ["5", "3", "9", "1"], melodyLength: 7 }))
-      .toEqual({ tonic: "random", degrees: ["1", "3", "5"], melodyLength: 3 });
-    expect(sanitizeEarOptions({ tonic: "F#", degrees: [], melodyLength: 5 })).toEqual({ tonic: "F#", degrees: ["1", "5"], melodyLength: 5 });
+    expect(sanitizeEarOptions({ tonic: "H", degrees: ["5", "3", "9", "1"], melodyLength: 7 })).toEqual({
+      tonic: "random",
+      degrees: ["1", "3", "5"],
+      melodyLength: 3,
+    });
+    expect(sanitizeEarOptions({ tonic: "F#", degrees: [], melodyLength: 5 })).toEqual({
+      tonic: "F#",
+      degrees: ["1", "5"],
+      melodyLength: 5,
+    });
   });
 
   it("is set through the app reducer, ignoring no-op changes", () => {
     const s = reduceApp(createAppState(), { type: "setEarOptions", options: { degrees: ["1", "3", "5"] } });
     expect(s.settings.ear.degrees).toEqual(["1", "3", "5"]);
     expect(reduceApp(s, { type: "setEarOptions", options: { degrees: ["5", "3", "1"] } })).toBe(s);
-    expect(createAppState({ ear: { tonic: "Bb", degrees: ["1", "4"] } }).settings.ear).toEqual({ tonic: "Bb", degrees: ["1", "4"], melodyLength: 3 });
+    expect(createAppState({ ear: { tonic: "Bb", degrees: ["1", "4"] } }).settings.ear).toEqual({
+      tonic: "Bb",
+      degrees: ["1", "4"],
+      melodyLength: 3,
+    });
     expect(reduceApp(s, { type: "setEarOptions", options: { melodyLength: 6 } }).settings.ear.melodyLength).toBe(6);
   });
 });
 
 describe("judging", () => {
   it("accepts the played note in any octave", () => {
-    const p = makeEarPrompt(seq(0.9), "C", ["1", "5"]);   // G4
+    const p = makeEarPrompt(seq(0.9), "C", ["1", "5"]); // G4
     let s = reduceNotePractice(initialNotePractice(p), { type: "play", note: 64 });
     expect(s).toMatchObject({ status: "wrong", missed: true });
     s = reduceNotePractice(s, { type: "play", note: 43 });
@@ -159,8 +194,11 @@ describe("makeMelodyPrompt", () => {
 describe("reduceMelody", () => {
   const melody: MelodyPrompt = {
     keyValue: "C:major",
-    notes: [{ degree: "1", note: 60, pc: 0, name: "C" }, { degree: "5", note: 67, pc: 7, name: "G" },
-            { degree: "3", note: 64, pc: 4, name: "E" }],
+    notes: [
+      { degree: "1", note: 60, pc: 0, name: "C" },
+      { degree: "5", note: 67, pc: 7, name: "G" },
+      { degree: "3", note: 64, pc: 4, name: "E" },
+    ],
   };
 
   it("steps through the notes in order, root first, then counts the melody right first time", () => {
@@ -196,8 +234,12 @@ describe("reduceMelody", () => {
 
   it("is recorded as a whole, grouped by length", () => {
     expect(melodyDrillBody(melody, ["1", "3", "5"], true, true, 4000)).toEqual({
-      kind: "drill", drill: "melody", prompt: "Root + 2 notes",
-      detail: { key: "C:major", melody: "1 5 3", length: 2, degrees: "1,3,5" }, outcome: "corrected", ms: 4000,
+      kind: "drill",
+      drill: "melody",
+      prompt: "Root + 2 notes",
+      detail: { key: "C:major", melody: "1 5 3", length: 2, degrees: "1,3,5" },
+      outcome: "corrected",
+      ms: 4000,
     });
   });
 });
@@ -206,8 +248,12 @@ describe("earDrillBody", () => {
   it("records the degree as the prompt, with the key and the degrees on offer", () => {
     const p = makeEarPrompt(seq(0.9, 0), "A", ["1", "5"]);
     expect(earDrillBody(p, ["1", "5"], true, false, 1234.4)).toEqual({
-      kind: "drill", drill: "ear", prompt: "Degree 5",
-      detail: { degree: "5", key: "A:major", note: 64, degrees: "1,5" }, outcome: "firstTry", ms: 1234,
+      kind: "drill",
+      drill: "ear",
+      prompt: "Degree 5",
+      detail: { degree: "5", key: "A:major", note: 64, degrees: "1,5" },
+      outcome: "firstTry",
+      ms: 1234,
     });
   });
 });

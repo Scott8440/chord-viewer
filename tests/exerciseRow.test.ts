@@ -23,7 +23,10 @@ describe("exerciseRow", () => {
   });
 
   it("follows the run's octave; a miss turns the step red", () => {
-    let s = play(initialSequence(scaleExercise(buildKey("C:major")!, "natural", 1)), [48, 50, 52, 53, 55, 57, 59, 60, 59]);
+    let s = play(
+      initialSequence(scaleExercise(buildKey("C:major")!, "natural", 1)),
+      [48, 50, 52, 53, 55, 57, 59, 60, 59],
+    );
     const row = exerciseRow(s);
     expect(firsts(row)).toEqual([48, 50, 52, 53, 55, 57, 59, 60, 59, 57, 55, 53, 52, 50, 48]);
     expect(row.notes.map(n => n.style)).toEqual([...Array(9).fill("done"), "current", ...Array(5).fill(undefined)]);
@@ -33,7 +36,12 @@ describe("exerciseRow", () => {
 
   it("turns the page with the step being played, and spells as the exercise does", () => {
     // The one-octave chromatic scale: 25 steps, so a second page from step 16
-    const s = { ...initialSequence(chromaticExercise(buildKey("C:major")!, 1)), status: "playing" as const, anchor: 60, index: 16 };
+    const s = {
+      ...initialSequence(chromaticExercise(buildKey("C:major")!, 1)),
+      status: "playing" as const,
+      anchor: 60,
+      index: 16,
+    };
     const row = exerciseRow(s);
     expect(row.notes.map(n => n.names![0])).toEqual(["Ab", "G", "Gb", "F", "E", "Eb", "D", "Db", "C"]);
     expect(row.notes[0].style).toBe("current");
@@ -42,7 +50,9 @@ describe("exerciseRow", () => {
   });
 
   it("draws chord steps in root position, close, climbing with the key", () => {
-    const row = exerciseRow(initialSequence(diatonicChordsExercise(buildKey("F:major")!, { sevenths: false, rootPosition: true })));
+    const row = exerciseRow(
+      initialSequence(diatonicChordsExercise(buildKey("F:major")!, { sevenths: false, rootPosition: true })),
+    );
     expect(row.notes[0]).toMatchObject({ midi: [65, 69, 72], names: ["F", "A", "C"] });
     expect(row.notes[1]).toMatchObject({ midi: [67, 70, 74], names: ["G", "Bb", "D"] });
   });

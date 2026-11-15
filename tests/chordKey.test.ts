@@ -6,7 +6,10 @@ import { chordDrillBody } from "../src/progress/records";
 import { createAppState, reduceApp } from "../src/state/app";
 import { buildKey } from "../src/theory";
 
-const seq = (...values: number[]) => { let i = 0; return () => values[i++ % values.length]; };
+const seq = (...values: number[]) => {
+  let i = 0;
+  return () => values[i++ % values.length];
+};
 
 describe("chord key option", () => {
   it("offers none, random and the 24 keys, defaulting to none", () => {
@@ -51,6 +54,9 @@ describe("makeDiatonicNamePrompt", () => {
 
   it("records the key it was drawn from", () => {
     const p = makeDiatonicNamePrompt(seq(0), ["M"], buildKey("D:major")!);
-    expect(chordDrillBody(p, true, false, 1000)).toMatchObject({ prompt: "D", detail: { key: "D:major", style: "names" } });
+    expect(chordDrillBody(p, true, false, 1000)).toMatchObject({
+      prompt: "D",
+      detail: { key: "D:major", style: "names" },
+    });
   });
 });

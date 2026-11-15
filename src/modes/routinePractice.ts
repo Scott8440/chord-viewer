@@ -1,5 +1,14 @@
 // Routine mode: plays a routine's exercises one after another, moving on whenever an item's run finishes.
-import { DIRECTION_NAMES, initialRoutine, itemExercise, keyProgress, reduceRoutine, requireRoutine, type RoutineAction, type RoutineState } from "../exercises/routines";
+import {
+  DIRECTION_NAMES,
+  initialRoutine,
+  itemExercise,
+  keyProgress,
+  reduceRoutine,
+  requireRoutine,
+  type RoutineAction,
+  type RoutineState,
+} from "../exercises/routines";
 import { noRecorder, toWallTime, uuid, type Recorder } from "../progress/recorder";
 import { routineBody, runBody } from "../progress/records";
 import { buildKey } from "../theory";
@@ -7,15 +16,34 @@ import type { CircleView } from "../views/circleOfFifths";
 import { routineDisplay, type PracticeView } from "../views/practice";
 import { exerciseRow } from "../views/exerciseRow";
 import type { StaffView } from "../views/staff";
-import { createPerformanceDrawer, heldNotes, onPlayerInput, onTimingGrid, timingGrid, type AppStore, type Mode } from "./performance";
+import {
+  createPerformanceDrawer,
+  heldNotes,
+  onPlayerInput,
+  onTimingGrid,
+  timingGrid,
+  type AppStore,
+  type Mode,
+} from "./performance";
 
-export function startRoutinePractice({ store, views, recorder = noRecorder }: {
-  store: AppStore; views: { staff: StaffView; practice: PracticeView; circle: CircleView }; recorder?: Recorder;
+export function startRoutinePractice({
+  store,
+  views,
+  recorder = noRecorder,
+}: {
+  store: AppStore;
+  views: { staff: StaffView; practice: PracticeView; circle: CircleView };
+  recorder?: Recorder;
 }): Mode {
   const fresh = (): RoutineState => {
     const s = store.getState();
-    return initialRoutine(requireRoutine(s.settings.routine.id), s.settings.routine, s.settings.exercise, heldNotes(s),
-                          timingGrid(s));
+    return initialRoutine(
+      requireRoutine(s.settings.routine.id),
+      s.settings.routine,
+      s.settings.exercise,
+      heldNotes(s),
+      timingGrid(s),
+    );
   };
   let state = fresh();
   /** Ties the session's run records to its routine record */
@@ -23,13 +51,20 @@ export function startRoutinePractice({ store, views, recorder = noRecorder }: {
 
   /** Records the session: when it finishes, or when it's left part-way (restart, another routine, another mode) */
   function recordRoutine() {
-    if (state.startTime == null) return;   // nothing played
+    if (state.startTime == null) return; // nothing played
     const { routine, latencyMs } = store.getState().settings;
     const s = state;
-    recorder.record(routineBody(s, session, routine.direction, latencyMs, i => itemExercise(s.items[i], s.base), toWallTime));
+    recorder.record(
+      routineBody(s, session, routine.direction, latencyMs, i => itemExercise(s.items[i], s.base), toWallTime),
+    );
   }
   // The staff shows the notes of the item in progress, a page at a time, in its key
-  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.current.exercise.keyValue), () => exerciseRow(state.current));
+  const drawer = createPerformanceDrawer(
+    store,
+    views,
+    () => buildKey(state.current.exercise.keyValue),
+    () => exerciseRow(state.current),
+  );
 
   const render = () => {
     views.practice.render(routineDisplay(state, store.getState().settings.promptStyle));
@@ -40,10 +75,14 @@ export function startRoutinePractice({ store, views, recorder = noRecorder }: {
       keyValue: state.status === "done" ? null : state.current.exercise.keyValue,
       neighbours: false,
       // A key the routine comes back to (the octave at the end of a triad walk) shows its first visit until reached
-      progress: progress.reduce<Record<string, typeof progress[number]["state"]>>((m, g) =>
-        m[g.keyValue] && g.state === "upcoming" ? m : { ...m, [g.keyValue]: g.state }, {}),
-      center: { text: state.status === "done" ? "Done" : `${at + 1} / ${progress.length}`,
-                arrow: DIRECTION_NAMES[state.routine.order][store.getState().settings.routine.direction].arrow },
+      progress: progress.reduce<Record<string, (typeof progress)[number]["state"]>>(
+        (m, g) => (m[g.keyValue] && g.state === "upcoming" ? m : { ...m, [g.keyValue]: g.state }),
+        {},
+      ),
+      center: {
+        text: state.status === "done" ? "Done" : `${at + 1} / ${progress.length}`,
+        arrow: DIRECTION_NAMES[state.routine.order][store.getState().settings.routine.direction].arrow,
+      },
     });
   };
   function apply(action: RoutineAction) {
@@ -53,7 +92,8 @@ export function startRoutinePractice({ store, views, recorder = noRecorder }: {
     // An item's run finished: record it, as part of this session
     const finished = state.outcomes.length > prev.outcomes.length ? state.outcomes[prev.outcomes.length] : null;
     if (finished && finished !== "skipped") {
-      const i = prev.outcomes.length, item = state.items[i];
+      const i = prev.outcomes.length,
+        item = state.items[i];
       const { latencyMs } = store.getState().settings;
       recorder.record(runBody(item.exercise, itemExercise(item, state.base), state.base, latencyMs, finished, session));
     }
@@ -91,7 +131,7 @@ export function startRoutinePractice({ store, views, recorder = noRecorder }: {
       drawer.stop();
     },
     // Skip the item; at the end, start the routine again
-    skip: () => state.status === "done" ? restart() : apply({ type: "skip", held: heldNotes(store.getState()) }),
+    skip: () => (state.status === "done" ? restart() : apply({ type: "skip", held: heldNotes(store.getState()) })),
     restart,
   };
 }

@@ -2,7 +2,10 @@
 import { describe, expect, it } from "vitest";
 import { isChord } from "../src/exercises/chordMatch";
 import {
-  type ChordPracticeAction, type ChordPracticeState, initialChordPractice, reduceChordPractice,
+  type ChordPracticeAction,
+  type ChordPracticeState,
+  initialChordPractice,
+  reduceChordPractice,
 } from "../src/exercises/chordPractice";
 import type { ChordPrompt } from "../src/exercises/chordPrompt";
 import { inversionTones, withInversion } from "../src/exercises/inversions";
@@ -11,8 +14,12 @@ import { createAppState, reduceApp } from "../src/state/app";
 import { buildKey } from "../src/theory";
 import { chordPracticeDisplay, inversionFigures } from "../src/views/practice";
 
-const seq = (...values: number[]) => { let i = 0; return () => values[i++ % values.length]; };
-const run = (s: ChordPracticeState, ...actions: ChordPracticeAction[]) => actions.reduce((x, a) => reduceChordPractice(x, a), s);
+const seq = (...values: number[]) => {
+  let i = 0;
+  return () => values[i++ % values.length];
+};
+const run = (s: ChordPracticeState, ...actions: ChordPracticeAction[]) =>
+  actions.reduce((x, a) => reduceChordPractice(x, a), s);
 const held = (...notes: number[]): ChordPracticeAction => ({ type: "held", notes });
 const Cmaj7: ChordPrompt = { rootPc: 0, root: "C", type: "maj7" };
 /** n-th inversion of a prompt (rng picks index n of the inversion tones) */
@@ -41,15 +48,20 @@ describe("withInversion", () => {
 describe("isChord with an inversion", () => {
   it("needs the required bass as the lowest note; the rest can be voiced freely", () => {
     const first = inv(Cmaj7, 1);
-    expect(isChord([40, 48, 55, 59], first)).toBe(true);        // E C G B
-    expect(isChord([40, 55, 59, 60, 64], first)).toBe(true);    // E G B C E
-    expect(isChord([48, 52, 55, 59], first)).toBe(false);       // root position
+    expect(isChord([40, 48, 55, 59], first)).toBe(true); // E C G B
+    expect(isChord([40, 55, 59, 60, 64], first)).toBe(true); // E G B C E
+    expect(isChord([48, 52, 55, 59], first)).toBe(false); // root position
     expect(isChord([48, 52, 55, 59], inv(Cmaj7, 0))).toBe(true);
-    expect(isChord([48, 52, 55, 59], Cmaj7)).toBe(true);        // no inversion asked: anything goes
+    expect(isChord([48, 52, 55, 59], Cmaj7)).toBe(true); // no inversion asked: anything goes
   });
 
   it("is only correct once the bass is right", () => {
-    const s = run(initialChordPractice(inv(Cmaj7, 2)), held(48, 52, 55, 59), held(52, 55, 59), held(43, 52, 55, 59, 60));
+    const s = run(
+      initialChordPractice(inv(Cmaj7, 2)),
+      held(48, 52, 55, 59),
+      held(52, 55, 59),
+      held(43, 52, 55, 59, 60),
+    );
     expect(s.status).toBe("correct");
   });
 });
@@ -73,8 +85,9 @@ describe("inversion display and feedback", () => {
   });
 
   it("adds the bass to the other fixes", () => {
-    expect(wrongAfter(inv({ rootPc: 0, root: "C", type: "m" }, 1), [48, 52, 55]))
-      .toBe("✗ That was C. Replace E with E♭ and put E♭ in the bass");
+    expect(wrongAfter(inv({ rootPc: 0, root: "C", type: "m" }, 1), [48, 52, 55])).toBe(
+      "✗ That was C. Replace E with E♭ and put E♭ in the bass",
+    );
   });
 
   it("uses figured bass for Roman numerals", () => {
@@ -86,10 +99,11 @@ describe("inversion display and feedback", () => {
     const d = chordPracticeDisplay(initialChordPractice(inv(V7inG, 1)), null);
     expect(d.promptHtml).toBe('V<span class="fig"><span>6</span><span>5</span></span>');
     expect(d.sub).toBe("in G major · 1st inversion");
-    const imaj7 = makeRomanPrompt(seq(0.5), ["maj7"], buildKey("C:major"));   // Imaj7 or IVmaj7
-    expect(chordPracticeDisplay(initialChordPractice(inv(imaj7, 2)), null).promptHtml)
-      .toMatch(/^I(V)?<span class="ext">maj<\/span><span class="fig"><span>4<\/span><span>3<\/span><\/span>$/);
-    const done = run(initialChordPractice(inv(V7inG, 1)), held(42, 50, 57, 60));    // F# D A C
+    const imaj7 = makeRomanPrompt(seq(0.5), ["maj7"], buildKey("C:major")); // Imaj7 or IVmaj7
+    expect(chordPracticeDisplay(initialChordPractice(inv(imaj7, 2)), null).promptHtml).toMatch(
+      /^I(V)?<span class="ext">maj<\/span><span class="fig"><span>4<\/span><span>3<\/span><\/span>$/,
+    );
+    const done = run(initialChordPractice(inv(V7inG, 1)), held(42, 50, 57, 60)); // F# D A C
     expect(chordPracticeDisplay(done, null).feedback).toBe("✓ D7/F♯");
   });
 

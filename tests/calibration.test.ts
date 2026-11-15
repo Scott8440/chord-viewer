@@ -1,12 +1,20 @@
 // Tap-along latency calibration.
 import { describe, expect, it } from "vitest";
-import { addTap, CALIBRATION_TAPS, CALIBRATION_WARMUP, calibrationResult, measured, startCalibration } from "../src/timing/calibration";
+import {
+  addTap,
+  CALIBRATION_TAPS,
+  CALIBRATION_WARMUP,
+  calibrationResult,
+  measured,
+  startCalibration,
+} from "../src/timing/calibration";
 import { startTransport } from "../src/timing/transport";
 
 /** 120 BPM from t = 0: beats every 500 ms */
 const transport = startTransport(120, 4, 0);
-const tapAll = (offsets: number[]) => offsets.reduce((c, o, i) => addTap(c, transport, 500 * (i + 1) + o), startCalibration());
-const warmup = Array(CALIBRATION_WARMUP).fill(-200);   // wild at first: ignored
+const tapAll = (offsets: number[]) =>
+  offsets.reduce((c, o, i) => addTap(c, transport, 500 * (i + 1) + o), startCalibration());
+const warmup = Array(CALIBRATION_WARMUP).fill(-200); // wild at first: ignored
 
 describe("calibration", () => {
   it("needs the warm-up and then every measured tap", () => {

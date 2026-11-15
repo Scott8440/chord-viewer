@@ -5,26 +5,68 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { measure } from "../scripts/corpus/excerpts";
 import { splitByPart } from "../scripts/corpus/parts";
 import {
-  checkExcerptFile, EXCERPT_FILE_VERSION, excerptFileName, excerptSteps, partStaves, EXCERPT_PARTS, readingLevel,
-  type Excerpt, type ExcerptFile, type ExcerptStaff, type ReadingPart,
+  checkExcerptFile,
+  EXCERPT_FILE_VERSION,
+  excerptFileName,
+  excerptSteps,
+  partStaves,
+  EXCERPT_PARTS,
+  readingLevel,
+  type Excerpt,
+  type ExcerptFile,
+  type ExcerptStaff,
+  type ReadingPart,
 } from "../src/exercises/excerpts";
 import { readingLoadingDisplay } from "../src/views/practice";
 
 const q = (p: number, s: number) => ({ v: "q" as const, n: [{ p, s }] });
 const treble: ExcerptStaff = { clef: "treble", voices: [[[q(64, 18), q(65, 13), q(67, 15), q(65, 13)]]] };
-const bass: ExcerptStaff = { clef: "bass", voices: [[[{ v: "h", n: [{ p: 48, s: 14 }, { p: 55, s: 15 }] }, q(43, 15), q(48, 14)]]] };
+const bass: ExcerptStaff = {
+  clef: "bass",
+  voices: [
+    [
+      [
+        {
+          v: "h",
+          n: [
+            { p: 48, s: 14 },
+            { p: 55, s: 15 },
+          ],
+        },
+        q(43, 15),
+        q(48, 14),
+      ],
+    ],
+  ],
+};
 const time: [number, number] = [4, 4];
 const SOURCES = [
   { composer: "A", title: "One", scoreId: "1" },
   { composer: "B", title: "Two", scoreId: "2" },
 ];
-const melody: Excerpt = { id: "1:1-1", source: 0, key: 0, time, staves: [treble], parts: { voice: measure([treble], 0, time) } };
+const melody: Excerpt = {
+  id: "1:1-1",
+  source: 0,
+  key: 0,
+  time,
+  staves: [treble],
+  parts: { voice: measure([treble], 0, time) },
+};
 const pianoCut: Excerpt = {
-  id: "2:1-1", source: 1, key: 0, time, staves: [treble, bass],
+  id: "2:1-1",
+  source: 1,
+  key: 0,
+  time,
+  staves: [treble, bass],
   parts: { rh: measure([treble], 0, time), lh: measure([bass], 0, time), both: measure([treble, bass], 0, time) },
 };
 const arranged: Excerpt = {
-  id: "1:1-1+bass", source: 0, key: 0, time, staves: [treble, bass], parts: { both: measure([treble, bass], 0, time) },
+  id: "1:1-1+bass",
+  source: 0,
+  key: 0,
+  time,
+  staves: [treble, bass],
+  parts: { both: measure([treble, bass], 0, time) },
   arranged: "bass",
 };
 
@@ -50,7 +92,13 @@ describe("splitting excerpts into one file per part", () => {
   });
 
   it("reads back the same staves, steps and level as before splitting", () => {
-    const before: [Excerpt, ReadingPart][] = [[melody, "voice"], [pianoCut, "rh"], [pianoCut, "lh"], [pianoCut, "both"], [arranged, "both"]];
+    const before: [Excerpt, ReadingPart][] = [
+      [melody, "voice"],
+      [pianoCut, "rh"],
+      [pianoCut, "lh"],
+      [pianoCut, "both"],
+      [arranged, "both"],
+    ];
     for (const [e, part] of before) {
       const after = files[part].excerpts.find(x => x.id === e.id)!;
       expect(partStaves(after, part)).toEqual(partStaves(e, part));
@@ -116,9 +164,19 @@ describe("the committed excerpt files", () => {
 });
 
 describe("loading a part's excerpts", () => {
-  afterEach(() => { vi.unstubAllGlobals(); vi.resetModules(); });
-  const good = (part: ReadingPart): ExcerptFile => ({ version: EXCERPT_FILE_VERSION, part, credit: "c", sources: [], excerpts: [] });
-  const respond = (body: unknown, ok = true) => Promise.resolve({ ok, status: ok ? 200 : 404, json: () => Promise.resolve(body) });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+  const good = (part: ReadingPart): ExcerptFile => ({
+    version: EXCERPT_FILE_VERSION,
+    part,
+    credit: "c",
+    sources: [],
+    excerpts: [],
+  });
+  const respond = (body: unknown, ok = true) =>
+    Promise.resolve({ ok, status: ok ? 200 : 404, json: () => Promise.resolve(body) });
 
   it("fetches only the part's file, once", async () => {
     const fetch = vi.fn((url: string) => respond(good(url.includes("-lh") ? "lh" : "rh")));
@@ -130,7 +188,8 @@ describe("loading a part's excerpts", () => {
   });
 
   it("refuses a file of another version or part, and tries again when asked again", async () => {
-    const fetch = vi.fn()
+    const fetch = vi
+      .fn()
       .mockReturnValueOnce(respond({ ...good("voice"), version: 2 }))
       .mockReturnValueOnce(respond(good("voice"), false))
       .mockReturnValueOnce(respond(good("voice")));

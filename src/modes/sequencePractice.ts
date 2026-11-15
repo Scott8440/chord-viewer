@@ -4,7 +4,13 @@
 // chromatically or at random), showing how the last key went until the next one starts; Skip moves on too.
 import { nextKey } from "../exercises/keyOrder";
 import { PRESCRIPTIVE, type PrescriptiveId } from "../exercises/prescriptive";
-import { initialSequence, reduceSequence, type RunResult, type SequenceAction, type SequenceState } from "../exercises/sequence";
+import {
+  initialSequence,
+  reduceSequence,
+  type RunResult,
+  type SequenceAction,
+  type SequenceState,
+} from "../exercises/sequence";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { runBody } from "../progress/records";
 import { buildKey } from "../theory";
@@ -12,21 +18,42 @@ import type { CircleView } from "../views/circleOfFifths";
 import { progressingDisplay, sequenceDisplay, type PracticeView } from "../views/practice";
 import { exerciseRow } from "../views/exerciseRow";
 import type { StaffView } from "../views/staff";
-import { createPerformanceDrawer, heldNotes, onPlayerInput, onTimingGrid, timingGrid, type AppStore, type Mode } from "./performance";
+import {
+  createPerformanceDrawer,
+  heldNotes,
+  onPlayerInput,
+  onTimingGrid,
+  timingGrid,
+  type AppStore,
+  type Mode,
+} from "./performance";
 
-export function startSequencePractice({ store, views, id, recorder = noRecorder }: {
-  store: AppStore; views: { staff: StaffView; practice: PracticeView; circle: CircleView };
+export function startSequencePractice({
+  store,
+  views,
+  id,
+  recorder = noRecorder,
+}: {
+  store: AppStore;
+  views: { staff: StaffView; practice: PracticeView; circle: CircleView };
   /** Which exercise it runs */
-  id: PrescriptiveId; recorder?: Recorder;
+  id: PrescriptiveId;
+  recorder?: Recorder;
 }): Mode {
   const build = () => PRESCRIPTIVE[id].build(store.getState().settings.exercise);
   let state: SequenceState = initialSequence(build(), heldNotes(store.getState()), timingGrid(store.getState()));
   // The staff shows the notes to play, a page at a time, in the exercise's key (exercises never use the header key)
-  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.exercise.keyValue), () => exerciseRow(state));
+  const drawer = createPerformanceDrawer(
+    store,
+    views,
+    () => buildKey(state.exercise.keyValue),
+    () => exerciseRow(state),
+  );
 
   /** The key just finished (shown until the next one starts), and the keys played this session */
   let previous: { title: string; result: RunResult } | null = null;
-  let played = 0, clean = 0;
+  let played = 0,
+    clean = 0;
   /** Set while this mode itself moves the key on, so the settings change isn't taken for the player's */
   let advancing = false;
   /** Once stopped, a key change queued by the last run must not land on the next mode */
@@ -53,7 +80,8 @@ export function startSequencePractice({ store, views, id, recorder = noRecorder 
     if (state === prev) return;
     // A finished run always has its result
     if (state.status === "done" && prev.status !== "done" && state.result) {
-      const { result } = state, { exercise, latencyMs } = store.getState().settings;
+      const { result } = state,
+        { exercise, latencyMs } = store.getState().settings;
       recorder.record(runBody(id, state.exercise, exercise, latencyMs, result));
       if (progressing()) {
         previous = { title: state.exercise.title, result };
@@ -97,7 +125,10 @@ export function startSequencePractice({ store, views, id, recorder = noRecorder 
     },
     // With a progression, on to the next key; else start the run over
     skip: () => {
-      if (!progressing()) { apply({ type: "restart" }); return; }
+      if (!progressing()) {
+        apply({ type: "restart" });
+        return;
+      }
       previous = null;
       advance();
     },

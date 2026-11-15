@@ -29,12 +29,14 @@ export interface AnswerBoard {
 }
 
 export function createAnswerBoard(el: HTMLElement): AnswerBoard {
-  const listeners = new Set<(id: string) => void>(), replayListeners = new Set<() => void>(), nextListeners = new Set<() => void>();
+  const listeners = new Set<(id: string) => void>(),
+    replayListeners = new Set<() => void>(),
+    nextListeners = new Set<() => void>();
   // The buttons are redrawn with each render, so one listener on the board catches them all
   el.addEventListener("click", e => {
     const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
     if (!button || button.disabled) return;
-    button.blur();   // so Space stays the pedal
+    button.blur(); // so Space stays the pedal
     if (button.dataset.answer) for (const l of listeners) l(button.dataset.answer);
     else if (button.classList.contains("replay")) for (const l of replayListeners) l();
     else if (button.classList.contains("next")) for (const l of nextListeners) l();
@@ -43,21 +45,35 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
   return {
     render(boxes, replay) {
       const replayHtml = replay
-        ? `<button class="replay" title="Play it again" data-midi-map="replay" data-midi-name="Replay"${replay.enabled ? "" : " disabled"}><span aria-hidden="true">▶</span> Replay</button>` : "";
-      const html = replayHtml + `<div class="boxes">` + boxes.map(b =>
-        `<button class="box${b.state ? " " + b.state : ""}" data-answer="${esc(b.id)}" data-midi-map="answer:${esc(b.id)}" data-midi-name="${esc(b.label)}"${b.disabled ? " disabled" : ""}>` +
-        (b.key ? `<kbd>${b.key}</kbd>` : "") + `<span class="boxLabel">${esc(b.label)}</span>` +
-        `<span class="boxDetail">${b.detail ? esc(b.detail) : "&nbsp;"}</span></button>`).join("") + `</div>`;
+        ? `<button class="replay" title="Play it again" data-midi-map="replay" data-midi-name="Replay"${replay.enabled ? "" : " disabled"}><span aria-hidden="true">▶</span> Replay</button>`
+        : "";
+      const html =
+        replayHtml +
+        `<div class="boxes">` +
+        boxes
+          .map(
+            b =>
+              `<button class="box${b.state ? " " + b.state : ""}" data-answer="${esc(b.id)}" data-midi-map="answer:${esc(b.id)}" data-midi-name="${esc(b.label)}"${b.disabled ? " disabled" : ""}>` +
+              (b.key ? `<kbd>${b.key}</kbd>` : "") +
+              `<span class="boxLabel">${esc(b.label)}</span>` +
+              `<span class="boxDetail">${b.detail ? esc(b.detail) : "&nbsp;"}</span></button>`,
+          )
+          .join("") +
+        `</div>`;
       // Redraw only on change, so a box isn't replaced under the pointer mid-click
       if (html !== shown) el.innerHTML = shown = html;
     },
     onAnswer(listener) {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
+      return () => {
+        listeners.delete(listener);
+      };
     },
     onReplay(listener) {
       replayListeners.add(listener);
-      return () => { replayListeners.delete(listener); };
+      return () => {
+        replayListeners.delete(listener);
+      };
     },
     renderNext(label) {
       const html = `<button class="next" data-midi-map="skip" data-midi-name="Skip / Next">${esc(label)} <span aria-hidden="true">→</span></button>`;
@@ -65,7 +81,9 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
     },
     onNext(listener) {
       nextListeners.add(listener);
-      return () => { nextListeners.delete(listener); };
+      return () => {
+        nextListeners.delete(listener);
+      };
     },
   };
 }

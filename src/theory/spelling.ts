@@ -40,7 +40,7 @@ export function spellNote(midi: number, result: Analysis | null, key: KeyContext
   let name = result && result.spell && result.spell[pc];
   if (!name) {
     if (key) name = key.spell[pc];
-    else name = ((result && result.flats) ? ROOT_MAJOR : SHARP)[pc];
+    else name = (result && result.flats ? ROOT_MAJOR : SHARP)[pc];
   }
   return spelledAs(midi, name);
 }

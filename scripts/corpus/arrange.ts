@@ -7,7 +7,10 @@ import { restsFor } from "./excerpts.ts";
 
 /** How each time signature's bar is split for the bass: the value of each bass note */
 const SPLITS: Record<string, ExcerptEvent> = {
-  "4/4": { v: "h" }, "2/2": { v: "h" }, "2/4": { v: "h" }, "3/4": { v: "h", d: 1 },
+  "4/4": { v: "h" },
+  "2/2": { v: "h" },
+  "2/4": { v: "h" },
+  "3/4": { v: "h", d: 1 },
 };
 
 /** The major scale's degrees as fifths from the tonic: I ii iii IV V vi vii */
@@ -27,23 +30,31 @@ interface Chord {
 /** The chords a bass can come from in a key signature (in fifths): its major key's I ii iii IV V vi, and the
  *  relative minor's major V (E major in C), only when the melody has its raised note */
 function chordsIn(fifths: number): Chord[] {
-  const tonicPc = ((fifths * 7) % 12 + 12) % 12;
+  const tonicPc = (((fifths * 7) % 12) + 12) % 12;
   const scale = MAJOR.map(i => (tonicPc + i) % 12);
   const priors = [0.3, 0.1, 0, 0.2, 0.25, 0.15];
   const out: Chord[] = priors.map((prior, d) => ({
-    root: 14 + fifths + DEGREE_FIFTHS[d], prior, tonic: d === 0 || d === 5,
+    root: 14 + fifths + DEGREE_FIFTHS[d],
+    prior,
+    tonic: d === 0 || d === 5,
     pcs: [scale[d], scale[(d + 2) % 7], scale[(d + 4) % 7]],
   }));
   const iii = scale[2];
-  out.push({ root: 14 + fifths + DEGREE_FIFTHS[2], prior: 0.05, tonic: false, pcs: [iii, (iii + 4) % 12, (iii + 7) % 12] });
+  out.push({
+    root: 14 + fifths + DEGREE_FIFTHS[2],
+    prior: 0.05,
+    tonic: false,
+    pcs: [iii, (iii + 4) % 12, (iii + 7) % 12],
+  });
   return out;
 }
 
 const pcOf = (p: number) => ((p % 12) + 12) % 12;
-const tpcPc = (tpc: number) => (((tpc - 14) * 7) % 12 + 12) % 12;
+const tpcPc = (tpc: number) => ((((tpc - 14) * 7) % 12) + 12) % 12;
 
 /** The lowest and highest bass notes: the bass staff without ledger lines (F2–G3) */
-const LOW = 41, HIGH = 55;
+const LOW = 41,
+  HIGH = 55;
 
 /**
  * A left hand for a melody excerpt (one treble staff, one voice), or null when its time signature or bars don't
@@ -54,7 +65,8 @@ export function bassFor(e: Pick<Excerpt, "key" | "time" | "staves">): ExcerptSta
   if (e.staves.length !== 1 || melody.clef !== "treble" || melody.voices.length !== 1) return null;
   const value = SPLITS[e.time.join("/")];
   if (!value) return null;
-  const bar = e.time[0] / e.time[1], span = eventLength(value);
+  const bar = e.time[0] / e.time[1],
+    span = eventLength(value);
   const bars = melody.voices[0];
   const lengths = bars.map(b => b.reduce((sum, x) => sum + (x.bar ? bar : eventLength(x)), 0));
   if (lengths.some((len, i) => (i > 0 || len > bar + 1e-9) && Math.abs(len - bar) > 1e-9)) return null;
@@ -71,7 +83,8 @@ export function bassFor(e: Pick<Excerpt, "key" | "time" | "staves">): ExcerptSta
       for (const n of x.n ?? []) notes.push({ pc: pcOf(n.p), from: t, to: t + len });
       t += len;
     }
-    if (i > 0 || lengths[0] >= bar - 1e-9) for (let s = 0; s + span <= bar + 1e-9; s += span) spans.push({ from: at + s, to: at + s + span });
+    if (i > 0 || lengths[0] >= bar - 1e-9)
+      for (let s = 0; s + span <= bar + 1e-9; s += span) spans.push({ from: at + s, to: at + s + span });
     at += lengths[i];
   });
   if (!spans.length) return null;
@@ -82,17 +95,21 @@ export function bassFor(e: Pick<Excerpt, "key" | "time" | "staves">): ExcerptSta
   const picked: Chord[] = [];
   spans.forEach((sp, i) => {
     const sounding = notes.filter(n => n.to > sp.from + 1e-9 && n.from < sp.to - 1e-9);
-    let best = chords[0], bestScore = -Infinity;
+    let best = chords[0],
+      bestScore = -Infinity;
     for (const c of chords) {
       if (c === chords[6] && !sounding.some(n => n.pc === c.pcs[1])) continue;
       let score = c.prior;
       for (const n of sounding) {
-        const w = (Math.min(n.to, sp.to) - Math.max(n.from, sp.from)) / span * (n.from <= sp.from + 1e-9 ? 1.5 : 1);
+        const w = ((Math.min(n.to, sp.to) - Math.max(n.from, sp.from)) / span) * (n.from <= sp.from + 1e-9 ? 1.5 : 1);
         score += c.pcs.includes(n.pc) ? w : -0.6 * w;
       }
       if (c.tonic && (i === 0 || i === spans.length - 1)) score += 0.3;
       if (picked[i - 1] === c) score += 0.1;
-      if (score > bestScore) { best = c; bestScore = score; }
+      if (score > bestScore) {
+        best = c;
+        bestScore = score;
+      }
     }
     picked.push(best);
   });
@@ -103,7 +120,7 @@ export function bassFor(e: Pick<Excerpt, "key" | "time" | "staves">): ExcerptSta
     const pc = tpcPc(c.root);
     const options = [];
     for (let p = LOW; p <= HIGH; p++) if (pcOf(p) === pc) options.push(p);
-    const p = options.reduce((a, b) => Math.abs(b - last) < Math.abs(a - last) ? b : a);
+    const p = options.reduce((a, b) => (Math.abs(b - last) < Math.abs(a - last) ? b : a));
     last = p;
     return { p, s: c.root };
   });

@@ -2,8 +2,15 @@
 // `circleSvg` is pure (model in, SVG out); `createCircleView` shows it, or hides it when a mode has nothing to show.
 import type { KeyProgressState } from "../exercises/routines";
 import {
-  circlePosition, CIRCLE_OF_FIFTHS_MAJOR, CIRCLE_OF_FIFTHS_MINOR, keySignature, matchTemplate, prettyAcc, requireKey,
-  templateById, type Analysis,
+  circlePosition,
+  CIRCLE_OF_FIFTHS_MAJOR,
+  CIRCLE_OF_FIFTHS_MINOR,
+  keySignature,
+  matchTemplate,
+  prettyAcc,
+  requireKey,
+  templateById,
+  type Analysis,
 } from "../theory";
 import { esc } from "./html";
 
@@ -20,22 +27,27 @@ export interface CircleModel {
   center?: { text: string; arrow?: string };
 }
 
-const R_OUT = 96, R_MID = 64, R_IN = 38;
-const pcOf = (name: string) => ({ C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 } as Record<string, number>)[name[0]] +
+const R_OUT = 96,
+  R_MID = 64,
+  R_IN = 38;
+const pcOf = (name: string) =>
+  (({ C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }) as Record<string, number>)[name[0]] +
   (name.includes("#") ? 1 : name.includes("b") ? -1 : 0);
 const mod12 = (n: number) => ((n % 12) + 12) % 12;
 
 /** Point at `r` along the angle of circle position `pos` (+ `offset` positions), 0 = top, clockwise. */
 function point(r: number, pos: number, offset = 0): [number, number] {
-  const a = ((pos + offset) * 30 - 90) * Math.PI / 180;
+  const a = (((pos + offset) * 30 - 90) * Math.PI) / 180;
   return [r * Math.cos(a), r * Math.sin(a)];
 }
 
 /** Ring segment for a position, between radii r1 < r2. */
 function segment(pos: number, r1: number, r2: number): string {
   const f = (p: [number, number]) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`;
-  return `M${f(point(r2, pos, -0.5))}A${r2} ${r2} 0 0 1 ${f(point(r2, pos, 0.5))}` +
-         `L${f(point(r1, pos, 0.5))}A${r1} ${r1} 0 0 0 ${f(point(r1, pos, -0.5))}Z`;
+  return (
+    `M${f(point(r2, pos, -0.5))}A${r2} ${r2} 0 0 1 ${f(point(r2, pos, 0.5))}` +
+    `L${f(point(r1, pos, 0.5))}A${r1} ${r1} 0 0 0 ${f(point(r1, pos, -0.5))}Z`
+  );
 }
 
 /**
@@ -73,17 +85,25 @@ export function circleSvg(model: CircleModel): string {
     names.forEach((tonic, pos) => {
       const keyValue = `${tonic}:${ring === "outer" ? "major" : "minor"}`;
       const numeral = numerals.get(`${ring}:${pos}`);
-      const classes = ["seg", ring,
+      const classes = [
+        "seg",
+        ring,
         ring === focusRing && pos === focusPos ? "focus" : numeral ? "inkey" : "",
         model.progress?.[keyValue] ?? "",
-        ring === markRing && pos === markPos ? "mark" : ""].filter(Boolean).join(" ");
+        ring === markRing && pos === markPos ? "mark" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       const label = prettyAcc(tonic) + (ring === "inner" ? "m" : "");
       const [lx, ly] = point((r1 + r2) / 2, pos);
       // The name sits a little above the middle when a numeral goes under it
       const nameY = numeral ? ly - 3 : ly + 1;
-      parts.push(`<g class="${esc(classes)}"><path d="${segment(pos, r1, r2)}"/>` +
-        `<text class="name" x="${lx.toFixed(1)}" y="${nameY.toFixed(1)}">${esc(label)}</text>` +
-        (numeral ? `<text class="num" x="${lx.toFixed(1)}" y="${(ly + 7).toFixed(1)}">${esc(numeral)}</text>` : "") + "</g>");
+      parts.push(
+        `<g class="${esc(classes)}"><path d="${segment(pos, r1, r2)}"/>` +
+          `<text class="name" x="${lx.toFixed(1)}" y="${nameY.toFixed(1)}">${esc(label)}</text>` +
+          (numeral ? `<text class="num" x="${lx.toFixed(1)}" y="${(ly + 7).toFixed(1)}">${esc(numeral)}</text>` : "") +
+          "</g>",
+      );
     });
   }
 
@@ -91,13 +111,15 @@ export function circleSvg(model: CircleModel): string {
   let center = "";
   if (model.center) {
     const arrow = model.center.arrow ?? "";
-    center = `<text class="c1" x="0" y="-2">${esc(model.center.text)}</text>` +
-             (arrow ? `<text class="c2" x="0" y="12">${esc(arrow)}</text>` : "");
+    center =
+      `<text class="c1" x="0" y="-2">${esc(model.center.text)}</text>` +
+      (arrow ? `<text class="c2" x="0" y="12">${esc(arrow)}</text>` : "");
   } else if (focus) {
     const [tonic, mode] = focus.split(":");
     const sig = keySignature(requireKey(focus));
-    center = `<text class="c1" x="0" y="-2">${esc(prettyAcc(tonic) + (mode === "minor" ? "m" : ""))}</text>` +
-             `<text class="c2" x="0" y="11">${esc(sig.count ? sig.count + prettyAcc(sig.accidental) : "no ♯/♭")}</text>`;
+    center =
+      `<text class="c1" x="0" y="-2">${esc(prettyAcc(tonic) + (mode === "minor" ? "m" : ""))}</text>` +
+      `<text class="c2" x="0" y="11">${esc(sig.count ? sig.count + prettyAcc(sig.accidental) : "no ♯/♭")}</text>`;
   }
   return `<svg class="cof" viewBox="-100 -100 200 200" role="img" aria-label="Circle of fifths">${parts.join("")}${center}</svg>`;
 }
@@ -111,7 +133,7 @@ export function chordOnCircle(result: Analysis | null): CircleModel["chord"] {
   const pcs = new Set([...m.missing, ...m.omitted].map(x => x.pc));
   if (pcs.has(4) && pcs.has(7)) return { rootPc: result.best.rootPc, minor: false };
   if (pcs.has(3) && pcs.has(7)) return { rootPc: result.best.rootPc, minor: true };
-  return null;   // diminished, augmented, sus …: not on the circle
+  return null; // diminished, augmented, sus …: not on the circle
 }
 
 export interface CircleView {

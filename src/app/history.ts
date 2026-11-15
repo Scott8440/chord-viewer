@@ -34,7 +34,9 @@ export function openHistory(device: string, imported: () => void): History {
   function note(text: string) {
     $("historyNote").textContent = text;
     clearTimeout(noteTimer);
-    noteTimer = setTimeout(() => { $("historyNote").textContent = ""; }, 6000);
+    noteTimer = setTimeout(() => {
+      $("historyNote").textContent = "";
+    }, 6000);
   }
 
   $("historyExport").onclick = async () => {
@@ -47,17 +49,28 @@ export function openHistory(device: string, imported: () => void): History {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
   };
-  $("historyImport").onclick = () => { $("historyImport").blur(); $("historyFile").click(); };
+  $("historyImport").onclick = () => {
+    $("historyImport").blur();
+    $("historyFile").click();
+  };
   $<HTMLInputElement>("historyFile").onchange = async () => {
-    const input = $<HTMLInputElement>("historyFile"), file = input.files?.[0];
-    input.value = "";   // so the same file can be picked again
+    const input = $<HTMLInputElement>("historyFile"),
+      file = input.files?.[0];
+    input.value = ""; // so the same file can be picked again
     if (!file) return;
     const parsed = parseExport(await file.text());
-    if ("error" in parsed) { note(parsed.error); return; }
+    if ("error" in parsed) {
+      note(parsed.error);
+      return;
+    }
     const added = await (await store).merge(parsed.records);
     const already = parsed.records.length - added;
-    note(`Imported ${added} new record${added === 1 ? "" : "s"}` + (already ? `, ${already} already here` : "") +
-         (parsed.skipped ? `, ${parsed.skipped} unreadable` : "") + ".");
+    note(
+      `Imported ${added} new record${added === 1 ? "" : "s"}` +
+        (already ? `, ${already} already here` : "") +
+        (parsed.skipped ? `, ${parsed.skipped} unreadable` : "") +
+        ".",
+    );
     void showCount();
     imported();
   };

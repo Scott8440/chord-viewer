@@ -8,8 +8,17 @@ import type { Excerpt, ExcerptFile } from "../exercises/excerpts";
 import { countInKey, keyRotation, rotateKey } from "../exercises/keyRotation";
 import { shuffled, type Rng } from "../exercises/random";
 import {
-  CHORD_WINDOW_MS, excerptLevel, initialReading, makeExcerptPrompt, makeReadingPrompt, pickReadingKey, reduceReading,
-  type ReadingAction, type ReadingOptions, type ReadingPrompt, type ReadingState,
+  CHORD_WINDOW_MS,
+  excerptLevel,
+  initialReading,
+  makeExcerptPrompt,
+  makeReadingPrompt,
+  pickReadingKey,
+  reduceReading,
+  type ReadingAction,
+  type ReadingOptions,
+  type ReadingPrompt,
+  type ReadingState,
 } from "../exercises/sightReading";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { readingDrillBody } from "../progress/records";
@@ -28,12 +37,28 @@ const NEXT_PROMPT_MS = 900;
 export function musicOf(s: ReadingState): StaffMusic {
   const m = s.prompt.music;
   if (!m) throw new Error("Only a song's passage is drawn as written music");
-  const styles = m.staves.map((st, si) => st.voices.map((voice, vi) => voice.map((bar, b) => bar.map((e, i) => {
-    const step = m.stepOf[si][vi][b][i];
-    return (e.n ?? []).map((n): MusicStyle | undefined =>
-      step < 0 ? undefined : step < s.index ? "done" : step > s.index ? undefined
-        : s.struck.includes(n.p) ? "done" : s.status === "wrong" ? "wrong" : undefined);
-  }))));
+  const styles = m.staves.map((st, si) =>
+    st.voices.map((voice, vi) =>
+      voice.map((bar, b) =>
+        bar.map((e, i) => {
+          const step = m.stepOf[si][vi][b][i];
+          return (e.n ?? []).map((n): MusicStyle | undefined =>
+            step < 0
+              ? undefined
+              : step < s.index
+                ? "done"
+                : step > s.index
+                  ? undefined
+                  : s.struck.includes(n.p)
+                    ? "done"
+                    : s.status === "wrong"
+                      ? "wrong"
+                      : undefined,
+          );
+        }),
+      ),
+    ),
+  );
   return { staves: m.staves, time: m.time, styles };
 }
 
@@ -41,19 +66,28 @@ export function musicOf(s: ReadingState): StaffMusic {
 const libraryOf = (o: ReadingOptions): ExcerptLibrary => o.part;
 
 export function startSightReading({
-  store, views, recorder = noRecorder, excerpts: library = () => Promise.reject(new Error("no excerpts")), rng = Math.random,
+  store,
+  views,
+  recorder = noRecorder,
+  excerpts: library = () => Promise.reject(new Error("no excerpts")),
+  rng = Math.random,
 }: {
-  store: AppStore; views: { staff: StaffView; practice: PracticeView }; recorder?: Recorder;
+  store: AppStore;
+  views: { staff: StaffView; practice: PracticeView };
+  recorder?: Recorder;
   /** Fetches a part's file of excerpts */
-  excerpts?: (which: ExcerptLibrary) => Promise<ExcerptFile>; rng?: Rng;
+  excerpts?: (which: ExcerptLibrary) => Promise<ExcerptFile>;
+  rng?: Rng;
 }): Mode {
   const options = () => store.getState().settings.reading;
   let keys = keyRotation(pickReadingKey(rng, options().key));
   const files = new Map<ExcerptLibrary, ExcerptFile>();
   const loading = new Set<ExcerptLibrary>();
-  let failed = false, stopped = false;
+  let failed = false,
+    stopped = false;
   /** Each level's excerpts are dealt in a shuffled order, all of them before any comes round again */
-  let deck: Excerpt[] = [], deckOf = "";
+  let deck: Excerpt[] = [],
+    deckOf = "";
   /** Null only while a level waits for the songs to load (or they failed to) */
   let state: ReadingState | null = null;
   /** The last passage's state, for its score, while there's none */
@@ -62,14 +96,19 @@ export function startSightReading({
   /** Ends a chord attempt that hasn't come together in time */
   let expireTimer: ReturnType<typeof setTimeout> | undefined;
   // Played through, or skipped before the end
-  const records = createPromptRecords<ReadingState>(recorder, (s, answered, ms) => readingDrillBody(s.prompt, answered, s.missed, ms));
+  const records = createPromptRecords<ReadingState>(recorder, (s, answered, ms) =>
+    readingDrillBody(s.prompt, answered, s.missed, ms),
+  );
 
   /** A song's passage at the level, in the key; a generated line if none at the level can be written in it */
   function dealExcerpt(f: ExcerptFile, o: ReadingOptions, previous?: ReadingPrompt): ReadingPrompt {
     const which = `${o.part}:${o.level}`;
     for (let tries = 0; tries < 50; tries++) {
       if (deckOf !== which || !deck.length) {
-        deck = shuffled(rng, f.excerpts.filter(e => excerptLevel(e, o.part) === o.level));
+        deck = shuffled(
+          rng,
+          f.excerpts.filter(e => excerptLevel(e, o.part) === o.level),
+        );
         deckOf = which;
         if (!deck.length) break;
       }
@@ -109,30 +148,52 @@ export function startSightReading({
     if (loading.has(which) || files.has(which)) return;
     loading.add(which);
     failed = false;
-    library(which).then(f => { files.set(which, f); }, () => { failed = true; }).finally(() => {
-      loading.delete(which);
-      if (stopped || state) return;
-      if (files.has(libraryOf(options()))) { keys = countInKey(keys); show(makePrompt()); } else render();
-    });
+    library(which)
+      .then(
+        f => {
+          files.set(which, f);
+        },
+        () => {
+          failed = true;
+        },
+      )
+      .finally(() => {
+        loading.delete(which);
+        if (stopped || state) return;
+        if (files.has(libraryOf(options()))) {
+          keys = countInKey(keys);
+          show(makePrompt());
+        } else render();
+      });
   }
 
   // The passage on the staff: a song's as written, or a generated line one quarter note per step (played notes
   // green, a wrong note red just after the step it was meant for). The held keys aren't drawn: they'd sit on top of
   // the notes to read.
-  const drawer = createPerformanceDrawer(store, views, () => state && buildKey(state.prompt.keyValue), () => {
-    if (!state) return { notes: [], slots: 1, heldAt: null };
-    if (state.prompt.music) return musicOf(state);
-    const s = state;
-    return {
-      notes: [
-        ...s.prompt.steps.map((step, i) => ({ midi: step[0].note, style: i < s.index ? "done" as const : undefined })),
-        ...(s.status === "wrong" && s.played != null ? [{ midi: s.played, style: "wrong" as const, at: s.index + 0.45 }] : []),
-      ],
-      slots: s.prompt.steps.length,
-      heldAt: null,
-      duration: "q",
-    };
-  });
+  const drawer = createPerformanceDrawer(
+    store,
+    views,
+    () => state && buildKey(state.prompt.keyValue),
+    () => {
+      if (!state) return { notes: [], slots: 1, heldAt: null };
+      if (state.prompt.music) return musicOf(state);
+      const s = state;
+      return {
+        notes: [
+          ...s.prompt.steps.map((step, i) => ({
+            midi: step[0].note,
+            style: i < s.index ? ("done" as const) : undefined,
+          })),
+          ...(s.status === "wrong" && s.played != null
+            ? [{ midi: s.played, style: "wrong" as const, at: s.index + 0.45 }]
+            : []),
+        ],
+        slots: s.prompt.steps.length,
+        heldAt: null,
+        duration: "q",
+      };
+    },
+  );
 
   function render() {
     views.practice.render(state ? sightReadingDisplay(state) : readingLoadingDisplay(failed));
@@ -153,7 +214,9 @@ export function startSightReading({
     }
     clearTimeout(nextTimer);
     if (state.status === "correct") {
-      nextTimer = setTimeout(() => { if (state) apply({ type: "next", prompt: nextPrompt(state.prompt) }); }, NEXT_PROMPT_MS);
+      nextTimer = setTimeout(() => {
+        if (state) apply({ type: "next", prompt: nextPrompt(state.prompt) });
+      }, NEXT_PROMPT_MS);
     }
   }
 
@@ -166,7 +229,9 @@ export function startSightReading({
   }
 
   const offInput = onPlayerInput(store, { noteOn: (note, time) => apply({ type: "play", note, time }) });
-  const offSettings = store.subscribe((s, p) => { if (s.settings.reading !== p.settings.reading) restart(s.settings.reading, p.settings.reading); });
+  const offSettings = store.subscribe((s, p) => {
+    if (s.settings.reading !== p.settings.reading) restart(s.settings.reading, p.settings.reading);
+  });
   keys = countInKey(keys);
   show(makePrompt());
 

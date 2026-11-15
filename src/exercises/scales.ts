@@ -5,15 +5,19 @@ import type { NoteStep, SequenceExercise } from "./sequence";
 
 /** Minor scale forms; major keys always use the major scale */
 export const MINOR_FORMS = ["natural", "harmonic", "melodic"] as const;
-export type MinorForm = typeof MINOR_FORMS[number];
+export type MinorForm = (typeof MINOR_FORMS)[number];
 export const SCALE_OCTAVES = [1, 2] as const;
-export type ScaleOctaves = typeof SCALE_OCTAVES[number];
+export type ScaleOctaves = (typeof SCALE_OCTAVES)[number];
 
 /**
  * The scale of a key, up and back down over 1 or 2 octaves, starting and ending on the tonic.
  * Melodic minor goes up with the raised 6th and 7th and comes down as natural minor.
  */
-export function scaleExercise(key: KeyContext, minorForm: MinorForm, octaves: ScaleOctaves): SequenceExercise<NoteStep> {
+export function scaleExercise(
+  key: KeyContext,
+  minorForm: MinorForm,
+  octaves: ScaleOctaves,
+): SequenceExercise<NoteStep> {
   const tonic = key.tonic;
   let up: readonly string[], down: readonly string[];
   if (key.mode === "major") {

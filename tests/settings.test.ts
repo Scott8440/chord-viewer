@@ -12,7 +12,10 @@ beforeEach(() => {
   writes = [];
   vi.stubGlobal("localStorage", {
     getItem: (k: string) => items.get(k) ?? null,
-    setItem: (k: string, v: string) => { writes.push(k); items.set(k, v); },
+    setItem: (k: string, v: string) => {
+      writes.push(k);
+      items.set(k, v);
+    },
   });
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -80,7 +83,14 @@ describe("saved settings", () => {
   });
 
   it("survive storage being unavailable", () => {
-    vi.stubGlobal("localStorage", { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); } });
+    vi.stubGlobal("localStorage", {
+      getItem() {
+        throw new Error("blocked");
+      },
+      setItem() {
+        throw new Error("blocked");
+      },
+    });
     const store = savingStore();
     expect(store.getState().settings).toEqual(createAppState().settings);
     expect(() => store.dispatch({ type: "setMode", mode: "scales" })).not.toThrow();
@@ -90,7 +100,11 @@ describe("saved settings", () => {
 describe("legacy saved settings", () => {
   it("reads an earlier version's scale options when there are no exercise options", () => {
     items.set("chordDisplay.scale", JSON.stringify({ key: "Eb:minor", minorForm: "harmonic", octaves: 2 }));
-    expect(createAppState(loadSettings(true)).settings.exercise).toMatchObject({ key: "Eb:minor", minorForm: "harmonic", octaves: 2 });
+    expect(createAppState(loadSettings(true)).settings.exercise).toMatchObject({
+      key: "Eb:minor",
+      minorForm: "harmonic",
+      octaves: 2,
+    });
     items.set("chordDisplay.exercise", JSON.stringify({ key: "G:major" }));
     expect(createAppState(loadSettings(true)).settings.exercise.key).toBe("G:major");
   });
@@ -109,7 +123,7 @@ describe("legacy saved settings", () => {
 });
 
 describe("renamed modes", () => {
-  it("opens sight reading for a mode saved under its old id, \"notes\"", () => {
+  it('opens sight reading for a mode saved under its old id, "notes"', () => {
     items.set("chordDisplay.mode", "notes");
     expect(createAppState(loadSettings(true)).settings.mode).toBe("reading");
     expect(createAppState({ mode: "notes" }).settings.mode).toBe("reading");
@@ -133,7 +147,10 @@ describe("saving", () => {
     store.dispatch({ type: "setLatency", ms: 20 });
     expect(writes.sort()).toEqual(["chordDisplay.latency", "chordDisplay.latencyCalibrated"]);
     writes.length = 0;
-    store.dispatch({ type: "input", event: { type: "noteOn", note: 60, velocity: 100, time: 0, source: "a", channel: 0 } });
+    store.dispatch({
+      type: "input",
+      event: { type: "noteOn", note: 60, velocity: 100, time: 0, source: "a", channel: 0 },
+    });
     store.dispatch({ type: "setExerciseOptions", options: { bpm: 100 } });
     store.dispatch({ type: "setPage", page: "progress" });
     expect(writes).toEqual([]);
@@ -170,8 +187,10 @@ describe("setters", () => {
 
   it("return the same state when the value is what's already set", () => {
     // Calibrated, so setting the same latency changes nothing either
-    for (const s of [createAppState({ latencyMs: 30, latencyCalibrated: true }),
-                     createAppState({ keyValue: "D:major", mode: "routines", latencyMs: 30, inversions: true })]) {
+    for (const s of [
+      createAppState({ latencyMs: 30, latencyCalibrated: true }),
+      createAppState({ keyValue: "D:major", mode: "routines", latencyMs: 30, inversions: true }),
+    ]) {
       for (const [type, action] of Object.entries(unchanged)) expect(reduceApp(s, action(s)), type).toBe(s);
     }
   });
@@ -199,8 +218,12 @@ describe("sameSetting", () => {
   });
 
   it("covers every setting: none holds anything deeper than an array", () => {
-    const flat = (v: unknown) => v === null || typeof v !== "object" ||
-      Object.values(v).every(x => x === null || typeof x !== "object" || (Array.isArray(x) && x.every(y => typeof y !== "object")));
+    const flat = (v: unknown) =>
+      v === null ||
+      typeof v !== "object" ||
+      Object.values(v).every(
+        x => x === null || typeof x !== "object" || (Array.isArray(x) && x.every(y => typeof y !== "object")),
+      );
     for (const [name, value] of Object.entries(createAppState().settings)) {
       if (name !== "key" && name in SETTINGS) expect(flat(value), name).toBe(true);
     }

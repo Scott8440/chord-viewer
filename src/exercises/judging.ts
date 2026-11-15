@@ -20,15 +20,29 @@ export interface Judged<P> {
 export type MoveOn<P> = { type: "next"; prompt: P } | { type: "skip"; prompt: P };
 
 /** Answered: counted, and right first time unless it was missed; `changes` are the drill's own */
-export const answeredRight = <S extends Judged<unknown>>(s: S, changes: Partial<S> = {}): S =>
-  ({ ...s, ...changes, status: "correct", answered: s.answered + 1, firstTry: s.firstTry + (s.missed ? 0 : 1) });
+export const answeredRight = <S extends Judged<unknown>>(s: S, changes: Partial<S> = {}): S => ({
+  ...s,
+  ...changes,
+  status: "correct",
+  answered: s.answered + 1,
+  firstTry: s.firstTry + (s.missed ? 0 : 1),
+});
 
 /** A wrong answer: the prompt waits, and is no longer right first time */
-export const answeredWrong = <S extends Judged<unknown>>(s: S, changes: Partial<S> = {}): S =>
-  ({ ...s, ...changes, status: "wrong", missed: true });
+export const answeredWrong = <S extends Judged<unknown>>(s: S, changes: Partial<S> = {}): S => ({
+  ...s,
+  ...changes,
+  status: "wrong",
+  missed: true,
+});
 
 /** On to a new prompt, with the drill's per-prompt fields reset (`fresh`). A skipped prompt counts as answered, but
  *  not right first time; skipping one already answered doesn't count it again */
-export const movedOn = <S extends Judged<P>, P>(s: S, a: MoveOn<P>, fresh: Partial<S> = {}): S =>
-  ({ ...s, ...fresh, prompt: a.prompt, status: "waiting", missed: false,
-     answered: a.type === "skip" && s.status !== "correct" ? s.answered + 1 : s.answered });
+export const movedOn = <S extends Judged<P>, P>(s: S, a: MoveOn<P>, fresh: Partial<S> = {}): S => ({
+  ...s,
+  ...fresh,
+  prompt: a.prompt,
+  status: "waiting",
+  missed: false,
+  answered: a.type === "skip" && s.status !== "correct" ? s.answered + 1 : s.answered,
+});

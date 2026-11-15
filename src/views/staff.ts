@@ -19,9 +19,11 @@ const STAVE_X = 26;
 const TOP = 34 + (56 - 38) * (LINE_SP / 2);
 const BOTTOM = 34 + (18 - 5) * (LINE_SP / 2);
 const GAP = 72;
-const TREBLE_Y = TOP, BASS_Y = TREBLE_Y + 4 * LINE_SP + GAP;
+const TREBLE_Y = TOP,
+  BASS_Y = TREBLE_Y + 4 * LINE_SP + GAP;
 const VIEW_H = BASS_Y + 4 * LINE_SP + BOTTOM;
-const VIEW_W = STAFF_W + 40, ROW_VIEW_W = ROW_STAFF_W + 40;
+const VIEW_W = STAFF_W + 40,
+  ROW_VIEW_W = ROW_STAFF_W + 40;
 /** Room kept above the treble staff for a row's high notes (up to about three ledger lines), clear of the circle */
 const ROW_TOP_ROOM = 30;
 /** The note column's width from its x: a cluster puts seconds side by side (two whole-note heads), and ledger lines
@@ -46,9 +48,17 @@ let corner: StaffCorner | null = null;
  * (the wider staff): the right half, above the room kept for the row's high notes.
  */
 export function staffCorner(row = false): StaffCorner {
-  if (row) return { viewWidth: ROW_VIEW_W, viewHeight: VIEW_H, left: STAVE_X + ROW_STAFF_W / 2, bottom: TREBLE_Y - ROW_TOP_ROOM };
+  if (row)
+    return {
+      viewWidth: ROW_VIEW_W,
+      viewHeight: VIEW_H,
+      left: STAVE_X + ROW_STAFF_W / 2,
+      bottom: TREBLE_Y - ROW_TOP_ROOM,
+    };
   if (!corner) {
-    const startX = Math.max(...["treble", "bass"].map(clef => new VF.Stave(STAVE_X, 0, STAFF_W).addClef(clef).getNoteStartX()));
+    const startX = Math.max(
+      ...["treble", "bass"].map(clef => new VF.Stave(STAVE_X, 0, STAFF_W).addClef(clef).getNoteStartX()),
+    );
     corner = { viewWidth: VIEW_W, viewHeight: VIEW_H, left: startX + NOTE_X + COLUMN_W, bottom: TREBLE_Y };
   }
   return corner;
@@ -64,7 +74,11 @@ export function staffCorner(row = false): StaffCorner {
  */
 export interface StaffRow {
   notes: readonly {
-    midi: number | readonly number[]; names?: readonly string[]; dim?: boolean; style?: "done" | "current" | "wrong"; at?: number;
+    midi: number | readonly number[];
+    names?: readonly string[];
+    dim?: boolean;
+    style?: "done" | "current" | "wrong";
+    at?: number;
   }[];
   slots: number;
   heldAt?: number | null;
@@ -73,7 +87,13 @@ export interface StaffRow {
 
 export interface StaffView {
   /** With a row, a melody across the grand staff; with music, a phrase as written on one staff instead */
-  render(notes: number[], result: Analysis | null, key: KeyContext | null, pedalOnly: ReadonlySet<number>, row?: StaffRow | StaffMusic | null): void;
+  render(
+    notes: number[],
+    result: Analysis | null,
+    key: KeyContext | null,
+    pedalOnly: ReadonlySet<number>,
+    row?: StaffRow | StaffMusic | null,
+  ): void;
 }
 
 const GREY = { fillStyle: "#9a968c", strokeStyle: "#9a968c" };
@@ -83,18 +103,25 @@ const ROW_STYLES = {
   wrong: { fillStyle: "#c8553d", strokeStyle: "#c8553d" },
 };
 /** Row mode: room kept clear at the row's start and end (viewBox units, from the note start) */
-const ROW_PAD = 12, ROW_END_PAD = 30;
+const ROW_PAD = 12,
+  ROW_END_PAD = 30;
 
 export function createStaffView(el: HTMLElement): StaffView {
   return {
     render(notes, result, key, pedalOnly, row) {
-      if (row && "staves" in row) { drawMusic(el, row, key); return; }
+      if (row && "staves" in row) {
+        drawMusic(el, row, key);
+        return;
+      }
       el.innerHTML = "";
-      const spelled: (SpelledNote & { grey: boolean; style?: keyof typeof ROW_STYLES })[] =
-        notes.map(n => ({ ...spellNote(n, result, key), grey: pedalOnly.has(n) }));
+      const spelled: (SpelledNote & { grey: boolean; style?: keyof typeof ROW_STYLES })[] = notes.map(n => ({
+        ...spellNote(n, result, key),
+        grey: pedalOnly.has(n),
+      }));
 
       const renderer = new VF.Renderer(el as HTMLDivElement, VF.Renderer.Backends.SVG);
-      const staffW = row ? ROW_STAFF_W : STAFF_W, viewW = staffW + 40;
+      const staffW = row ? ROW_STAFF_W : STAFF_W,
+        viewW = staffW + 40;
       renderer.resize(viewW, VIEW_H);
       const ctx = renderer.getContext();
       const svg = required<SVGSVGElement>(el, "svg");
@@ -109,7 +136,10 @@ export function createStaffView(el: HTMLElement): StaffView {
       const opts = { space_above_staff_ln: 0, space_below_staff_ln: 0 };
       const tStave = new VF.Stave(STAVE_X, TREBLE_Y, staffW, opts).addClef("treble");
       const bStave = new VF.Stave(STAVE_X, BASS_Y, staffW, opts).addClef("bass");
-      if (key) { tStave.addKeySignature(key.vfKey); bStave.addKeySignature(key.vfKey); }
+      if (key) {
+        tStave.addKeySignature(key.vfKey);
+        bStave.addKeySignature(key.vfKey);
+      }
       const startX = Math.max(tStave.getNoteStartX(), bStave.getNoteStartX());
       tStave.setNoteStartX(startX);
       bStave.setNoteStartX(startX);
@@ -126,12 +156,14 @@ export function createStaffView(el: HTMLElement): StaffView {
         const makeChord = (part: typeof spelled, clef: string, stave: VF.Stave) => {
           if (!part.length) return;
           const note = new VF.StaveNote({
-            clef, duration, auto_stem: true,
+            clef,
+            duration,
+            auto_stem: true,
             keys: part.map(n => `${n.letter.toLowerCase()}${n.acc}/${n.octave}`),
           });
           part.forEach((n, i) => {
             // Show an accidental only where the note differs from the key signature
-            const sig = key ? (key.sigAlter[n.letter] || 0) : 0;
+            const sig = key ? key.sigAlter[n.letter] || 0 : 0;
             if (n.alter !== sig) note.addModifier(new VF.Accidental(n.alter === 0 ? "n" : n.acc), i);
             if (n.grey) note.setKeyStyle(i, GREY);
             else if (n.style) note.setKeyStyle(i, ROW_STYLES[n.style]);
@@ -141,21 +173,34 @@ export function createStaffView(el: HTMLElement): StaffView {
           tc.addTickable(note);
           built.push(note);
         };
-        makeChord(list.filter(n => n.midi >= 60), "treble", tStave);
-        makeChord(list.filter(n => n.midi < 60), "bass", bStave);
+        makeChord(
+          list.filter(n => n.midi >= 60),
+          "treble",
+          tStave,
+        );
+        makeChord(
+          list.filter(n => n.midi < 60),
+          "bass",
+          bStave,
+        );
         if (built.length) {
           tc.preFormat().setX(x);
           built.forEach(n => n.draw());
         }
       };
 
-      if (!row) { column(spelled, NOTE_X); return; }
+      if (!row) {
+        column(spelled, NOTE_X);
+        return;
+      }
       // A melody: one step per slot across the staff, and the held notes at the next step
       const step = (STAVE_X + staffW - startX - ROW_PAD - ROW_END_PAD) / Math.max(1, row.slots - 1);
       row.notes.forEach((n, i) => {
         const midis = typeof n.midi === "number" ? [n.midi] : n.midi;
         const list = midis.map((m, j) => ({
-          ...(n.names?.[j] ? spelledAs(m, n.names[j]) : spellNote(m, null, key)), grey: !!n.dim, style: n.style,
+          ...(n.names?.[j] ? spelledAs(m, n.names[j]) : spellNote(m, null, key)),
+          grey: !!n.dim,
+          style: n.style,
         }));
         column(list, ROW_PAD + (n.at ?? i) * step, row.duration);
       });

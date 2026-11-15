@@ -23,7 +23,9 @@ export function createStore<S, A>(reducer: (state: S, action: A) => S, initial: 
     },
     subscribe(listener) {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
+      return () => {
+        listeners.delete(listener);
+      };
     },
   };
 }

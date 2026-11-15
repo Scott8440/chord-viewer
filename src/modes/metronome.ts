@@ -15,9 +15,11 @@ export function startMetronome(store: AppStore, views: { click: ClickPlayer; bea
   function drive(s: AppState) {
     const { metronome, bpm } = s.settings.exercise;
     const now = performance.now();
-    const next: Transport | null = !metronome ? null
-      : s.transport ? retempo(s.transport, bpm, now)
-      : startTransport(bpm, BEATS_PER_BAR, now + START_DELAY_MS);
+    const next: Transport | null = !metronome
+      ? null
+      : s.transport
+        ? retempo(s.transport, bpm, now)
+        : startTransport(bpm, BEATS_PER_BAR, now + START_DELAY_MS);
     if (next !== s.transport) store.dispatch({ type: "setTransport", transport: next });
   }
   function follow(t: Transport | null) {

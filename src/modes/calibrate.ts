@@ -1,6 +1,13 @@
 // Latency calibration, run from the metronome options: listens to the player tapping along to the click (exercises
 // ignore those notes meanwhile) and sets the latency from the result. See src/timing/calibration.ts.
-import { addTap, CALIBRATION_WARMUP, calibrationResult, measured, startCalibration, type CalibrationResult } from "../timing/calibration";
+import {
+  addTap,
+  CALIBRATION_WARMUP,
+  calibrationResult,
+  measured,
+  startCalibration,
+  type CalibrationResult,
+} from "../timing/calibration";
 import type { AppStore } from "./performance";
 
 export type CalibrationProgress =
@@ -21,14 +28,22 @@ export function startCalibrating(store: AppStore, progress: (p: CalibrationProgr
     store.dispatch({ type: "setCalibrating", on: false });
   }
   unsubscribe = store.subscribe((s, prev) => {
-    if (!s.transport) { finish(); progress({ kind: "cancelled" }); return; }
+    if (!s.transport) {
+      finish();
+      progress({ kind: "cancelled" });
+      return;
+    }
     if (s.history === prev.history) return;
     const event = s.history[s.history.length - 1];
     if (event.type !== "noteOn") return;
     cal = addTap(cal, s.transport, event.time);
     const result = calibrationResult(cal);
     if (!result) {
-      progress({ kind: "listening", warmupLeft: Math.max(0, CALIBRATION_WARMUP - cal.offsets.length), measured: measured(cal).length });
+      progress({
+        kind: "listening",
+        warmupLeft: Math.max(0, CALIBRATION_WARMUP - cal.offsets.length),
+        measured: measured(cal).length,
+      });
       return;
     }
     finish();

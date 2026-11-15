@@ -11,14 +11,26 @@ export interface ChordMatchOptions {
 export const DEFAULT_CHORD_MATCH: ChordMatchOptions = { allowOmissions: false };
 
 /** Whether the held notes are the prompted chord: every tone present (any octave or inversion), nothing extra. */
-export function isChord(notes: readonly number[], prompt: ChordPrompt, opts: ChordMatchOptions = DEFAULT_CHORD_MATCH): boolean {
+export function isChord(
+  notes: readonly number[],
+  prompt: ChordPrompt,
+  opts: ChordMatchOptions = DEFAULT_CHORD_MATCH,
+): boolean {
   return hasChordTones(notes, prompt, opts) && hasBass(notes, prompt);
 }
 
 /** The right notes, ignoring which one is in the bass. */
-export function hasChordTones(notes: readonly number[], prompt: ChordPrompt, opts: ChordMatchOptions = DEFAULT_CHORD_MATCH): boolean {
+export function hasChordTones(
+  notes: readonly number[],
+  prompt: ChordPrompt,
+  opts: ChordMatchOptions = DEFAULT_CHORD_MATCH,
+): boolean {
   if (!notes.length) return false;
-  const m = matchTemplate(notes.map(n => n % 12), prompt.rootPc, prompt.type);
+  const m = matchTemplate(
+    notes.map(n => n % 12),
+    prompt.rootPc,
+    prompt.type,
+  );
   return !m.missing.length && !m.extra.length && (opts.allowOmissions || !m.omitted.length);
 }
 
@@ -44,18 +56,28 @@ export interface ChordCorrections {
  * nearest wrong note within a whole step (closest pairs first), so C E G for Cm reads "replace E with Eb".
  */
 export function chordCorrections(notes: readonly number[], prompt: ChordPrompt): ChordCorrections {
-  const m = matchTemplate(notes.map(n => n % 12), prompt.rootPc, prompt.type);
+  const m = matchTemplate(
+    notes.map(n => n % 12),
+    prompt.rootPc,
+    prompt.type,
+  );
   const missing = [...m.missing, ...m.omitted].sort((a, b) => a.degree - b.degree);
   const pcOf = (t: TemplateTone) => (prompt.rootPc + t.pc) % 12;
-  const dist = (a: number, b: number) => { const d = Math.abs(a - b) % 12; return Math.min(d, 12 - d); };
-  const pairs = missing.flatMap((to, ti) => m.extra.map(from => ({ from, to, ti, d: dist(from, pcOf(to)) })))
+  const dist = (a: number, b: number) => {
+    const d = Math.abs(a - b) % 12;
+    return Math.min(d, 12 - d);
+  };
+  const pairs = missing
+    .flatMap((to, ti) => m.extra.map(from => ({ from, to, ti, d: dist(from, pcOf(to)) })))
     .filter(p => p.d <= REPLACE_MAX_SEMITONES)
     .sort((a, b) => a.d - b.d || a.ti - b.ti);
-  const usedFrom = new Set<number>(), usedTo = new Set<TemplateTone>();
+  const usedFrom = new Set<number>(),
+    usedTo = new Set<TemplateTone>();
   const replace: ChordCorrections["replace"] = [];
   for (const p of pairs) {
     if (usedFrom.has(p.from) || usedTo.has(p.to)) continue;
-    usedFrom.add(p.from); usedTo.add(p.to);
+    usedFrom.add(p.from);
+    usedTo.add(p.to);
     replace.push({ from: p.from, to: p.to });
   }
   replace.sort((a, b) => a.to.degree - b.to.degree);

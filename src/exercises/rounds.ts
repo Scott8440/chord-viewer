@@ -6,11 +6,16 @@ export const ROUND_SIZE = 20;
 export const ROUNDS_COMPARED = 10;
 
 /** The drill counters every ear mode keeps (answered includes skips) */
-export interface Counters { answered: number; firstTry: number }
+export interface Counters {
+  answered: number;
+  firstTry: number;
+}
 
 /** Where a round stands: prompts finished and right first time since it began */
-export const roundProgress = (start: Counters, now: Counters): Counters =>
-  ({ answered: now.answered - start.answered, firstTry: now.firstTry - start.firstTry });
+export const roundProgress = (start: Counters, now: Counters): Counters => ({
+  answered: now.answered - start.answered,
+  firstTry: now.firstTry - start.firstTry,
+});
 
 export const roundDone = (start: Counters, now: Counters) => roundProgress(start, now).answered >= ROUND_SIZE;
 
@@ -28,7 +33,8 @@ export interface RoundComparison {
 export function compareRound(share: number, earlier: readonly number[]): RoundComparison {
   const previous = earlier.slice(-ROUNDS_COMPARED);
   return {
-    share, previous,
+    share,
+    previous,
     last: previous.length ? previous[previous.length - 1] : null,
     best: previous.length ? Math.max(...previous) : null,
     average: previous.length ? previous.reduce((a, b) => a + b, 0) / previous.length : null,

@@ -28,16 +28,27 @@ describe("rounds", () => {
 });
 
 describe("the round keeper", () => {
-  const record = (body: RecordBody, at: number) => ({ ...body, id: `r${at}`, v: RECORD_VERSION, at, device: "d" }) as ProgressRecord;
+  const record = (body: RecordBody, at: number) =>
+    ({ ...body, id: `r${at}`, v: RECORD_VERSION, at, device: "d" }) as ProgressRecord;
   const round = (firstTry: number, setup = "types:M,m", drill = "chordEar") =>
     ({ kind: "round", drill, size: 20, firstTry, setup, durationMs: 60_000 }) as RecordBody;
 
   it("ends a round after ROUND_SIZE prompts, records it, and compares it with rounds played the same way", async () => {
-    const store = createMemoryStore([record(round(10), 1), record(round(14), 2), record(round(19, "types:M,m,dim"), 3), record(round(20, "types:M,m", "ear"), 4)]);
+    const store = createMemoryStore([
+      record(round(10), 1),
+      record(round(14), 2),
+      record(round(19, "types:M,m,dim"), 3),
+      record(round(20, "types:M,m", "ear"), 4),
+    ]);
     const recorded: RecordBody[] = [];
     let changes = 0;
-    const keeper = createRoundKeeper({ drill: "chordEar", setup: () => "types:M,m", history: Promise.resolve(store),
-      recorder: { record: b => recorded.push(b), onRecorded: () => () => {} }, changed: () => changes++ });
+    const keeper = createRoundKeeper({
+      drill: "chordEar",
+      setup: () => "types:M,m",
+      history: Promise.resolve(store),
+      recorder: { record: b => recorded.push(b), onRecorded: () => () => {} },
+      changed: () => changes++,
+    });
     keeper.next({ answered: 5, firstTry: 3 });
     expect(keeper.check({ answered: 24, firstTry: 18 })).toBe(false);
     expect(keeper.check({ answered: 25, firstTry: 19 })).toBe(true);
@@ -51,7 +62,9 @@ describe("the round keeper", () => {
     expect(changes).toBeGreaterThan(before);
     // Only the two earlier rounds of this drill with these options count
     expect(keeper.summary()!.comparison).toMatchObject({ share: 0.8, previous: [0.5, 0.7], last: 0.7, best: 0.7 });
-    expect(recorded).toEqual([{ kind: "round", drill: "chordEar", size: 20, firstTry: 16, setup: "types:M,m", durationMs: expect.any(Number) }]);
+    expect(recorded).toEqual([
+      { kind: "round", drill: "chordEar", size: 20, firstTry: 16, setup: "types:M,m", durationMs: expect.any(Number) },
+    ]);
     // Still over until the next round begins
     expect(keeper.check({ answered: 26, firstTry: 20 })).toBe(true);
     keeper.next({ answered: 26, firstTry: 20 });
@@ -62,14 +75,19 @@ describe("the round keeper", () => {
 
   it("keeps each prompt's outcome in order, and the earlier rounds' average to beat", async () => {
     const store = createMemoryStore([record(round(10), 1), record(round(14), 2)]);
-    const keeper = createRoundKeeper({ drill: "chordEar", setup: () => "types:M,m", history: Promise.resolve(store),
-      recorder: { record: () => {}, onRecorded: () => () => {} }, changed: () => {} });
+    const keeper = createRoundKeeper({
+      drill: "chordEar",
+      setup: () => "types:M,m",
+      history: Promise.resolve(store),
+      recorder: { record: () => {}, onRecorded: () => () => {} },
+      changed: () => {},
+    });
     await new Promise(r => setTimeout(r, 0));
     expect(keeper.average()).toBeCloseTo(0.6);
     keeper.check({ answered: 1, firstTry: 1 });
     keeper.check({ answered: 2, firstTry: 1 });
     keeper.check({ answered: 3, firstTry: 1 }, true);
-    keeper.check({ answered: 3, firstTry: 1 });   // nothing new: no outcome
+    keeper.check({ answered: 3, firstTry: 1 }); // nothing new: no outcome
     expect(keeper.outcomes()).toEqual(["firstTry", "corrected", "skipped"]);
     keeper.next({ answered: 3, firstTry: 1 });
     expect(keeper.outcomes()).toEqual([]);
@@ -78,8 +96,14 @@ describe("the round keeper", () => {
   it("shows the summary SUMMARY_DELAY_MS after the last answer, at once after a skip, never after the mode stops", () => {
     vi.useFakeTimers();
     try {
-      const make = () => createRoundKeeper({ drill: "ear", setup: () => "", history: null,
-        recorder: { record: () => {}, onRecorded: () => () => {} }, changed: () => {} });
+      const make = () =>
+        createRoundKeeper({
+          drill: "ear",
+          setup: () => "",
+          history: null,
+          recorder: { record: () => {}, onRecorded: () => () => {} },
+          changed: () => {},
+        });
       const answered = make();
       answered.check({ answered: ROUND_SIZE, firstTry: 3 });
       vi.advanceTimersByTime(SUMMARY_DELAY_MS - 1);
@@ -95,20 +119,44 @@ describe("the round keeper", () => {
       stopped.dispose();
       vi.advanceTimersByTime(SUMMARY_DELAY_MS);
       expect(stopped.summary()).toBeNull();
-    } finally { vi.useRealTimers(); }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("reads the history once per keeper, adding each round it finishes, through rounds and new options", async () => {
-    const store = createMemoryStore([record(round(10), 1), record(round(14), 2), record(round(4, "types:M,m,dim"), 3),
-      record({ kind: "drill", drill: "chordEar", prompt: "Major", outcome: "firstTry", ms: 1 } as RecordBody, 4)]);
+    const store = createMemoryStore([
+      record(round(10), 1),
+      record(round(14), 2),
+      record(round(4, "types:M,m,dim"), 3),
+      record({ kind: "drill", drill: "chordEar", prompt: "Major", outcome: "firstTry", ms: 1 } as RecordBody, 4),
+    ]);
     const reads = { all: 0, ofKind: 0 };
-    const spy = { ...store,
-      all: () => { reads.all++; return store.all(); },
-      ofKind: ((kind: ProgressRecord["kind"]) => { reads.ofKind++; return store.ofKind(kind); }) as typeof store.ofKind };
+    const spy = {
+      ...store,
+      all: () => {
+        reads.all++;
+        return store.all();
+      },
+      ofKind: ((kind: ProgressRecord["kind"]) => {
+        reads.ofKind++;
+        return store.ofKind(kind);
+      }) as typeof store.ofKind,
+    };
     let setup = "types:M,m";
     const recorded: RecordBody[] = [];
-    const keeper = createRoundKeeper({ drill: "chordEar", setup: () => setup, history: Promise.resolve(spy),
-      recorder: { record: b => { recorded.push(b); }, onRecorded: () => () => {} }, changed: () => {} });
+    const keeper = createRoundKeeper({
+      drill: "chordEar",
+      setup: () => setup,
+      history: Promise.resolve(spy),
+      recorder: {
+        record: b => {
+          recorded.push(b);
+        },
+        onRecorded: () => () => {},
+      },
+      changed: () => {},
+    });
     const tick = () => new Promise(r => setTimeout(r, 0));
     await tick();
     expect(keeper.average()).toBeCloseTo(0.6);
@@ -132,19 +180,34 @@ describe("the round keeper", () => {
     keeper.check({ answered: 60, firstTry: 46 }, true);
     await tick();
     expect(keeper.summary()!.comparison).toMatchObject({ share: 1, previous: [0.2] });
-    expect(recorded.map(b => b.kind === "round" && [b.firstTry, b.setup])).toEqual([[16, "types:M,m"], [10, "types:M,m"], [20, "types:M,m,dim"]]);
+    expect(recorded.map(b => b.kind === "round" && [b.firstTry, b.setup])).toEqual([
+      [16, "types:M,m"],
+      [10, "types:M,m"],
+      [20, "types:M,m,dim"],
+    ]);
     expect(reads).toEqual({ all: 0, ofKind: 1 });
   });
 
   it("without the history, compares with nothing (logged) and tries reading again next time", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      let fail = true, reads = 0;
+      let fail = true,
+        reads = 0;
       const store = createMemoryStore([record(round(10), 1)]);
-      const spy = { ...store,
-        ofKind: ((kind: ProgressRecord["kind"]) => { reads++; return fail ? Promise.reject(new Error("no")) : store.ofKind(kind); }) as typeof store.ofKind };
-      const keeper = createRoundKeeper({ drill: "chordEar", setup: () => "types:M,m", history: Promise.resolve(spy),
-        recorder: { record: () => {}, onRecorded: () => () => {} }, changed: () => {} });
+      const spy = {
+        ...store,
+        ofKind: ((kind: ProgressRecord["kind"]) => {
+          reads++;
+          return fail ? Promise.reject(new Error("no")) : store.ofKind(kind);
+        }) as typeof store.ofKind,
+      };
+      const keeper = createRoundKeeper({
+        drill: "chordEar",
+        setup: () => "types:M,m",
+        history: Promise.resolve(spy),
+        recorder: { record: () => {}, onRecorded: () => () => {} },
+        changed: () => {},
+      });
       const tick = () => new Promise(r => setTimeout(r, 0));
       await tick();
       expect(keeper.average()).toBeNull();
@@ -157,7 +220,9 @@ describe("the round keeper", () => {
       await tick();
       expect(keeper.average()).toBeCloseTo(0.5);
       expect(reads).toBe(3);
-    } finally { error.mockRestore(); }
+    } finally {
+      error.mockRestore();
+    }
   });
 
   it("round records survive reading back", () => {
@@ -168,16 +233,28 @@ describe("the round keeper", () => {
 
 describe("the round's summary", () => {
   it("the share, then how it compares (first round, up, down)", () => {
-    const first = roundSummaryDisplay({ size: 20, firstTry: 15, durationMs: 125_000, comparison: compareRound(0.75, []) }, "Chord qualities");
+    const first = roundSummaryDisplay(
+      { size: 20, firstTry: 15, durationMs: 125_000, comparison: compareRound(0.75, []) },
+      "Chord qualities",
+    );
     expect(first).toMatchObject({ label: "Chord qualities: round complete", skipLabel: "Next round", score: "" });
     expect(first.promptHtml).toContain(">75%<");
     expect(first.promptHtml).toContain("15 of 20 right first time · 2:05");
     expect(first.sub).toBe("Your first round played this way: the next ones will be compared with it.");
-    const up = roundSummaryDisplay({ size: 20, firstTry: 17, durationMs: 1, comparison: compareRound(0.85, [0.6, 0.75]) }, "X");
+    const up = roundSummaryDisplay(
+      { size: 20, firstTry: 17, durationMs: 1, comparison: compareRound(0.85, [0.6, 0.75]) },
+      "X",
+    );
     expect(up.sub).toBe("▲ 10 points on your last round · best 75% · average 68% over your last 2 rounds");
     expect(up.promptHtml).toContain('class="roundBars"');
-    const down = roundSummaryDisplay({ size: 20, firstTry: 10, durationMs: 1, comparison: compareRound(0.5, [0.6]) }, "X");
-    expect(down).toMatchObject({ sub: "▼ 10 points on your last round · best 60% · average 60% over your last 1 round", status: "waiting" });
+    const down = roundSummaryDisplay(
+      { size: 20, firstTry: 10, durationMs: 1, comparison: compareRound(0.5, [0.6]) },
+      "X",
+    );
+    expect(down).toMatchObject({
+      sub: "▼ 10 points on your last round · best 60% · average 60% over your last 1 round",
+      status: "waiting",
+    });
     // While the earlier rounds are being read
     expect(roundSummaryDisplay({ size: 20, firstTry: 10, durationMs: 1, comparison: null }, "X").sub).toBe("");
   });
@@ -193,7 +270,13 @@ describe("the round's score while playing", () => {
   it("dots: one per prompt, coloured by outcome, the rest hollow, the next one marked", () => {
     const svg = dotsSvg(m);
     expect(svg.match(/<circle/g)).toHaveLength(ROUND_SIZE);
-    expect([...svg.matchAll(/class="dot ([a-zA-Z]+)/g)].slice(0, 5).map(x => x[1])).toEqual(["firstTry", "corrected", "skipped", "firstTry", "todo"]);
+    expect([...svg.matchAll(/class="dot ([a-zA-Z]+)/g)].slice(0, 5).map(x => x[1])).toEqual([
+      "firstTry",
+      "corrected",
+      "skipped",
+      "firstTry",
+      "todo",
+    ]);
     expect(svg).toContain('class="dot todo next"');
   });
 

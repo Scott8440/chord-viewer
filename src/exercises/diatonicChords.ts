@@ -19,15 +19,22 @@ export function diatonicChordsExercise(key: KeyContext, opts: DiatonicOptions): 
   const keyValue = `${key.tonic}:${key.mode}`;
   const diatonic = diatonicChords(key).filter(c => TRIAD_TYPES.has(c.type) !== opts.sevenths);
   const chords = diatonic.map(c => {
-    const chord = { rootPc: c.rootPc, root: c.root, type: c.type, roman: { numeral: c.numeral, keyValue, filterIgnored: false } };
+    const chord = {
+      rootPc: c.rootPc,
+      root: c.root,
+      type: c.type,
+      roman: { numeral: c.numeral, keyValue, filterIgnored: false },
+    };
     return opts.rootPosition ? atInversion(chord, 0) : chord;
   });
   const kind = opts.sevenths ? "seventh chords" : "triads";
-  const first = diatonic[0].numeral, last = diatonic[diatonic.length - 1].numeral;
+  const first = diatonic[0].numeral,
+    last = diatonic[diatonic.length - 1].numeral;
   return {
     id: `diatonic:${keyValue}:${opts.sevenths ? 7 : 3}:${opts.rootPosition ? "root" : "any"}`,
     title: `${key.tonic} ${key.mode} ${opts.sevenths ? "sevenths" : "triads"}`,
-    instruction: `Play the diatonic ${kind} of ${key.tonic} ${key.mode} in order, ${first} up to ${last} and back to ${first}, ` +
+    instruction:
+      `Play the diatonic ${kind} of ${key.tonic} ${key.mode} in order, ${first} up to ${last} and back to ${first}, ` +
       (opts.rootPosition ? "each in root position" : "in any voicing"),
     basePc: key.tonicPc,
     keyValue,

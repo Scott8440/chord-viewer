@@ -14,8 +14,12 @@ export { PROMPTS_PER_KEY };
 
 /** The degrees of the major scale that can be asked for, in the filter's order. Ids are what's saved. */
 export const EAR_DEGREES: readonly { id: string; label: string; semitones: number }[] = [
-  { id: "1", label: "1", semitones: 0 }, { id: "2", label: "2", semitones: 2 }, { id: "3", label: "3", semitones: 4 },
-  { id: "4", label: "4", semitones: 5 }, { id: "5", label: "5", semitones: 7 }, { id: "6", label: "6", semitones: 9 },
+  { id: "1", label: "1", semitones: 0 },
+  { id: "2", label: "2", semitones: 2 },
+  { id: "3", label: "3", semitones: 4 },
+  { id: "4", label: "4", semitones: 5 },
+  { id: "5", label: "5", semitones: 7 },
+  { id: "6", label: "6", semitones: 9 },
   { id: "7", label: "7", semitones: 11 },
 ];
 export const DEFAULT_EAR_DEGREES: readonly string[] = ["1", "5"];
@@ -51,20 +55,23 @@ export function sanitizeEarDegrees(ids: readonly unknown[]): string[] {
 }
 
 export function sanitizeEarOptions(raw: unknown): EarOptions {
-  const o = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return {
-    tonic: EAR_TONICS.includes(o.tonic as string) ? o.tonic as string : "random",
+    tonic: EAR_TONICS.includes(o.tonic as string) ? (o.tonic as string) : "random",
     degrees: sanitizeEarDegrees(Array.isArray(o.degrees) ? o.degrees : DEFAULT_EAR_DEGREES),
-    melodyLength: MELODY_LENGTHS.includes(o.melodyLength as number) ? o.melodyLength as number : DEFAULT_MELODY_LENGTH,
+    melodyLength: MELODY_LENGTHS.includes(o.melodyLength as number)
+      ? (o.melodyLength as number)
+      : DEFAULT_MELODY_LENGTH,
   };
 }
 
 /** Picks the drone's tonic: the chosen one, or a random one (not the previous one) */
-export const pickTonic = (rng: Rng, choice: string, previous?: string): string => pickKey(rng, choice, KEY_MAJORS, previous);
+export const pickTonic = (rng: Rng, choice: string, previous?: string): string =>
+  pickKey(rng, choice, KEY_MAJORS, previous);
 
 /** MIDI note of the tonic the prompt notes are played from: F♯3 up to F4, around the middle of the keyboard */
 const LOWEST_TONIC = 54;
-export const tonicMidi = (tonic: string) => LOWEST_TONIC + ((chromaOf(tonic) - LOWEST_TONIC) % 12 + 12) % 12;
+export const tonicMidi = (tonic: string) => LOWEST_TONIC + ((((chromaOf(tonic) - LOWEST_TONIC) % 12) + 12) % 12);
 
 /** A note-practice prompt (pitch class and its name in the key), judged the same way: any octave */
 export interface EarPrompt extends NotePrompt {
@@ -88,12 +95,18 @@ export const EAR_OCTAVES = 2;
  */
 export function makeEarPrompt(rng: Rng, tonic: string, degrees: readonly string[], previous?: EarPrompt): EarPrompt {
   const pool = EAR_DEGREES.filter(d => degrees.includes(d.id));
-  let d: typeof pool[number], note: number;
+  let d: (typeof pool)[number], note: number;
   do {
     d = pick(rng, pool);
     note = tonicMidi(tonic) + d.semitones + 12 * randomInt(rng, EAR_OCTAVES);
   } while (previous && note === previous.note);
-  return { keyValue: tonic + ":major", degree: d.id, note, pc: note % 12, name: requireKey(tonic + ":major").spell[note % 12] };
+  return {
+    keyValue: tonic + ":major",
+    degree: d.id,
+    note,
+    pc: note % 12,
+    name: requireKey(tonic + ":major").spell[note % 12],
+  };
 }
 
 /* ---------------------------------------------------------------
@@ -120,13 +133,23 @@ export interface MelodyPrompt {
  * root (when degree 1 is allowed), and no note straight after itself (unless it's the only one). Never the same
  * melody twice running.
  */
-export function makeMelodyPrompt(rng: Rng, tonic: string, degrees: readonly string[], length: number,
-                                 previous?: MelodyPrompt): MelodyPrompt {
+export function makeMelodyPrompt(
+  rng: Rng,
+  tonic: string,
+  degrees: readonly string[],
+  length: number,
+  previous?: MelodyPrompt,
+): MelodyPrompt {
   const key = requireKey(tonic + ":major");
   const root = tonicMidi(tonic);
   const pool = EAR_DEGREES.filter(d => degrees.includes(d.id)).map(d => ({ degree: d.id, note: root + d.semitones }));
   if (degrees.includes("1")) pool.push({ degree: "1", note: root + 12 });
-  const note = (degree: string, midi: number): MelodyNote => ({ degree, note: midi, pc: midi % 12, name: key.spell[midi % 12] });
+  const note = (degree: string, midi: number): MelodyNote => ({
+    degree,
+    note: midi,
+    pc: midi % 12,
+    name: key.spell[midi % 12],
+  });
   for (let tries = 0; ; tries++) {
     const notes: MelodyNote[] = [note("1", root)];
     for (let i = 0; i < length; i++) {
@@ -135,8 +158,11 @@ export function makeMelodyPrompt(rng: Rng, tonic: string, degrees: readonly stri
       const c = pick(rng, fresh.length ? fresh : pool);
       notes.push(note(c.degree, c.note));
     }
-    const same = previous && previous.keyValue === tonic + ":major" &&
-      previous.notes.length === notes.length && previous.notes.every((n, i) => n.note === notes[i].note);
+    const same =
+      previous &&
+      previous.keyValue === tonic + ":major" &&
+      previous.notes.length === notes.length &&
+      previous.notes.every((n, i) => n.note === notes[i].note);
     // With very few notes on offer a repeat may be unavoidable
     if (!same || tries > 20) return { keyValue: tonic + ":major", notes };
   }
@@ -162,7 +188,7 @@ export function initialMelody<P extends PlaybackPrompt>(prompt: P): MelodyState<
 
 export function reduceMelody<P extends PlaybackPrompt>(s: MelodyState<P>, a: MelodyAction<P>): MelodyState<P> {
   if (a.type !== "play") return movedOn(s, a, { index: 0, played: null });
-  if (s.status === "correct") return s;   // done; ignore notes until the next melody
+  if (s.status === "correct") return s; // done; ignore notes until the next melody
   // The exact note, octave included: the melody's shape is part of it
   if (a.note !== s.prompt.notes[s.index].note) return answeredWrong(s, { played: a.note });
   const index = s.index + 1;

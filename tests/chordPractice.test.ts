@@ -2,16 +2,26 @@
 import { describe, expect, it } from "vitest";
 import { chordCorrections, isChord } from "../src/exercises/chordMatch";
 import {
-  CHORD_PRACTICE_TYPES, type ChordPracticeAction, type ChordPracticeState, initialChordPractice, makeChordPrompt, reduceChordPractice, sanitizeChordTypes,
+  CHORD_PRACTICE_TYPES,
+  type ChordPracticeAction,
+  type ChordPracticeState,
+  initialChordPractice,
+  makeChordPrompt,
+  reduceChordPractice,
+  sanitizeChordTypes,
 } from "../src/exercises/chordPractice";
 import type { ChordPrompt } from "../src/exercises/chordPrompt";
 import { createAppState, reduceApp } from "../src/state/app";
 import { chordPracticeDisplay } from "../src/views/practice";
 import { buildKey, templateById } from "../src/theory";
 
-const seq = (...values: number[]) => { let i = 0; return () => values[i++ % values.length]; };
+const seq = (...values: number[]) => {
+  let i = 0;
+  return () => values[i++ % values.length];
+};
 const Cmaj7: ChordPrompt = { rootPc: 0, root: "C", type: "maj7" };
-const run = (s: ChordPracticeState, ...actions: ChordPracticeAction[]) => actions.reduce((x, a) => reduceChordPractice(x, a), s);
+const run = (s: ChordPracticeState, ...actions: ChordPracticeAction[]) =>
+  actions.reduce((x, a) => reduceChordPractice(x, a), s);
 const held = (...notes: number[]): ChordPracticeAction => ({ type: "held", notes });
 
 describe("chord types", () => {
@@ -22,7 +32,7 @@ describe("chord types", () => {
   it("sanitizing keeps known types in display order and never returns an empty list", () => {
     expect(sanitizeChordTypes(["maj7", "bogus", "M"])).toEqual(["M", "maj7"]);
     expect(sanitizeChordTypes([])).toEqual(["M", "m"]);
-    expect(sanitizeChordTypes(["13"])).toEqual(["M", "m"]);   // a template, but not offered for practice
+    expect(sanitizeChordTypes(["13"])).toEqual(["M", "m"]); // a template, but not offered for practice
   });
 
   it("app settings default to major and minor and accept a new filter", () => {
@@ -36,7 +46,10 @@ describe("makeChordPrompt", () => {
   it("only uses the allowed types", () => {
     const seen = new Set<string>();
     let p: ChordPrompt | undefined;
-    for (let i = 0; i < 300; i++) { p = makeChordPrompt(Math.random, ["M", "maj7"], null, p); seen.add(p.type); }
+    for (let i = 0; i < 300; i++) {
+      p = makeChordPrompt(Math.random, ["M", "maj7"], null, p);
+      seen.add(p.type);
+    }
     expect([...seen].sort()).toEqual(["M", "maj7"]);
   });
 
@@ -54,15 +67,15 @@ describe("makeChordPrompt", () => {
 
 describe("isChord", () => {
   it("accepts any voicing, inversion or octave, with doubled notes", () => {
-    expect(isChord([48, 52, 55, 59], Cmaj7)).toBe(true);           // close
-    expect(isChord([40, 55, 59, 60, 64], Cmaj7)).toBe(true);       // first inversion, doubled E
-    expect(isChord([36, 59, 64, 67, 72], Cmaj7)).toBe(true);       // spread
+    expect(isChord([48, 52, 55, 59], Cmaj7)).toBe(true); // close
+    expect(isChord([40, 55, 59, 60, 64], Cmaj7)).toBe(true); // first inversion, doubled E
+    expect(isChord([36, 59, 64, 67, 72], Cmaj7)).toBe(true); // spread
   });
 
   it("rejects missing or extra tones, and by default a left-out 5th", () => {
-    expect(isChord([48, 52, 55], Cmaj7)).toBe(false);              // no 7th
-    expect(isChord([48, 52, 55, 59, 62], Cmaj7)).toBe(false);      // extra D
-    expect(isChord([48, 52, 59], Cmaj7)).toBe(false);              // no 5th
+    expect(isChord([48, 52, 55], Cmaj7)).toBe(false); // no 7th
+    expect(isChord([48, 52, 55, 59, 62], Cmaj7)).toBe(false); // extra D
+    expect(isChord([48, 52, 59], Cmaj7)).toBe(false); // no 5th
     expect(isChord([48, 52, 59], Cmaj7, { allowOmissions: true })).toBe(true);
     expect(isChord([], Cmaj7)).toBe(false);
   });
@@ -94,7 +107,11 @@ describe("reduceChordPractice", () => {
   });
 
   it("after a new prompt, letting go of the previous chord is not a wrong attempt", () => {
-    let s = run(start, held(48, 52, 55, 59), { type: "next", prompt: { rootPc: 2, root: "D", type: "m" }, held: [48, 52, 55, 59] });
+    let s = run(start, held(48, 52, 55, 59), {
+      type: "next",
+      prompt: { rootPc: 2, root: "D", type: "m" },
+      held: [48, 52, 55, 59],
+    });
     expect(s).toMatchObject({ status: "waiting", answered: 1, firstTry: 1 });
     s = run(s, held(48, 52), held());
     expect(s).toMatchObject({ status: "waiting", missed: false });
@@ -102,7 +119,11 @@ describe("reduceChordPractice", () => {
 
   it("accepts the next chord reached legato from the previous one", () => {
     // Cmaj7 held; the next prompt is C major: lifting the B leaves C E G
-    let s = run(start, held(48, 52, 55, 59), { type: "next", prompt: { rootPc: 0, root: "C", type: "M" }, held: [48, 52, 55, 59] });
+    let s = run(start, held(48, 52, 55, 59), {
+      type: "next",
+      prompt: { rootPc: 0, root: "C", type: "M" },
+      held: [48, 52, 55, 59],
+    });
     s = run(s, held(48, 52, 55));
     expect(s).toMatchObject({ status: "correct", answered: 2, firstTry: 2 });
   });
@@ -116,7 +137,9 @@ describe("reduceChordPractice", () => {
 describe("chordCorrections", () => {
   const Cm: ChordPrompt = { rootPc: 0, root: "C", type: "m" };
   const pcs = (fix: ReturnType<typeof chordCorrections>) => ({
-    replace: fix.replace.map(r => [r.from, r.to.degree]), add: fix.add.map(t => t.degree), remove: fix.remove,
+    replace: fix.replace.map(r => [r.from, r.to.degree]),
+    add: fix.add.map(t => t.degree),
+    remove: fix.remove,
   });
 
   it("pairs a wrong note with the missing tone a half step away", () => {
@@ -127,7 +150,14 @@ describe("chordCorrections", () => {
     const Csus4: ChordPrompt = { rootPc: 0, root: "C", type: "sus4" };
     expect(pcs(chordCorrections([48, 52, 55], Csus4))).toEqual({ replace: [[4, 4]], add: [], remove: [] });
     // Cmaj7 from C Eb A: Eb -> E (half step); A is a whole step from both G and B, so the lower tone wins
-    expect(pcs(chordCorrections([48, 51, 57], Cmaj7))).toEqual({ replace: [[3, 3], [9, 5]], add: [7], remove: [] });
+    expect(pcs(chordCorrections([48, 51, 57], Cmaj7))).toEqual({
+      replace: [
+        [3, 3],
+        [9, 5],
+      ],
+      add: [7],
+      remove: [],
+    });
     // far-away wrong note is removed, not "replaced"
     expect(pcs(chordCorrections([48, 52, 55, 61], Cmaj7))).toEqual({ replace: [[1, 7]], add: [], remove: [] });
     expect(pcs(chordCorrections([48, 52, 55, 66], Cmaj7))).toEqual({ replace: [], add: [7], remove: [6] });
@@ -135,14 +165,18 @@ describe("chordCorrections", () => {
 
   it("uses each wrong note and each missing tone at most once", () => {
     // C Db D Eb G for C major: E is a half step from Eb and a whole step from D; only one may move
-    expect(pcs(chordCorrections([48, 49, 50, 51, 55], { rootPc: 0, root: "C", type: "M" })))
-      .toEqual({ replace: [[3, 3]], add: [], remove: [1, 2] });
+    expect(pcs(chordCorrections([48, 49, 50, 51, 55], { rootPc: 0, root: "C", type: "M" }))).toEqual({
+      replace: [[3, 3]],
+      add: [],
+      remove: [1, 2],
+    });
   });
 });
 
 describe("chord feedback", () => {
   const wrongAfter = (prompt: ChordPrompt, notes: number[], key: string | null = null) =>
-    chordPracticeDisplay(run(initialChordPractice(prompt), held(...notes), held()), key ? buildKey(key) : null).feedback;
+    chordPracticeDisplay(run(initialChordPractice(prompt), held(...notes), held()), key ? buildKey(key) : null)
+      .feedback;
 
   it("says what to replace", () => {
     expect(wrongAfter({ rootPc: 0, root: "C", type: "m" }, [48, 52, 55])).toBe("✗ That was C. Replace E with E♭");
@@ -158,6 +192,8 @@ describe("chord feedback", () => {
   });
 
   it("spells chord tones from the prompt and wrong notes from the key", () => {
-    expect(wrongAfter({ rootPc: 1, root: "Db", type: "maj7" }, [49, 53, 56, 59])).toBe("✗ That was D♭7. Replace B with C");
+    expect(wrongAfter({ rootPc: 1, root: "Db", type: "maj7" }, [49, 53, 56, 59])).toBe(
+      "✗ That was D♭7. Replace B with C",
+    );
   });
 });

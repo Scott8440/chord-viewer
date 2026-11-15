@@ -9,19 +9,35 @@ import { pick, type Rng } from "./random";
  */
 const DIATONIC: Record<"major" | "minor", readonly { numeral: string; type: string; degree: number }[]> = {
   major: [
-    { numeral: "I", type: "M", degree: 0 }, { numeral: "ii", type: "m", degree: 1 }, { numeral: "iii", type: "m", degree: 2 },
-    { numeral: "IV", type: "M", degree: 3 }, { numeral: "V", type: "M", degree: 4 }, { numeral: "vi", type: "m", degree: 5 },
+    { numeral: "I", type: "M", degree: 0 },
+    { numeral: "ii", type: "m", degree: 1 },
+    { numeral: "iii", type: "m", degree: 2 },
+    { numeral: "IV", type: "M", degree: 3 },
+    { numeral: "V", type: "M", degree: 4 },
+    { numeral: "vi", type: "m", degree: 5 },
     { numeral: "vii°", type: "dim", degree: 6 },
-    { numeral: "Imaj7", type: "maj7", degree: 0 }, { numeral: "ii7", type: "m7", degree: 1 }, { numeral: "iii7", type: "m7", degree: 2 },
-    { numeral: "IVmaj7", type: "maj7", degree: 3 }, { numeral: "V7", type: "7", degree: 4 }, { numeral: "vi7", type: "m7", degree: 5 },
+    { numeral: "Imaj7", type: "maj7", degree: 0 },
+    { numeral: "ii7", type: "m7", degree: 1 },
+    { numeral: "iii7", type: "m7", degree: 2 },
+    { numeral: "IVmaj7", type: "maj7", degree: 3 },
+    { numeral: "V7", type: "7", degree: 4 },
+    { numeral: "vi7", type: "m7", degree: 5 },
     { numeral: "viiø7", type: "m7b5", degree: 6 },
   ],
   minor: [
-    { numeral: "i", type: "m", degree: 0 }, { numeral: "ii°", type: "dim", degree: 1 }, { numeral: "III", type: "M", degree: 2 },
-    { numeral: "iv", type: "m", degree: 3 }, { numeral: "V", type: "M", degree: 4 }, { numeral: "VI", type: "M", degree: 5 },
+    { numeral: "i", type: "m", degree: 0 },
+    { numeral: "ii°", type: "dim", degree: 1 },
+    { numeral: "III", type: "M", degree: 2 },
+    { numeral: "iv", type: "m", degree: 3 },
+    { numeral: "V", type: "M", degree: 4 },
+    { numeral: "VI", type: "M", degree: 5 },
     { numeral: "vii°", type: "dim", degree: 6 },
-    { numeral: "i7", type: "m7", degree: 0 }, { numeral: "iiø7", type: "m7b5", degree: 1 }, { numeral: "IIImaj7", type: "maj7", degree: 2 },
-    { numeral: "iv7", type: "m7", degree: 3 }, { numeral: "V7", type: "7", degree: 4 }, { numeral: "VImaj7", type: "maj7", degree: 5 },
+    { numeral: "i7", type: "m7", degree: 0 },
+    { numeral: "iiø7", type: "m7b5", degree: 1 },
+    { numeral: "IIImaj7", type: "maj7", degree: 2 },
+    { numeral: "iv7", type: "m7", degree: 3 },
+    { numeral: "V7", type: "7", degree: 4 },
+    { numeral: "VImaj7", type: "maj7", degree: 5 },
     { numeral: "vii°7", type: "dim7", degree: 6 },
   ],
 };
@@ -40,7 +56,12 @@ const TRIAD_TYPES = ["M", "m", "dim"];
 export const ALL_KEYS = [...KEY_MAJORS.map(t => t + ":major"), ...KEY_MINORS.map(t => t + ":minor")];
 
 /** A diatonic chord of the key (the same pick as `makeRomanPrompt`), asked for by its chord name */
-export function makeDiatonicNamePrompt(rng: Rng, types: readonly string[], key: KeyContext, previous?: ChordPrompt): ChordPrompt {
+export function makeDiatonicNamePrompt(
+  rng: Rng,
+  types: readonly string[],
+  key: KeyContext,
+  previous?: ChordPrompt,
+): ChordPrompt {
   const { rootPc, root, type, roman } = makeRomanPrompt(rng, types, key, previous);
   return { rootPc, root, type, inKey: { keyValue: roman.keyValue, filterIgnored: roman.filterIgnored } };
 }
@@ -50,8 +71,12 @@ export function makeDiatonicNamePrompt(rng: Rng, types: readonly string[], key: 
  * limited to the allowed types. If none of those types occur in the key, any diatonic triad is used.
  * Never the same chord twice in a row.
  */
-export function makeRomanPrompt(rng: Rng, types: readonly string[], key: KeyContext | null,
-                                previous?: ChordPrompt): ChordPrompt & { roman: RomanPrompt } {
+export function makeRomanPrompt(
+  rng: Rng,
+  types: readonly string[],
+  key: KeyContext | null,
+  previous?: ChordPrompt,
+): ChordPrompt & { roman: RomanPrompt } {
   for (let tries = 0; ; tries++) {
     const keyValue = key ? key.tonic + ":" + key.mode : pick(rng, ALL_KEYS);
     const k = key ?? requireKey(keyValue);

@@ -1,7 +1,13 @@
 // Presenter for sequence exercises (scales, diatonic chords ...), and how a run's result reads.
 
 import type { PromptStyle } from "../../exercises/chordPrompt";
-import { bestRun, type RunResult, type SequenceState, type SequenceStep, type WrongStep } from "../../exercises/sequence";
+import {
+  bestRun,
+  type RunResult,
+  type SequenceState,
+  type SequenceStep,
+  type WrongStep,
+} from "../../exercises/sequence";
 import { buildKey, pcName, prettyAcc, type KeyContext } from "../../theory";
 import { timingVerdict, type TimingSummary } from "../../timing/grid";
 import { esc } from "../html";
@@ -15,8 +21,12 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
   const ex = s.exercise;
   const key = buildKey(ex.keyValue);
   const steps = ex.steps.map((st, i) => {
-    const state = s.status === "done" || (s.status === "playing" && i < s.index) ? "done"
-      : i === (s.status === "playing" ? s.index : 0) ? "current" : "upcoming";
+    const state =
+      s.status === "done" || (s.status === "playing" && i < s.index)
+        ? "done"
+        : i === (s.status === "playing" ? s.index : 0)
+          ? "current"
+          : "upcoming";
     // Played to the metronome: steps that missed their beat say which way
     const timing = state === "done" && s.grid ? s.timings[i] : undefined;
     const verdict = timing && s.grid ? timingVerdict(s.grid, timing) : "onTime";
@@ -24,16 +34,19 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
     // Note steps are dots, not names: the exercise is to know the notes; chord steps name the chord to play
     return st.kind === "note" ? stepHtml(state, "•", undefined, extra) : chordStepHtml(st.chord, style, state, extra);
   });
-  const stepText = (st: SequenceStep) => st.kind === "note" ? prettyAcc(st.name) : chordPromptText(st.chord, style);
+  const stepText = (st: SequenceStep) => (st.kind === "note" ? prettyAcc(st.name) : chordPromptText(st.chord, style));
   const first = ex.steps[0];
-  let feedback = "", status: PracticeDisplay["status"] = "waiting", sub = "";
+  let feedback = "",
+    status: PracticeDisplay["status"] = "waiting",
+    sub = "";
   if (s.status === "playing" && s.lastWrong) {
     feedback = "✗ " + describeWrongStep(ex.steps[s.index], s.lastWrong, key);
     status = "wrong";
   } else if (s.startHint) {
     feedback = `Start ${first.kind === "note" ? "on" : "with"} ${stepText(first)}`;
   } else if (s.status === "done" && s.result) {
-    feedback = (s.result.mistakes ? `Done · ${s.result.mistakes} mistake${s.result.mistakes > 1 ? "s" : ""}` : "✓ Clean run") +
+    feedback =
+      (s.result.mistakes ? `Done · ${s.result.mistakes} mistake${s.result.mistakes > 1 ? "s" : ""}` : "✓ Clean run") +
       runText(s.result);
     status = s.result.mistakes ? "waiting" : "correct";
   }
@@ -44,7 +57,10 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
   return {
     label: prettyNames(ex.instruction) + (s.grid ? ` · ${tempoText(s.grid.transport.bpm, s.grid.subdivision)}` : ""),
     promptHtml: `<div class="seqTitle">${esc(prettyNames(ex.title))}</div><div class="seqRow">${steps.join("")}</div>`,
-    size: "sequence", sub, status, feedback,
+    size: "sequence",
+    sub,
+    status,
+    feedback,
     // There's a best run as soon as there are any
     score: best
       ? `${s.runs.length} run${s.runs.length > 1 ? "s" : ""} · ${clean} clean · best: ${best.mistakes ? `${best.mistakes} mistake${best.mistakes > 1 ? "s" : ""}, ` : ""}${steadinessText(best)}`
@@ -57,7 +73,8 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
 function describeWrongStep(step: SequenceStep, wrong: WrongStep, key: KeyContext | null): string {
   if (step.kind === "chord" && wrong.kind === "chord") return describeMiss(step.chord, wrong.notes, key);
   if (step.kind !== "note" || wrong.kind !== "note") return "Not quite";
-  const expected = prettyAcc(step.name), { played } = wrong;
+  const expected = prettyAcc(step.name),
+    { played } = wrong;
   if (wrong.expected != null && played % 12 === wrong.expected % 12) {
     return `Right note, wrong octave: ${expected} ${played > wrong.expected ? "lower" : "higher"}`;
   }
@@ -73,33 +90,45 @@ export function runText(r: RunResult): string {
 }
 
 /** How steady a run was, briefly: "92% on time" against the metronome, else "95% even" */
-export const steadinessText = (r: RunResult) => r.timing ? `${Math.round(r.timing.onTime * 100)}% on time` : `${Math.round(r.evenness * 100)}% even`;
+export const steadinessText = (r: RunResult) =>
+  r.timing ? `${Math.round(r.timing.onTime * 100)}% on time` : `${Math.round(r.evenness * 100)}% even`;
 
 const SUBDIVISION_NAMES: Record<number, string> = { 1: "quarters", 2: "eighths", 4: "sixteenths" };
 /** "96 BPM, eighths" */
-export const tempoText = (bpm: number, subdivision: number) => `${Math.round(bpm)} BPM, ${SUBDIVISION_NAMES[subdivision]}`;
+export const tempoText = (bpm: number, subdivision: number) =>
+  `${Math.round(bpm)} BPM, ${SUBDIVISION_NAMES[subdivision]}`;
 
 /** "92% on time · rushing 18 ms · 1 slip" — rushing/dragging only when it's more than a few ms */
 export function timingText(t: TimingSummary): string {
   const lean = Math.round(t.meanOffsetMs);
-  return `${Math.round(t.onTime * 100)}% on time` +
+  return (
+    `${Math.round(t.onTime * 100)}% on time` +
     (Math.abs(lean) >= 5 ? ` · ${lean < 0 ? "rushing" : "dragging"} ${Math.abs(lean)} ms` : "") +
-    (t.slips ? ` · ${t.slips} slip${t.slips > 1 ? "s" : ""}` : "");
+    (t.slips ? ` · ${t.slips} slip${t.slips > 1 ? "s" : ""}` : "")
+  );
 }
 
 /**
  * A sequence exercise moving through keys (its Then option): until the next key's first note, the feedback says how
  * the last key went; the score counts the keys played this session; Skip moves on to the next key.
  */
-export function progressingDisplay(d: PracticeDisplay, s: SequenceState, previous: { title: string; result: RunResult } | null,
-                                   played: number, clean: number): PracticeDisplay {
+export function progressingDisplay(
+  d: PracticeDisplay,
+  s: SequenceState,
+  previous: { title: string; result: RunResult } | null,
+  played: number,
+  clean: number,
+): PracticeDisplay {
   const out: PracticeDisplay = {
-    ...d, skipLabel: "Next key",
+    ...d,
+    skipLabel: "Next key",
     score: played ? `${played} key${played > 1 ? "s" : ""} played · ${clean} clean` : "",
   };
   if (previous && s.status === "ready" && !s.startHint) {
-    const title = prettyNames(previous.title), r = previous.result;
-    out.feedback = (r.mistakes ? `${title}: ${r.mistakes} mistake${r.mistakes > 1 ? "s" : ""}` : `✓ ${title}: clean`) + runText(r);
+    const title = prettyNames(previous.title),
+      r = previous.result;
+    out.feedback =
+      (r.mistakes ? `${title}: ${r.mistakes} mistake${r.mistakes > 1 ? "s" : ""}` : `✓ ${title}: clean`) + runText(r);
     out.status = r.mistakes ? "waiting" : "correct";
   }
   return out;

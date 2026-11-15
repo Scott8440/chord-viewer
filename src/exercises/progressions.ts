@@ -32,35 +32,127 @@ const step = (numeral: string, degree: number, type: string): ProgressionStep =>
 
 /** Popular progressions: the app's shared list, used for prompting and available to other features. */
 export const PROGRESSIONS: readonly ProgressionDef[] = [
-  { id: "I-IV-V-I", name: "I–IV–V–I", mode: "major",
-    steps: [step("I", 0, "M"), step("IV", 3, "M"), step("V", 4, "M"), step("I", 0, "M")], weight: 3, tags: ["basic", "classical"] },
-  { id: "I-V-vi-IV", name: "I–V–vi–IV (pop)", mode: "major",
-    steps: [step("I", 0, "M"), step("V", 4, "M"), step("vi", 5, "m"), step("IV", 3, "M")], weight: 3, tags: ["pop"] },
-  { id: "I-vi-IV-V", name: "I–vi–IV–V (’50s)", mode: "major",
-    steps: [step("I", 0, "M"), step("vi", 5, "m"), step("IV", 3, "M"), step("V", 4, "M")], weight: 2, tags: ["pop"] },
-  { id: "vi-IV-I-V", name: "vi–IV–I–V", mode: "major",
-    steps: [step("vi", 5, "m"), step("IV", 3, "M"), step("I", 0, "M"), step("V", 4, "M")], weight: 2, tags: ["pop"] },
-  { id: "I-vi-ii-V", name: "I–vi–ii–V", mode: "major",
-    steps: [step("I", 0, "M"), step("vi", 5, "m"), step("ii", 1, "m"), step("V", 4, "M")], weight: 2, tags: ["pop", "jazz"] },
-  { id: "I-IV-vi-V", name: "I–IV–vi–V", mode: "major",
-    steps: [step("I", 0, "M"), step("IV", 3, "M"), step("vi", 5, "m"), step("V", 4, "M")], weight: 1, tags: ["pop"] },
-  { id: "ii-V-I", name: "ii–V–I", mode: "major",
-    steps: [step("ii", 1, "m"), step("V", 4, "M"), step("I", 0, "M")], weight: 3, tags: ["basic", "jazz"] },
-  { id: "ii7-V7-Imaj7", name: "ii7–V7–Imaj7 (jazz)", mode: "major",
-    steps: [step("ii7", 1, "m7"), step("V7", 4, "7"), step("Imaj7", 0, "maj7")], weight: 3, tags: ["jazz"] },
-  { id: "Imaj7-vi7-ii7-V7", name: "Imaj7–vi7–ii7–V7 (turnaround)", mode: "major",
-    steps: [step("Imaj7", 0, "maj7"), step("vi7", 5, "m7"), step("ii7", 1, "m7"), step("V7", 4, "7")], weight: 1, tags: ["jazz"] },
-  { id: "circle", name: "I–IV–vii°–iii–vi–ii–V–I (circle of fifths)", mode: "major",
-    steps: [step("I", 0, "M"), step("IV", 3, "M"), step("vii°", 6, "dim"), step("iii", 2, "m"),
-            step("vi", 5, "m"), step("ii", 1, "m"), step("V", 4, "M"), step("I", 0, "M")], weight: 1, tags: ["classical", "jazz"] },
-  { id: "i-iv-V-i", name: "i–iv–V–i", mode: "minor",
-    steps: [step("i", 0, "m"), step("iv", 3, "m"), step("V", 4, "M"), step("i", 0, "m")], weight: 3, tags: ["basic", "classical"] },
-  { id: "iiø7-V7-i", name: "iiø7–V7–i (minor ii–V–i)", mode: "minor",
-    steps: [step("iiø7", 1, "m7b5"), step("V7", 4, "7"), step("i", 0, "m")], weight: 2, tags: ["jazz"] },
-  { id: "i-VI-III-VII", name: "i–VI–III–VII", mode: "minor",
-    steps: [step("i", 0, "m"), step("VI", 5, "M"), step("III", 2, "M"), step("VII", 6, "M")], weight: 2, tags: ["pop"] },
-  { id: "i-VII-VI-V", name: "i–VII–VI–V (Andalusian)", mode: "minor",
-    steps: [step("i", 0, "m"), step("VII", 6, "M"), step("VI", 5, "M"), step("V", 4, "M")], weight: 2, tags: ["pop", "classical"] },
+  {
+    id: "I-IV-V-I",
+    name: "I–IV–V–I",
+    mode: "major",
+    steps: [step("I", 0, "M"), step("IV", 3, "M"), step("V", 4, "M"), step("I", 0, "M")],
+    weight: 3,
+    tags: ["basic", "classical"],
+  },
+  {
+    id: "I-V-vi-IV",
+    name: "I–V–vi–IV (pop)",
+    mode: "major",
+    steps: [step("I", 0, "M"), step("V", 4, "M"), step("vi", 5, "m"), step("IV", 3, "M")],
+    weight: 3,
+    tags: ["pop"],
+  },
+  {
+    id: "I-vi-IV-V",
+    name: "I–vi–IV–V (’50s)",
+    mode: "major",
+    steps: [step("I", 0, "M"), step("vi", 5, "m"), step("IV", 3, "M"), step("V", 4, "M")],
+    weight: 2,
+    tags: ["pop"],
+  },
+  {
+    id: "vi-IV-I-V",
+    name: "vi–IV–I–V",
+    mode: "major",
+    steps: [step("vi", 5, "m"), step("IV", 3, "M"), step("I", 0, "M"), step("V", 4, "M")],
+    weight: 2,
+    tags: ["pop"],
+  },
+  {
+    id: "I-vi-ii-V",
+    name: "I–vi–ii–V",
+    mode: "major",
+    steps: [step("I", 0, "M"), step("vi", 5, "m"), step("ii", 1, "m"), step("V", 4, "M")],
+    weight: 2,
+    tags: ["pop", "jazz"],
+  },
+  {
+    id: "I-IV-vi-V",
+    name: "I–IV–vi–V",
+    mode: "major",
+    steps: [step("I", 0, "M"), step("IV", 3, "M"), step("vi", 5, "m"), step("V", 4, "M")],
+    weight: 1,
+    tags: ["pop"],
+  },
+  {
+    id: "ii-V-I",
+    name: "ii–V–I",
+    mode: "major",
+    steps: [step("ii", 1, "m"), step("V", 4, "M"), step("I", 0, "M")],
+    weight: 3,
+    tags: ["basic", "jazz"],
+  },
+  {
+    id: "ii7-V7-Imaj7",
+    name: "ii7–V7–Imaj7 (jazz)",
+    mode: "major",
+    steps: [step("ii7", 1, "m7"), step("V7", 4, "7"), step("Imaj7", 0, "maj7")],
+    weight: 3,
+    tags: ["jazz"],
+  },
+  {
+    id: "Imaj7-vi7-ii7-V7",
+    name: "Imaj7–vi7–ii7–V7 (turnaround)",
+    mode: "major",
+    steps: [step("Imaj7", 0, "maj7"), step("vi7", 5, "m7"), step("ii7", 1, "m7"), step("V7", 4, "7")],
+    weight: 1,
+    tags: ["jazz"],
+  },
+  {
+    id: "circle",
+    name: "I–IV–vii°–iii–vi–ii–V–I (circle of fifths)",
+    mode: "major",
+    steps: [
+      step("I", 0, "M"),
+      step("IV", 3, "M"),
+      step("vii°", 6, "dim"),
+      step("iii", 2, "m"),
+      step("vi", 5, "m"),
+      step("ii", 1, "m"),
+      step("V", 4, "M"),
+      step("I", 0, "M"),
+    ],
+    weight: 1,
+    tags: ["classical", "jazz"],
+  },
+  {
+    id: "i-iv-V-i",
+    name: "i–iv–V–i",
+    mode: "minor",
+    steps: [step("i", 0, "m"), step("iv", 3, "m"), step("V", 4, "M"), step("i", 0, "m")],
+    weight: 3,
+    tags: ["basic", "classical"],
+  },
+  {
+    id: "iiø7-V7-i",
+    name: "iiø7–V7–i (minor ii–V–i)",
+    mode: "minor",
+    steps: [step("iiø7", 1, "m7b5"), step("V7", 4, "7"), step("i", 0, "m")],
+    weight: 2,
+    tags: ["jazz"],
+  },
+  {
+    id: "i-VI-III-VII",
+    name: "i–VI–III–VII",
+    mode: "minor",
+    steps: [step("i", 0, "m"), step("VI", 5, "M"), step("III", 2, "M"), step("VII", 6, "M")],
+    weight: 2,
+    tags: ["pop"],
+  },
+  {
+    id: "i-VII-VI-V",
+    name: "i–VII–VI–V (Andalusian)",
+    mode: "minor",
+    steps: [step("i", 0, "m"), step("VII", 6, "M"), step("VI", 5, "M"), step("V", 4, "M")],
+    weight: 2,
+    tags: ["pop", "classical"],
+  },
 ];
 
 export function progressionById(id: string): ProgressionDef | undefined {
@@ -86,7 +178,12 @@ export function progressionChords(def: ProgressionDef, key: KeyContext): ChordPr
   const keyValue = key.tonic + ":" + key.mode;
   return def.steps.map(st => {
     const root = key.scale[st.degree];
-    return { rootPc: chromaOf(root), root, type: st.type, roman: { numeral: st.numeral, keyValue, filterIgnored: false } };
+    return {
+      rootPc: chromaOf(root),
+      root,
+      type: st.type,
+      roman: { numeral: st.numeral, keyValue, filterIgnored: false },
+    };
   });
 }
 
@@ -102,8 +199,12 @@ function weightedPick<T extends { weight: number }>(rng: Rng, items: readonly T[
  * mode), or in a random key of the progression's mode when none is selected. Never the same progression in
  * the same key twice in a row.
  */
-export function makeProgressionPrompt(rng: Rng, key: KeyContext | null, previous?: ProgressionPrompt,
-                                      pool: readonly ProgressionDef[] = PROGRESSIONS): ProgressionPrompt {
+export function makeProgressionPrompt(
+  rng: Rng,
+  key: KeyContext | null,
+  previous?: ProgressionPrompt,
+  pool: readonly ProgressionDef[] = PROGRESSIONS,
+): ProgressionPrompt {
   const fitting = pool.filter(p => !key || p.mode === key.mode);
   const candidates = fitting.length ? fitting : PROGRESSIONS.filter(p => !key || p.mode === key.mode);
   for (let tries = 0; ; tries++) {
@@ -137,31 +238,53 @@ export interface ProgressionState {
 
 export type ProgressionAction =
   /** The keys currently held changed (MIDI numbers, low to high) */
-  | { type: "held"; notes: number[] }
-  | { type: "next"; prompt: ProgressionPrompt };
+  { type: "held"; notes: number[] } | { type: "next"; prompt: ProgressionPrompt };
 
 export function initialProgression(prompt: ProgressionPrompt, held: number[] = []): ProgressionState {
-  return { prompt, index: 0, status: "playing", tracker: freshAttempt(held), attempt: null, missed: false,
-           chordsAnswered: 0, chordsFirstTry: 0, completed: 0 };
+  return {
+    prompt,
+    index: 0,
+    status: "playing",
+    tracker: freshAttempt(held),
+    attempt: null,
+    missed: false,
+    chordsAnswered: 0,
+    chordsFirstTry: 0,
+    completed: 0,
+  };
 }
 
 export function reduceProgression(s: ProgressionState, a: ProgressionAction): ProgressionState {
   switch (a.type) {
     case "held": {
       if (s.status === "done") return { ...s, tracker: freshAttempt(a.notes) };
-      const { attempt: tracker, outcome } = trackAttempt(s.tracker, a.notes, notes => isChord(notes, s.prompt.chords[s.index]));
+      const { attempt: tracker, outcome } = trackAttempt(s.tracker, a.notes, notes =>
+        isChord(notes, s.prompt.chords[s.index]),
+      );
       if (outcome.kind === "match") {
         const index = s.index + 1;
         const done = index === s.prompt.chords.length;
-        return { ...s, tracker, index, status: done ? "done" : "playing", attempt: null, missed: false,
-                 chordsAnswered: s.chordsAnswered + 1, chordsFirstTry: s.chordsFirstTry + (s.missed ? 0 : 1),
-                 completed: s.completed + (done ? 1 : 0) };
+        return {
+          ...s,
+          tracker,
+          index,
+          status: done ? "done" : "playing",
+          attempt: null,
+          missed: false,
+          chordsAnswered: s.chordsAnswered + 1,
+          chordsFirstTry: s.chordsFirstTry + (s.missed ? 0 : 1),
+          completed: s.completed + (done ? 1 : 0),
+        };
       }
       if (outcome.kind === "miss") return { ...s, tracker, status: "wrong", attempt: outcome.notes, missed: true };
       return { ...s, tracker };
     }
     case "next":
-      return { ...initialProgression(a.prompt, s.tracker.prevHeld),
-               chordsAnswered: s.chordsAnswered, chordsFirstTry: s.chordsFirstTry, completed: s.completed };
+      return {
+        ...initialProgression(a.prompt, s.tracker.prevHeld),
+        chordsAnswered: s.chordsAnswered,
+        chordsFirstTry: s.chordsFirstTry,
+        completed: s.completed,
+      };
   }
 }

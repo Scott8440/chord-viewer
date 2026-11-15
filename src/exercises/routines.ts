@@ -4,7 +4,14 @@
 import { requireKey, CIRCLE_OF_FIFTHS_MAJOR } from "../theory";
 import { sanitizeExerciseOptions, PRESCRIPTIVE, type ExerciseOptions, type PrescriptiveId } from "./prescriptive";
 import type { TimingGrid } from "../timing/grid";
-import { initialSequence, reduceSequence, type RunResult, type SequenceAction, type SequenceExercise, type SequenceState } from "./sequence";
+import {
+  initialSequence,
+  reduceSequence,
+  type RunResult,
+  type SequenceAction,
+  type SequenceExercise,
+  type SequenceState,
+} from "./sequence";
 
 export const CIRCLE_DIRECTIONS = ["sharps", "flats"] as const;
 /**
@@ -12,27 +19,39 @@ export const CIRCLE_DIRECTIONS = ["sharps", "flats"] as const;
  * C F B♭ … (down by fifths). Chromatically, sharps is up (C D♭ D …) and flats down (C B B♭ …). Saved, so the values
  * keep their names whatever the routine's order.
  */
-export type CircleDirection = typeof CIRCLE_DIRECTIONS[number];
+export type CircleDirection = (typeof CIRCLE_DIRECTIONS)[number];
 
 /** The order a routine takes the keys in */
 export type KeyOrder = "circle" | "chromatic";
 
 /** How each order names the two directions: the direction picker's options, and short forms for history */
-export const DIRECTION_NAMES: Record<KeyOrder, Record<CircleDirection, { long: string; short: string; arrow: string }>> = {
-  circle: { sharps: { long: "Sharps first (C G D …)", short: "sharps", arrow: "↻" },
-            flats: { long: "Flats first (C F B♭ …)", short: "flats", arrow: "↺" } },
-  chromatic: { sharps: { long: "Up (C D♭ D …)", short: "up", arrow: "↑" },
-               flats: { long: "Down (C B B♭ …)", short: "down", arrow: "↓" } },
+export const DIRECTION_NAMES: Record<
+  KeyOrder,
+  Record<CircleDirection, { long: string; short: string; arrow: string }>
+> = {
+  circle: {
+    sharps: { long: "Sharps first (C G D …)", short: "sharps", arrow: "↻" },
+    flats: { long: "Flats first (C F B♭ …)", short: "flats", arrow: "↺" },
+  },
+  chromatic: {
+    sharps: { long: "Up (C D♭ D …)", short: "up", arrow: "↑" },
+    flats: { long: "Down (C B B♭ …)", short: "down", arrow: "↓" },
+  },
 };
 
 /** Major key values in circle-of-fifths order, starting on C. */
 export function circleOfFifths(direction: CircleDirection): string[] {
-  const keys = direction === "sharps" ? CIRCLE_OF_FIFTHS_MAJOR : [CIRCLE_OF_FIFTHS_MAJOR[0], ...CIRCLE_OF_FIFTHS_MAJOR.slice(1).reverse()];
+  const keys =
+    direction === "sharps"
+      ? CIRCLE_OF_FIFTHS_MAJOR
+      : [CIRCLE_OF_FIFTHS_MAJOR[0], ...CIRCLE_OF_FIFTHS_MAJOR.slice(1).reverse()];
   return keys.map(t => `${t}:major`);
 }
 
 /** The 12 major tonics a semitone apart from C, spelled as on the circle: position i is i fifths, 7i semitones, up */
-export const CHROMATIC_TONICS = CIRCLE_OF_FIFTHS_MAJOR.map((t, i) => ({ t, pc: (i * 7) % 12 })).sort((a, b) => a.pc - b.pc).map(k => k.t);
+export const CHROMATIC_TONICS = CIRCLE_OF_FIFTHS_MAJOR.map((t, i) => ({ t, pc: (i * 7) % 12 }))
+  .sort((a, b) => a.pc - b.pc)
+  .map(k => k.t);
 
 /**
  * Major key values a semitone apart, starting on `from` (C by default): up (C D♭ D E♭ …) or down (C B B♭ A …),
@@ -72,18 +91,43 @@ export const eachKey = (keys: readonly string[], exercises: readonly Prescriptiv
 
 /** The curated routines (deliberately a list, not a builder). */
 export const ROUTINES: readonly Routine[] = [
-  { id: "scales-circle", name: "Major scales, circle of fifths", order: "circle",
-    items: d => eachKey(circleOfFifths(d), ["scales"]) },
-  { id: "scales-chromatic", name: "Major scales, chromatic", order: "chromatic",
-    items: d => eachKey(chromaticKeys(d), ["scales"]) },
-  { id: "major-triads-octave", name: "Major triads, up an octave", order: "chromatic", startsOn: true,
-    items: (d, start = DEFAULT_START) => eachKey(chromaticKeys(d, start, true), ["triad"]) },
-  { id: "triads-circle", name: "Diatonic chords, circle of fifths", order: "circle",
-    items: d => eachKey(circleOfFifths(d), ["diatonic"]) },
-  { id: "scale-triads-circle", name: "Scale, then diatonic chords, circle of fifths", order: "circle",
-    items: d => eachKey(circleOfFifths(d), ["scales", "diatonic"]) },
-  { id: "technique-circle", name: "Five-finger pattern, scale, arpeggio, broken chords, circle of fifths", order: "circle",
-    items: d => eachKey(circleOfFifths(d), ["fiveFinger", "scales", "arpeggios", "brokenChords"]) },
+  {
+    id: "scales-circle",
+    name: "Major scales, circle of fifths",
+    order: "circle",
+    items: d => eachKey(circleOfFifths(d), ["scales"]),
+  },
+  {
+    id: "scales-chromatic",
+    name: "Major scales, chromatic",
+    order: "chromatic",
+    items: d => eachKey(chromaticKeys(d), ["scales"]),
+  },
+  {
+    id: "major-triads-octave",
+    name: "Major triads, up an octave",
+    order: "chromatic",
+    startsOn: true,
+    items: (d, start = DEFAULT_START) => eachKey(chromaticKeys(d, start, true), ["triad"]),
+  },
+  {
+    id: "triads-circle",
+    name: "Diatonic chords, circle of fifths",
+    order: "circle",
+    items: d => eachKey(circleOfFifths(d), ["diatonic"]),
+  },
+  {
+    id: "scale-triads-circle",
+    name: "Scale, then diatonic chords, circle of fifths",
+    order: "circle",
+    items: d => eachKey(circleOfFifths(d), ["scales", "diatonic"]),
+  },
+  {
+    id: "technique-circle",
+    name: "Five-finger pattern, scale, arpeggio, broken chords, circle of fifths",
+    order: "circle",
+    items: d => eachKey(circleOfFifths(d), ["fiveFinger", "scales", "arpeggios", "brokenChords"]),
+  },
 ];
 
 export const routineById = (id: string): Routine | undefined => ROUTINES.find(r => r.id === id);
@@ -132,12 +176,27 @@ export type RoutineAction =
 /** Which way, and where to start (for routines that let you choose): a direction alone starts on the default */
 export type RoutineSetup = CircleDirection | Pick<RoutineOptions, "direction" | "start">;
 
-export function initialRoutine(routine: Routine, setup: RoutineSetup, base: ExerciseOptions, held: number[] = [],
-                               grid: TimingGrid | null = null): RoutineState {
+export function initialRoutine(
+  routine: Routine,
+  setup: RoutineSetup,
+  base: ExerciseOptions,
+  held: number[] = [],
+  grid: TimingGrid | null = null,
+): RoutineState {
   const { direction, start } = typeof setup === "string" ? { direction: setup, start: DEFAULT_START } : setup;
   const items = routine.items(direction, start);
-  return { routine, items, base, index: 0, current: initialSequence(itemExercise(items[0], base), held, grid),
-           outcomes: [], previous: null, startTime: null, endTime: null, status: "playing" };
+  return {
+    routine,
+    items,
+    base,
+    index: 0,
+    current: initialSequence(itemExercise(items[0], base), held, grid),
+    outcomes: [],
+    previous: null,
+    startTime: null,
+    endTime: null,
+    status: "playing",
+  };
 }
 
 export function reduceRoutine(s: RoutineState, a: RoutineAction): RoutineState {
@@ -148,14 +207,24 @@ export function reduceRoutine(s: RoutineState, a: RoutineAction): RoutineState {
       const current = reduceSequence(s.current, a);
       if (current === s.current) return s;
       const started = current.status === "playing" && s.current.status !== "playing";
-      const next = { ...s, current,
-                     startTime: s.startTime ?? (started ? current.times[0] : null),
-                     previous: started ? null : s.previous };
+      const next = {
+        ...s,
+        current,
+        startTime: s.startTime ?? (started ? current.times[0] : null),
+        previous: started ? null : s.previous,
+      };
       // A finished run always has its result
       if (current.status !== "done" || !current.result) return next;
       // The item's run finished: record it and move on
-      return advance({ ...next, endTime: current.times[current.times.length - 1],
-                       previous: { index: s.index, result: current.result } }, current.result, current.tracker.prevHeld);
+      return advance(
+        {
+          ...next,
+          endTime: current.times[current.times.length - 1],
+          previous: { index: s.index, result: current.result },
+        },
+        current.result,
+        current.tracker.prevHeld,
+      );
     }
     case "setGrid": {
       // The metronome plays on across items: the next item is built with the same grid
@@ -175,7 +244,12 @@ function advance(s: RoutineState, outcome: ItemOutcome, held: number[]): Routine
   const outcomes = [...s.outcomes, outcome];
   const index = s.index + 1;
   if (index === s.items.length) return { ...s, outcomes, status: "done" };
-  return { ...s, outcomes, index, current: initialSequence(itemExercise(s.items[index], s.base), held, s.current.grid) };
+  return {
+    ...s,
+    outcomes,
+    index,
+    current: initialSequence(itemExercise(s.items[index], s.base), held, s.current.grid),
+  };
 }
 
 export interface RoutineSummary {
@@ -189,10 +263,11 @@ export interface RoutineSummary {
 }
 
 export function routineSummary(s: RoutineState): RoutineSummary {
-  const played = s.outcomes.flatMap((o, index) => o === "skipped" ? [] : [{ index, result: o }]);
+  const played = s.outcomes.flatMap((o, index) => (o === "skipped" ? [] : [{ index, result: o }]));
   // Steadiness: on time against the metronome when there was one, else evenness
-  const steady = (r: RunResult) => r.timing ? r.timing.onTime : r.evenness;
-  const weakest = played.filter(p => p.result.mistakes > 0 || steady(p.result) < 0.8)
+  const steady = (r: RunResult) => (r.timing ? r.timing.onTime : r.evenness);
+  const weakest = played
+    .filter(p => p.result.mistakes > 0 || steady(p.result) < 0.8)
     .sort((a, b) => b.result.mistakes - a.result.mistakes || steady(a.result) - steady(b.result))
     .slice(0, 3);
   return {
@@ -236,10 +311,16 @@ export function keyProgress(r: RoutineState): KeyProgress[] {
   });
   for (const g of groups) {
     const outcomes = g.items.map(i => r.outcomes[i]);
-    g.state = r.status !== "done" && g.items.includes(r.index) ? "current"
-      : outcomes.some(o => o === undefined) ? "upcoming"
-      : outcomes.every(o => o === "skipped") ? "skipped"
-      : outcomes.some(o => o !== undefined && o !== "skipped" && o.mistakes) ? "flawed" : "done";
+    g.state =
+      r.status !== "done" && g.items.includes(r.index)
+        ? "current"
+        : outcomes.some(o => o === undefined)
+          ? "upcoming"
+          : outcomes.every(o => o === "skipped")
+            ? "skipped"
+            : outcomes.some(o => o !== undefined && o !== "skipped" && o.mistakes)
+              ? "flawed"
+              : "done";
   }
   return groups;
 }
@@ -259,8 +340,12 @@ export function sanitizeRoutineOptions(raw: unknown): RoutineOptions {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
     id: typeof o.id === "string" && routineById(o.id) ? o.id : ROUTINES[0].id,
-    direction: (CIRCLE_DIRECTIONS as readonly unknown[]).includes(o.direction) ? o.direction as CircleDirection : "sharps",
-    start: typeof o.start === "string" && CHROMATIC_TONICS.includes(o.start.split(":")[0]) && o.start.endsWith(":major")
-      ? o.start : DEFAULT_START,
+    direction: (CIRCLE_DIRECTIONS as readonly unknown[]).includes(o.direction)
+      ? (o.direction as CircleDirection)
+      : "sharps",
+    start:
+      typeof o.start === "string" && CHROMATIC_TONICS.includes(o.start.split(":")[0]) && o.start.endsWith(":major")
+        ? o.start
+        : DEFAULT_START,
   };
 }

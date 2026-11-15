@@ -1,186 +1,26 @@
 # Chord Display → music theory practice app
 
 ## What this is
-An offline replacement for Chordie (which phones home and crashes). It listens to MIDI notes from any input,
-shows them on a grand staff, and names the most likely chord. The user plays a Komplete Kontrol S88 MK3 with a
-sustain pedal on Windows, and often routes MIDI through loopMIDI because Ableton holds the device port.
+Started as an offline replacement for Chordie: it listens to MIDI from any input, shows the notes on a grand staff
+and names the most likely chord. It has grown into a music theory practice app: free play, chord and progression
+practice, sight reading, prescriptive exercises (scales, diatonic chords, technique) and routines of them, three
+ear-training modes, a metronome, and a practice history with a Progress page.
 
-v1 is feature complete. **The next goal is to turn it into a broader music theory learning and practice app.**
-Do the architecture refactor (below) before adding features.
+The user plays a Komplete Kontrol S88 MK3 with a sustain pedal on Windows, often through loopMIDI because Ableton
+holds the device port, and monitors the keyboard's sound through Ableton (the app's own sound is the metronome and
+ear training). Desktop Chrome or Edge only (the user's decision); Safari has no Web MIDI, so an iPad version would
+need a native wrapper and only the input layer would change. The user practises on the GitHub Pages site.
 
 ## Working conventions
 - **Work on `main`.** Commit and push straight to `main`; don't create a branch per feature (the user's preference,
   Nov 2026). Run the typecheck, tests and `npm run format:check` before each push.
 
-## Current layout
-Vite + TypeScript, built to one self-contained offline file with `vite-plugin-singlefile`. The code is split into
-layers that only talk through data: input sources emit `InputEvent`s, a pure reducer turns them into state, and the
-mode and views subscribe to the store.
-- `index.html`: page markup (Vite entry). `src/style.css`: all styles.
-- `src/input/`: input sources.
-  - `events.ts`: the normalized `InputEvent` union: `noteOn`/`noteOff` `{note, velocity, time, source, channel}`,
-    `pedal`, `allNotesOff` (one source, all its channels) and `panic`. `time` comes from the originating event's
-    `timeStamp` (performance.now() clock), not handler time.
-  - `midi.ts`: `parseMidiMessage` (pure: raw bytes to event) and `createMidiSource` (access, per-input on/off,
-    hot-plug, status).
-  - `keyboard.ts`: computer-keyboard source (source `"kbd"`, channel 0).
-  - `keys.ts`: `isTypingOrModified`, the check every computer-key handler starts with (a key going into a field, or
-    held with Cmd/Ctrl/Alt, isn't for the app); each handler decides about key repeats itself.
-- `src/state/`: state, no DOM.
-  - `performance.ts`: pure reducer for held notes (per `source:channel`), pedal-sustained notes and pedals, plus
-    `soundingNotes` and `pedalOnlyNotes`. Returns the same object when nothing changed.
-  - `app.ts`: `AppState` = performance + history of the last 512 input events + settings (the header key, which
-    is for free play only; pedal-notes-count option; active mode; chord types, prompt style and inversions for chord
-    practice; `exercise`, the `ExerciseOptions` shared by the prescriptive exercises; `routine`, which routine
-    and which way round the circle of fifths; `latencyMs`; and `latencyCalibrated`) + `transport` (where the beats are, while a clock
-    runs; see "Metronome") + `page` ("practice" or "progress"; not saved). `createAppState(saved)`
-    takes saved settings and validates each one; `reduceApp` over `AppAction`s. Every setter returns the same state
-    when the value is what's already set (`withSettings`, compared with `sameSetting`), so nothing downstream reacts.
-  - `settings.ts`: `Settings` and **the settings table** `SETTINGS`: one entry per setting with its `sanitize`
-    (which also gives its default, for a missing or invalid value) and, if it's kept in localStorage, `storage`: the
-    key, the format (`"string"` as is, `"json"`, or `"flag"` "1"/"0") and any `legacy` keys an earlier version used
-    (exercise options fall back to `chordDisplay.scale`). `latencyCalibrated`'s sanitizer sees all saved settings, so a
-    latency saved before the flag existed still counts. `sameSetting` is the shallow equality (arrays by their items,
-    option objects field by field). **Adding a setting:** a field in `Settings`, an entry in `SETTINGS`, an action.
-  - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed. A subscriber
-    that unsubscribes during a dispatch is not called for the rest of it (the old mode on a mode switch).
-- `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
-  `spelling.ts` (note names, `spellNote`, `prettyAcc`), `key.ts` (`buildKey`, `requireKey` for a key that must be
-  there, `KeyContext`, the circle of fifths
-  `CIRCLE_OF_FIFTHS_MAJOR`/`_MINOR` and `circlePosition`, `keySignature` counted from the key's scale so F♯ major
-  is 6♯ and its relative E♭ minor 6♭), `chordTemplates.ts`
-  (chord types and scoring weights: data only), `chords.ts` (`matchTemplate`, `chordReadings`, `analyze`,
-  `templateById` and `requireTemplate`),
-  `roman.ts` (`romanFor`), re-exported from `index.ts`.
-- `src/exercises/`: exercises as pure data and functions. `random.ts`: `Rng` (injected everywhere, so tests pass a
-  seeded one), `randomInt`, `pick` and `shuffled`, each with a fixed number of rng calls. `notePractice.ts`:
-  `reduceNotePractice` (judges each note-on in any octave; tracks wrong attempts, answered and right-first-time
-  counts; skip counts as answered), all that's left of note practice, which sight reading replaced; ear training
-  by degree uses it.
-  `judging.ts`: what every prompt-and-answer reducer shares (`Judged`: prompt, waiting/wrong/correct, missed,
-  answered, firstTry; `answeredRight`, `answeredWrong`, `movedOn` for next/skip), so degrees, melodies, chord
-  qualities, chord practice and sight reading each state only how they judge and what else they keep.
-  `keyRotation.ts`: the key option shared by ear training, chord practice and sight reading (`PROMPTS_PER_KEY`,
-  `pickKey`/`randomKey`, and the pure `KeyRotation` with `keyRotation`, `rotateKey`, `countInKey`); each drill's
-  picker (`pickTonic`, `pickChordKey`, `pickReadingKey`) only says which keys it allows.
-  `sightReading.ts`: sight reading (see "Sight reading" below): `ReadingOptions`, `READING_RANGES`, `readingPool`,
-  `makeReadingPrompt` (generated lines), `keyFifths`, `makeExcerptPrompt` (a song's passage in a key, as steps) and
-  `excerptLevel`; `reduceReading` judges playing back, a note or chord at a time.
-  `chordAttempt.ts`: the one place chords are judged from the held keys (`trackAttempt`): a match as soon as the
-  held keys form the target (rolled, or legato with common tones held); a miss only when keys were newly pressed
-  and then all released; letting go of keys already held is never an attempt. Used by chord practice,
-  progressions and chord steps in sequence exercises.
-  `chordPrompt.ts`: the shared prompt types (`ChordPrompt`, `RomanPrompt`, `InversionPrompt`, `PromptStyle`).
-  `chordMatch.ts`: `isChord` (every tone present in any voicing/inversion/octave, nothing extra; a left-out 5th
-  fails unless `allowOmissions`; with a required inversion also that note lowest: `hasChordTones` + `hasBass`) and
-  `chordCorrections` (a wrong attempt as replace/add/remove steps; a wrong note within a whole step of a missing
-  tone is a "replace"). `chordPractice.ts`: `CHORD_PRACTICE_GROUPS` (the types offered in the filter: triads,
-  sixths/sevenths, ninths; ids are chord template ids), `makeChordPrompt` (random root + allowed type, never the
-  same chord twice; root spelled from the key, else conventionally) and `reduceChordPractice` (fed the held keys:
-  correct via `chordAttempt.ts`). Its Key option (`CHORD_KEYS`, `Settings.chordKey`, saved): "none" (chord names:
-  any chord; Roman numerals: a new key each prompt, as before), "random" (a new key every `PROMPTS_PER_KEY` = 10
-  prompts, as in ear training) or one of the 24 keys; with a key, both styles ask for that key's diatonic chords
-  (`makeDiatonicNamePrompt` for names, flagged `inKey`, shown "in C major"), and the staff draws in it.
-  `romanPrompts.ts`: `DIATONIC` lists each key's triads and sevenths (minor uses
-  harmonic minor for V, V7, vii°, vii°7); `makeRomanPrompt` picks one in the given key, or a random key per prompt
-  when none (the mode always passes none), limited to the selected chord types (if none occur in the key, any
-  diatonic triad, flagged `filterIgnored`). A test checks that `analyze` + `romanFor` give back the same numeral for
-  every diatonic chord in all 24 keys. `inversions.ts`: `withInversion` adds a random required inversion (root
-  position included; the bass is a chord tone up to the 7th, never a 9th; `atInversion` asks for a specific one).
-  `earTraining.ts`: ear training by scale degree (see "Ear training" below): `EAR_DEGREES`, options, `pickTonic`,
-  `tonicMidi`, `makeEarPrompt` and `degreeName`; answers are judged by `reduceNotePractice`, which is generic in its
-  prompt for this.
-  `progressions.ts`: `PROGRESSIONS`, the app's shared list of popular progressions (id, name, major/minor, steps of
-  numeral + scale degree + chord type, a `weight` for how common it is, and style `tags`: basic, pop, jazz,
-  classical; minor uses the natural scale, so VII not vii°). There is deliberately no user selector: other features
-  should pick from this list (`progressionById`, `progressionsWhere({mode, tag})`). `progressionChords`,
-  `makeProgressionPrompt` (weighted random pick, optionally from a smaller pool; a given key and only
-  progressions in its mode, or a random key of the progression's mode, which is what the mode uses) and
-  `reduceProgression` (judges each chord via `chordAttempt.ts`). A test checks every progression in every key
-  analyzes back to its chords and numerals.
-  **Prescriptive exercises** (see "Prescriptive exercises" below): `sequence.ts` is the generic sequence matcher
-  (note steps and chord steps; `reduceSequence`, `runResult`, `bestRun`); `scales.ts` builds `scaleExercise`;
-  `diatonicChords.ts` builds `diatonicChordsExercise`; `technique.ts` builds the technique exercises
-  (`fiveFingerExercise`, `arpeggioExercise`, `brokenChordExercise`, `chromaticExercise`); `prescriptive.ts` is the registry (`PRESCRIPTIVE`: how each
-  exercise builds its sequence from the shared `ExerciseOptions`, which options it uses, a short name and whether it
-  has chord steps). `routines.ts`: routines (see "Routines" below): `circleOfFifths(direction)`, `eachKey`, the
-  curated `ROUTINES` (`routineById`, `requireRoutine`), the runner `reduceRoutine` (wraps `reduceSequence`), `routineSummary`, and `keyProgress`
-  (state per key, shared by the routine row and the circle).
-- `src/timing/`: pure. `transport.ts` (`Transport`, `beatAt`, `timeOfBeat`, `retempo`), `grid.ts` (judging a
-  step against the metronome: `judgeTime`, `timingVerdict`, `timingSummary`) and `calibration.ts` (tap-along latency). See "Metronome" below.
-- `src/progress/`: practice history (see "Practice history" below): `records.ts` (record types, pure builders,
-  reading back and export files), `store.ts` (the `ProgressStore` interface and an in-memory one), `idbStore.ts`
-  (IndexedDB), `recorder.ts` (stamps and stores records; `uuid`), `stats.ts` (what the Progress view charts, worked
-  out from records; pure).
-- `src/audio/`: `context.ts` (the one shared AudioContext and the autoplay unlock on any click, tap or key; a MIDI
-  note isn't a gesture), `click.ts` (the metronome click: Web Audio look-ahead scheduler that follows the transport),
-  `tones.ts` (ear training: a synthesised drone and piano-ish note, no samples; `blocked()` while audio waits for a
-  gesture).
-- `src/views/`: DOM rendering only: `dom.ts` (`required(root, selector)`: an element a view needs, or a clear
-  error), `beat.ts` (the beat light), `staff.ts` (VexFlow; also `staffCorner`), `staffCorner.ts`
-  (`fitToStaffCorner`), `charts.ts` (line and column time charts: pure SVG builders + `mountChart` with the hover
-  layer), `progressView.ts` (the Progress view), `chordName.ts` (also `chordSymbolHtml`),
-  `practice/` (the practice panel, one file per job: `view.ts` renders a `PracticeDisplay`; `drills.ts`,
-  `sequence.ts` and `routine.ts` are the presenters that turn exercise state into one; `chords.ts` holds chord
-  notation and corrections, `steps.ts` the step rows, `text.ts` small helpers; `index.ts` re-exports the public
-  names. `sightReadingDisplay` and `chordPracticeDisplay` turn exercise state into it, including "That was C. Replace E with E♭" feedback; Roman prompts show the key, reveal the chord when
-  answered and add the played chord's numeral; inversions show as slash chords or figured bass (V⁶₅, I⁶₄, V⁴₂), and
-  a wrong bass gets "Right notes, wrong bass. Put E in the bass"; rows of steps share `stepHtml` and
-  `chordStepHtml` (green when done, current underlined, a chord in the prompt's notation with the other one
-  revealed underneath once played); `progressionDisplay` and `sequenceDisplay` both use them; `sequenceDisplay`
-  covers note and chord steps: wrong note vs wrong octave, chord corrections, start hints, run results and a session
-  summary, and relabels Skip as Restart; `routineDisplay` adds the routine's overview row, one entry per key, amber
-  when a key had mistakes, struck through when skipped, and the progress, previous item's result and final
-  summary), `circleOfFifths.ts` (see "Circle of fifths" below), `filter.ts`
-  (grouped checkboxes, used for the chord-type filter; the last one can't be unchecked), `header.ts` (MIDI
-  status and input chips, pedal light, octave, key selector).
-- `src/modes/`: exactly one mode runs at a time (header Mode selector, saved in localStorage) and owns the right-hand
-  card; each returns `{stop, skip?}`. `performance.ts` holds what modes share: `createPerformanceDrawer` (subscribes
-  itself and redraws the staff once per frame, in the key the mode gives it: free play the header
-  key; chord-name practice none (or its Key option's key); sight reading the line's key; Roman numeral and progression prompts the prompt's key; exercises the
-  exercise's key), `onPlayerInput` (each note-on with its time, then each change of the held keys with the time of
-  the event behind it), `timingGrid`/`onTimingGrid` (the grid timed exercises are judged on), `onIdle` (idle after a wait with no input and nothing sounding; active on any input) and
-  `heldNotes`. `promptRecords.ts` (`createPromptRecords`): times each drill prompt from when it's shown and records
-  it once, when answered or skipped unanswered (all five drill modes). `earDrill.ts` (`createEarDrill`): the three
-  ear modes' shared runner (see "Ear training").
-  **Page setup per mode** (`page.ts`): `PAGE_SETUP` says, as data, which right-hand panel a mode shows, whether the
-  header Key picker is shown, and which page-wide behaviours it turns on, so a behaviour is written once and any mode
-  can opt in. `metronome` (scales, diatonic chords, routines): `metronome.ts` runs the built-in clock while the
-  exercise's Metronome option is on. `fadeChordWhenIdle` (free play): after 10 s idle, main tells the chord view `setIdle(true)` and the view
-  fades to "Play something" over 2 s (it owns how that looks); any input brings the chord straight back.
-  **Exercises never use the header key**, and the header Key picker is hidden outside free play: a key is either
-  part of the prompt ("V7 in G major") or chosen inside the exercise (the scale selector).
-  `freePlay.ts` adds the chord name with the 40 ms debounce. `sightReading.ts` (mode id "reading"; it was "notes",
-  and a saved "notes" loads as "reading") feeds each new
-  note-on to `reduceMelody` and moves to the next line 900 ms after its last note. `chordPractice.ts`
-  feeds the held keys to its reducer (900 ms before the next prompt) and asks again if the filter rules out the
-  current chord. `progressionPractice.ts` feeds the held keys to the progression reducer and starts a new
-  progression 1.2 s after the last chord. The chord filter, the prompt style (chord names or Roman numerals, shared
-  by chord and progression practice) and the "Specific inversions" option are saved in localStorage.
-  `sequencePractice.ts` runs any exercise in `PRESCRIPTIVE` (modes "scales", "diatonic", "fiveFinger", "arpeggios", "brokenChords", "chromatic"): builds it from the
-  shared exercise options, feeds note-ons and held keys with their times to the sequence reducer, and swaps in a
-  fresh exercise when the options change. `routinePractice.ts` runs a routine (mode "routines"): restarts when the
-  routine or direction changes, applies other exercise settings from the item in progress on; Skip skips an item
-  (and starts again at the end), Restart routine starts over.
-- `src/main.ts`: wiring only: creates the store, views, modes and input sources and connects them. The larger
-  pieces of wiring live in `src/app/`: `storage.ts` (settings loaded into `createAppState` and saved, each only
-  when it changes, as the settings table says; the device id), `safeStorage.ts` (localStorage reads and writes that
-  never throw, shared with the MIDI map), `controls.ts` (binds each control to its setting with
-  `bindSelect`/`bindCheckbox`/`bindNumber`/`bindFilter`, which blur so the computer keys keep working, and look again
-  only when the settings changed, not on every note; `showControls` shows the
-  controls the mode uses: exercise options are tagged `data-option` and shown when the exercise lists them),
-  `history.ts` (opens practice history and runs the footer's count, Export and Import), `calibration.ts` (the
-  calibration dialog, from the button or by itself) and `dom.ts` (`$`, which throws for a missing id, and `onPress` for buttons that blur when
-  clicked). Main starts each view through `MODE_REGISTRY` (`src/modes/registry.ts`: view id → start function, a
-  `Record<View, …>`, so a mode left out doesn't compile); every start function takes one object (`ModeDeps`: store,
-  all the views, recorder, history store, `saved`, excerpt loader, optional rng) and uses the parts it needs.
-- `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
-- `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
-  `chords.test.ts` covers template matching, cost explanations and transposition consistency;
-  `performance.test.ts`, `midi.test.ts` and `app.test.ts` cover the reducers and MIDI parsing; `settings.test.ts`
-  the settings table against a fake localStorage (round trip, formats, legacy values such as the old "notes" mode id,
-  saving only what changed, setters that change nothing) and the mode registry; `sequencePractice.test.ts` the
-  exercise mode moving on a key after a run, and not after it has stopped.
+## Build, deploy, checks
+Vite + TypeScript, built to one self-contained file with `vite-plugin-singlefile` (`vite.config.ts` renames it to
+`dist/chord-display.html`). `.github/workflows/pages.yml` runs the tests and the build on every push to `main` and
+publishes the file as `index.html` plus `reading/` (the excerpt files from `public/reading/`) to GitHub Pages.
+**Offline is no longer a requirement** (Oct 2026): the app may fetch its own static data, but there is still no
+server of our own and no telemetry.
 
 ```
 npm install
@@ -190,509 +30,154 @@ npm test           # Vitest: 468 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
-**Formatting:** Prettier 3 (`.prettierrc.json`: printWidth 120, arrowParens "avoid", otherwise defaults). It skips
-what `.prettierignore` lists: the generated `public/reading/` data, `tests/voicings.json` (one voicing per line) and
-Markdown. A pre-commit hook (simple-git-hooks, installed by `npm install`/`npm ci` through `prepare`) runs
-lint-staged, which formats the staged files and stages the result, so commits are always formatted; don't format
-by hand. The bulk reformat is listed in `.git-blame-ignore-revs`: `git config blame.ignoreRevsFile
-.git-blame-ignore-revs`. No ESLint yet: typescript-eslint doesn't support TypeScript 7.0's native compiler.
-In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
-`noteOn(n, source?, channel?)`, `noteOff(n, source?, channel?)`, `setPedal(source, down)`, `allOff(source?)` (no
-argument means panic) and `getState()`.
+**Formatting:** Prettier 3 (`.prettierrc.json`: printWidth 120, arrowParens "avoid"). `.prettierignore` skips the
+generated `public/reading/` data, `tests/voicings.json` (one voicing per line) and Markdown. A pre-commit hook
+(simple-git-hooks, installed by `npm install`/`npm ci` through `prepare`) runs lint-staged, which formats the staged
+files and stages the result; don't format by hand. The bulk reformat is listed in `.git-blame-ignore-revs`:
+`git config blame.ignoreRevsFile .git-blame-ignore-revs`. No ESLint yet: typescript-eslint doesn't support
+TypeScript 7.0's native compiler.
 
-## Libraries
-- **tonal 6.5.1**: note, interval, key and scale primitives only. Chord recognition is our own.
-- **VexFlow 4.2.5** (Bravura build): staff rendering.
+Tests (`tests/`) are Vitest with no browser. In the browser console, `__chord` (`src/main.ts`) exposes `analyze`,
+`setKey`, `noteOn`, `noteOff`, `setPedal`, `allOff` and `getState` for testing.
 
-Both are bundled into the single output file. **Offline is no longer a requirement** (decided by the user, Oct 2026):
-the app may fetch its own static data, such as the sight-reading excerpts (`public/reading/`, copied next to the
-page on GitHub Pages). Still no server of our own and no telemetry.
+Libraries: **tonal 6.5.1** for note, interval, key and scale primitives only (chord recognition is our own);
+**VexFlow 4.2.5** (Bravura) for the staff. Both are bundled.
 
-## Behavior and decisions so far
-- **MIDI:** Web MIDI, all inputs on by default, with a per-input toggle chip in the header. Note-on with velocity 0
-  counts as a note-off. A note's held state is tracked per `source:channel`, so multiple sources don't clobber each
-  other. CC 120/123 clear notes. Esc and the Clear button do a full panic.
-- **Sustain (CC64):** notes released while the pedal is down stay "sounding" and are drawn grey. A footer checkbox
-  decides whether they count toward the chord.
-- **Debounce:** the staff redraws on every animation frame. The chord name waits about 40 ms of stillness so rolled
-  chords don't flicker.
-- **Computer keyboard input** for testing: A–K plus W/E/T/Y/U, Z/X for octave, Space for pedal.
-- **MIDI mapping** (`src/input/midiMap.ts` pure, `src/app/midiMap.ts` on the page): the footer's **MIDI map** button
-  turns mapping on and outlines every control with `data-midi-map` (the chord-quality answer boxes `answer:<type>`,
-  Replay `replay` on the board and in the panel, `stop`, `skip`); clicking one picks it (instead of pressing it), and
-  the next key pressed is mapped to it (Delete clears it, Esc cancels, Esc again or the button ends mapping). A key
-  maps to one control, a control has one key. Mappings are per mode (`MidiMap`: mode → control → note), so a key is
-  only taken in the mode it was mapped in, and only while its control is on screen (`offsetParent`); there the key
-  presses the control (`click()`, so a disabled one does nothing) and neither its note-on nor note-off reaches the
-  performance (main's `input` asks the mapper first). Mapped controls show their key in a corner badge
-  (`data-midi-label`, kept up to date by a MutationObserver since controls are redrawn). Saved in localStorage
-  `chordDisplay.midiMap` (mappings saved under sight reading's old mode id, "notes", load as "reading"). Any control can be made mappable by giving it `data-midi-map` (and `data-midi-name`).
-- **Staff layout is fixed:** room is always reserved for the full A0–C8 range so the staff never moves. Both chords
-  share one VexFlow `TickContext` pinned at a fixed x, so noteheads never shift sideways and accidentals extend
-  left. Treble/bass split is at middle C (≥ 60 goes on the treble staff). A row of notes (`StaffRow`: exercises,
-  generated sight-reading lines, ear-training melodies) gets a wider staff (`ROW_STAFF_W` 580 viewBox units, not
-  300) drawn across the card's full width, so 16 steps keep about the spacing 8 had; the svg's `data-layout`
-  ("chord" or "row") tells the circle of fifths which corner to fill.
-- **Key selector (header, free play only):** None plus 12 major and 12 minor keys, saved in localStorage. A key adds
-  a key signature, accidentals relative to it (including naturals), key-based spelling, scoring bias and Roman
-  numerals. Hidden in practice modes, which name their key in the prompt or have their own selector.
-- **Errors:** a MIDI-denied error shows a Retry button, and a separate message when the page is stuck in an iframe or
-  preview.
+## Architecture
+Layers that only talk through data. Read the file before changing a layer; this is the map.
+- **Input** (`src/input/`): sources emit the `InputEvent` union (`events.ts`): note-on/off with source and channel,
+  pedal, `allNotesOff`, `panic`. `time` is the originating event's `timeStamp` (performance.now() clock), never handler
+  time. `midi.ts` (pure `parseMidiMessage` + the Web MIDI source), `keyboard.ts` (computer keys, source `"kbd"`),
+  `degreeKeys.ts` (number keys as scale degrees, source `"deg"`), `keys.ts` (`isTypingOrModified`: every computer-key
+  handler starts with it).
+- **State** (`src/state/`, no DOM): `performance.ts` (pure reducer: held notes per `source:channel`, pedal-sustained
+  notes), `app.ts` (`AppState`, `reduceApp`), `settings.ts` (the settings table, below), `store.ts` (subscribers get
+  `(state, prev)` only when the state object changed; one that unsubscribes mid-dispatch isn't called again). Reducers
+  return the same object when nothing changed, and setters do too when the value is already set, so nothing
+  downstream reacts.
+- **Theory** (`src/theory/`, pure, no globals; the key is always passed in): spelling, keys and the circle of fifths,
+  chord templates (data) and the recognizer, Roman numerals.
+- **Exercises** (`src/exercises/`, pure): prompt makers and reducers. `Rng` (`random.ts`) is injected everywhere so
+  tests pass a seeded one. `judging.ts` is what every prompt-and-answer reducer shares.
+- **Modes** (`src/modes/`): exactly one runs at a time and returns `{stop, skip?}` (plus `refresh` for the Progress
+  page). `performance.ts` has what modes share (`createPerformanceDrawer`, `onPlayerInput`, `timingGrid`, `onIdle`,
+  `heldNotes`). `page.ts` `PAGE_SETUP` says per mode, as data, which panel and stage it shows, whether the header Key
+  picker shows, and which page-wide behaviours (metronome, idle chord fade) it opts into.
+- **Views** (`src/views/`): DOM rendering only. `practice/` renders a `PracticeDisplay` that presenters build from
+  exercise state; `staff.ts` (VexFlow), `staffMusic.ts` (excerpts), `exerciseRow.ts`, `circleOfFifths.ts`,
+  `degreeCircle.ts`, `answerBoard.ts`, `roundViz.ts`, `charts.ts`, `progressView.ts`.
+- **Wiring:** `src/main.ts` only connects things; larger wiring is in `src/app/` (`storage.ts`, `controls.ts`,
+  `history.ts`, `calibration.ts`, `excerpts.ts`, `midiMap.ts`, `safeStorage.ts`, `dom.ts`). Main starts each view
+  through `MODE_REGISTRY` (`src/modes/registry.ts`, a `Record<View, …>` so a mode left out doesn't compile); every
+  start function takes one `ModeDeps` object and uses the parts it needs.
 
-## Chord recognizer (`src/theory/chords.ts`, data in `src/theory/chordTemplates.ts`)
-Our own template matcher; tonal is only used for primitives (intervals, transposition, keys).
-1. Reduce the notes to unique pitch classes, ordered from the bass up.
-2. **Templates** (`CHORD_TEMPLATES`): about 60 chord types, each with intervals, a lead-sheet `symbol`, a long `name` and
-   a base `cost` (triads 0; 7, maj7, m7 and 5 cost 1; common colors 2; 13 and m11 2.5; extended or altered chords 3;
-   rare ones 4.5). `(5P)` marks a tone that may be left out. The 5th is optional in chords with a 3rd and a 7th;
-   the 9th is optional only in 13 and m11. No two templates share a pitch-class set (a test enforces it), and table
-   order only breaks exact ties.
-3. **Matching:** `matchTemplate(pcs, rootPc, template)` reports omitted optional tones, missing required tones and
-   extra notes. It is exported for the exercise matcher. The recognizer tries every template on every played root
-   and keeps exact fits (nothing missing, nothing extra).
-4. **Scoring** (`RECOGNIZER_WEIGHTS`): base cost, + `omit` per left-out tone (5th 0.5, 9th 0.25), + 1.5 when the bass
-   is a chord tone other than the root. With a key: root outside the key +1.0, +0.4 per *played* chord tone outside
-   it, −0.7 if the root is the tonic. Harmonic minor's raised 7th counts as in-key.
-5. **Upper-structure slash chords** (G/C, B♭/C, C/D): a template with base cost ≤ 2 in root position over the notes
-   above the bass, +1.5 +0.5. Only tried when the best plain reading costs more than 3. This keeps D7/C from becoming
-   D/C and Cmaj7 from becoming Em/C.
-6. If nothing fits and there are 4+ notes, ignore one non-bass note (+3) and label the result "with added X".
-7. Reject readings whose **voicing cost** (everything except the key adjustments) is above 6. The key only re-ranks;
-   it never turns a real chord into "?". Clusters show "?".
-8. Power chords (`5`) need the root in the bass; an inverted fifth falls through to interval naming (C–F, Perfect 4th).
-9. Every reading carries `reasons` (label + cost, summing to `cost`), `omitted` degrees and `voicingCost`, so the UI or
-   an exercise can explain why it won. `analyze` also returns all accepted readings as `ranked`. Alternatives within
-   +2.5 of the best are shown as chips. Ties go to plain readings, then root position, then table order, so results
-   are the same in every transposition.
-10. **Spelling:** the root is spelled from the key if one is set, otherwise from conventional root tables (minor-family
-   templates use C#, G#, not Db, Ab). Chord tones are spelled by transposing the root. Non-chord tones use the key's
-   spelling, or sharps/flats by context.
+## Key mechanisms (where they live, and the rule to respect)
+- **Settings table** (`src/state/settings.ts` `SETTINGS`): one entry per setting with its `sanitize` (also its
+  default) and, if saved, its localStorage key (`chordDisplay.*`), format and `legacy` keys. Adding a setting: a field
+  in `Settings`, an entry in `SETTINGS`, an action. `src/app/storage.ts` saves each setting only when it changes;
+  `sameSetting` is the equality used. Controls are bound in `src/app/controls.ts`; exercise options are tagged
+  `data-option` and shown only when the exercise lists them.
+- **Mode registry and page setup:** `src/modes/registry.ts`, `src/modes/page.ts`. The Progress page is a view, not a
+  mode (`AppState.page`, not saved; `viewOf`), started like a mode so the running mode stops.
+- **Prompt recording** (`src/modes/promptRecords.ts`): times each drill prompt from when it's shown and records it
+  once, when answered or skipped (chord practice, sight reading, the ear modes; progression practice records its
+  own). A new prompt from a settings change isn't a skip.
+- **Chord judging from held keys** (`src/exercises/chordAttempt.ts`, the only place): a match as soon as the held keys
+  form the target; a miss only when keys were newly pressed and then all released. `chordMatch.ts` says what counts.
+- **Key rotation** (`src/exercises/keyRotation.ts`): the "Random" key option shared by drills, a new key every
+  `PROMPTS_PER_KEY` (10); each drill's picker only says which keys it allows.
+- **Key progression** for exercises (the "Then" option, `src/exercises/keyOrder.ts` `nextKey`): after a run the mode
+  sets the next key as the exercise's Key in a microtask, skipped if the mode has stopped by then
+  (`tests/sequencePractice.test.ts`). Hidden in routines, which set their own keys.
+- **Prescriptive exercises:** `sequence.ts` is the generic matcher (note and chord steps), `prescriptive.ts`
+  `PRESCRIPTIVE` the registry of builders and the options each uses. Adding one: a builder, a registry entry, a mode
+  id and a menu item. Routines (`routines.ts` `ROUTINES`) are curated data pointing into `PRESCRIPTIVE`; items set only
+  their key, every other option comes from the player's exercise settings. `PROGRESSIONS` (`progressions.ts`) is
+  likewise a shared list with deliberately no user selector.
+- **Shared ear-drill runner** (`src/modes/earDrill.ts` `createEarDrill`): owns answering, recording, rounds, replay
+  after a miss, timers, Skip, Stop/Start and waiting for audio; scale degrees (`earTraining.ts`), melodies
+  (`earMelody.ts`) and chord qualities (`earChords.ts`) only configure it. `tests/earDrill.test.ts` runs them against
+  fakes.
+- **Rounds** (`src/exercises/rounds.ts` pure, `src/modes/rounds.ts` `RoundKeeper`): ear prompts come in rounds of
+  `ROUND_SIZE` (20); each finished round is a `round` record compared with earlier rounds of the same drill and
+  `setup`. The keeper reads rounds once with `ofKind("round")` (cost doesn't grow with history) and adds each round
+  only after comparing it; a failed read is logged and retried next time.
+- **Metronome / timing** (`src/timing/`): `AppState.transport` is the one source of truth for where the beats are.
+  Only the driver (today the built-in clock, `src/modes/metronome.ts`) dispatches `setTransport`; the click
+  (`src/audio/click.ts`, look-ahead scheduler), beat light and judging (`grid.ts`) only read it, so an external clock
+  (Ableton MIDI clock) would just be another driver. Tempo changes go through `retempo` so no beat jumps.
+- **Latency calibration** (`src/timing/calibration.ts`, `src/views/calibrationDialog.ts`, `src/app/calibration.ts`,
+  `src/modes/calibrate.ts`): `latencyMs` is taken off note times. While `AppState.calibrating`, `onPlayerInput` reports
+  nothing so exercises ignore the taps.
+- **Audio** (`src/audio/`): one shared AudioContext (`context.ts`), unlocked on any click, tap or key (a MIDI note
+  isn't a gesture). `tones.ts` synthesises the ear-training sounds (no samples); `tones.latency()` is the output
+  latency used to time visuals to what's heard.
+- **MIDI mapping** (`src/input/midiMap.ts` pure, `src/app/midiMap.ts`): maps a key to any control with
+  `data-midi-map`, per mode, active only while the control is on screen; a mapped key's note-on/off never reaches the
+  performance (main's input asks the mapper first). Saved in `chordDisplay.midiMap`.
+- **Chord recognizer** (`src/theory/chords.ts`, templates and `RECOGNIZER_WEIGHTS` in `chordTemplates.ts`): template
+  matching plus a cost score; every reading carries `reasons`. No two templates share a pitch-class set (a test
+  enforces it). The key only re-ranks readings, never turns a real chord into "?". Ties are broken so results are the
+  same in every transposition. Known limits: Roman numerals ignore inversions; "I6" is an added-6th chord; rootless
+  voicings aren't recognized.
+- **Practice history** (`src/progress/`): records (`run`, `routine`, `drill`, `round`) are plain JSON, only ever
+  added, each with a UUID, schema version (`RECORD_VERSION`), UTC time and device id. Charts are worked out from
+  records (`stats.ts`), so a new chart needs no new record. Everything goes through the `ProgressStore` interface;
+  only `idbStore.ts` knows IndexedDB. Modes record through the `Recorder` they're given (tests use `noRecorder`).
+  Export/import merges by id. History is per address (Pages site vs local file).
+- **Sight-reading excerpts** (`src/exercises/excerpts.ts`, `scripts/corpus/`): from the OpenScore Lieder corpus (CC0;
+  the Essen collection was ruled out by its licence). Fetch the corpus (git-ignored, about 500 MB) with
+  `git clone --depth 1 --filter=blob:none --sparse https://github.com/OpenScore/Lieder corpus/lieder` then
+  `git -C corpus/lieder sparse-checkout set --no-cone '/scores/**/*.mscx' '/LICENSE.txt'`, and regenerate the
+  committed `public/reading/lieder-{voice,rh,lh,both}.json` with `node scripts/corpus/import.ts` (Node 22.18+ runs the
+  TypeScript directly). The files are `ExcerptFile`s at `EXCERPT_FILE_VERSION` (3), read strictly by
+  `checkExcerptFile` (this version, this part), so a format change means re-importing. Levels are worked out in the
+  app (`levelsFor`, `readingLevel`) so cut-offs can change without re-importing; `tests/excerptFiles.test.ts` checks
+  the committed files' level counts. `scripts/corpus` is typechecked (Node APIs declared in `node.d.ts`; no
+  @types/node). The app fetches each part's file on first use (`src/app/excerpts.ts`); opened as a local file it
+  can't.
 
-**Known limits:**
-- Roman numerals ignore inversions (C/E reads as I).
-- "I6" means an added-6th chord, as on lead sheets, not classical first inversion.
-- Rootless voicings are not recognized (the root must be played). `matchTemplate` can still score them for exercises.
-- Some sets are truly ambiguous (Am11/E vs Cmaj13/E; Ebm6/Gb vs Cm7b5/Gb); the weights pick one consistently.
+## Invariants and gotchas
+- **Saved data stays loadable.** Old localStorage settings and history records must keep working: settings fall back
+  through `legacy` keys (exercise options read `chordDisplay.scale`); sight reading's mode id was `"notes"` and a saved
+  `"notes"` loads as `"reading"` (settings and MIDI-map scopes); `DrillKind` keeps `"notes"` (old note practice) so
+  old history loads and charts. `latencyCalibrated` counts a latency saved before the flag existed unless it's 0.
+  `tests/settings.test.ts` covers these.
+- **Records:** readers go through `upgradeRecord`, which drops malformed records and ones from a newer version. The
+  IndexedDB database is `chordDisplay` v2 (store `records` keyed by id, indexes `at` and `kind`); an upgrade must keep
+  the existing records, and an open tab closes its database on `versionchange`.
+- **Escape everything interpolated into HTML/SVG strings** with `esc` (`src/views/html.ts`): imported history, excerpt
+  files and storage can hold hostile text. `tests/escaping.test.ts` checks the views.
+- **Cancel every timer and subscription in a mode's `stop()`**; a stopped mode must not act (next-prompt timers, the
+  key-progression microtask).
+- **Space is the pedal.** Buttons and controls blur after use (`onPress` in `src/app/dom.ts`, the `bind*` helpers in
+  `controls.ts`) so Space doesn't press them again and computer keys keep working.
+- **Exercises never use the header key**: a key is part of the prompt or chosen inside the exercise; the header Key
+  picker shows in free play only.
+- **Audio clicks:** cut a note off with `holdAt` (`cancelAndHoldAtTime`, `src/audio/tones.ts`), never
+  `cancelScheduledValues` alone, which jumps back to the attack's peak and clicks.
+- **Audio waits for a gesture:** after a reload the ear modes open stopped ("Ready") and start once audio unlocks,
+  rather than queueing sound that bursts out on the first click.
+- **TEMPORARY round-viz debug switcher** (`src/views/roundViz.ts`, saved as `chordDisplay.debugRoundViz`): Dots, Ring
+  and Line are being compared. Keep it for now; once the user picks one, remove the switcher and the other two, and
+  consider moving it to the left card.
+- **The staff never moves:** room is reserved for A0–C8 and both chords share one fixed `TickContext`. Treble/bass
+  split at middle C (≥ 60 treble). Rows of notes use the wider row staff.
+- **Practice modes don't show the circle of fifths** where its numerals would give answers away (chord, progression
+  practice); ear training by degree shows no staff or note names, only degrees.
+- **Chord-name debounce:** the staff redraws every frame; the chord name waits ~40 ms of stillness so rolled chords
+  don't flicker.
+- **MIDI:** note-on with velocity 0 is a note-off; CC 120/123 clear notes; Esc and Clear do a full panic.
 
-## Prescriptive exercises
-Repeatable exercises that need precise playing, as opposed to the random-prompt practice modes. The player picks
-the exercise and runs it again and again; each run is measured.
-- **Model:** a `SequenceExercise` is an ordered list of steps, each a **note** (semitone offset from the
-  exercise's base pitch class + spelled name) or a **chord** (a `ChordPrompt`, optionally with a required
-  inversion). Note steps are judged on note-ons: the first one played may be in any octave and sets the octave of
-  the run, after that each must be exact. Chord steps are judged from the held keys via `chordAttempt.ts` (any
-  voicing, rolled or legato). A wrong attempt is a mistake and the step waits for the right one (no restart).
-  Steps can be mixed (an arpeggio then its chord); the note that completes a note step doesn't count against a
-  chord step that follows.
-- **Runs:** finishing gives a `RunResult` (mistakes, duration, tempo in BPM with one step per beat, evenness =
-  1 − coefficient of variation of the gaps between steps, using the MIDI event timestamps; and `timing` when played
-  to the metronome). Playing the first step again starts the next run; Restart abandons one. The session keeps
-  every run and shows the best (fewest mistakes, then most on time if timed, else most even). Results show tempo and
-  evenness (or timing), not how long the run took.
-- **Moving through keys** (the **Then** option, `ExerciseOptions.progression`, `src/exercises/keyOrder.ts`): each
-  exercise with a key (scales, diatonic chords, five-finger patterns, arpeggios, broken chords, chromatic scale) can
-  stay put ("Same key again", the old behaviour: play the first step to go again) or move on once a run is done:
-  round the circle of fifths sharps first (the default) or flats first, a semitone up or down, or to a random key
-  (never the same one); minor keys move through minor keys (`nextKey`, spelled as in the key lists). The mode sets
-  the next key as the exercise's Key (so the picker follows and it's saved) straight away (in a microtask, after
-  the run's action; skipped if the mode has stopped by then); the last key's result
-  ("✓ C major: clean · …") shows until the next key's first note (`progressingDisplay`), the score counts keys played
-  this session, and Skip becomes "Next key". Hidden in routines, which set their own keys. A first step towards
-  folding single exercises and routines together, which may be revisited.
-- **Options and registry:** the exercises share `ExerciseOptions` (key, Then, minor form, octaves, arpeggio start
-  (inversion), sevenths, root position, and the metronome: on/off, BPM, notes per beat, strictness), with one Key selector inside the exercise. `PRESCRIPTIVE` lists each exercise's builder and the options
-  it uses; the UI shows just those. Adding an exercise is a builder, a registry entry, a mode id and a menu item.
-- **Scales (built):** any of the 24 keys, up and back down, 1 or 2 octaves; minor scales offer natural, harmonic
-  or melodic (melodic comes down natural). The prompt names it ("Play E♭ harmonic minor up and back down…").
-  Its steps show as dots in the practice panel. Wrong notes still name the expected one.
-- **Diatonic chords (built):** the key's triads or seventh chords in order, I up to vii° and back to I (minor:
-  harmonic minor's V and vii°), in root position or any voicing; shown as chord names or Roman numerals.
-- **Technique (built, `src/exercises/technique.ts`), the staples of exams and warm-up books, all note steps:**
-  **five-finger patterns** (the key's first five notes up and down, 1 2 3 4 5 4 3 2 1, minor with ♭3, then the tonic
-  chord in root position as a chord step); **arpeggios** (the tonic triad up and back down, 1 or 2 octaves, from the
-  root, 3rd or 5th: the "Start from" option, `ExerciseOptions.inversion`); **broken chords** (the exam pattern: the
-  tonic triad in each position in turn, low–middle–high–middle, C E G E, E G C G, G C E C …, up 1 or 2 octaves to the
-  root and back the same way); **chromatic scale** (from the key's tonic, 1 or 2 octaves, sharps up and flats down,
-  the tonic keeping its own name). Shown as dots, like scales. Progress labels them ("G major arpeggio, first
-  inversion, 2 octaves").
-- **Next, on the same matcher:** cadences (I–IV–V7–I with set voicings); hands together (steps with two notes,
-  played together as in sight reading); Hanon patterns; a tempo ladder; fingering
-  hints; keeping best runs (step 5).
-- **The notes on the staff** (`src/views/exerciseRow.ts`, `exerciseRow`, used by sequence practice and routines): the
-  grand staff (the wider row staff) shows the exercise's steps a page of `PAGE_STEPS` (16) at a time, as quarter notes (`StaffRow`), the
-  page holding the step being played: played steps green, the current one amber (`current`), red after a wrong
-  attempt; the last page all green once a run is done. Note steps sit in the run's octave once the first note has
-  set it, else in one keeping the exercise between G3 and C6; each keeps the exercise's spelling (`names`,
-  `spelledAs`: the chromatic scale's flats coming down). Chord steps are drawn in root position, close, above their
-  root (`StaffRow` notes take a chord). The held keys aren't drawn (they'd sit on the notes to read).
-
-## Metronome
-Timed practice for the prescriptive exercises and routines. The click comes from the browser; the design leaves
-room to sync with Ableton later.
-- **Transport = the one source of truth** (`src/timing/transport.ts`, in `AppState.transport`): "beat *b* falls at
-  time *t* (performance.now() clock, the same as the input events), at this BPM". Whatever drives the clock
-  dispatches `setTransport`; a tempo change moves the anchor (`retempo`) so no beat jumps. **Everything else only
-  reads it:** the click, the beat light and the timing judgement never assume who drives. Today the driver is the
-  built-in clock (`src/modes/metronome.ts`, a `PAGE_SETUP` behaviour); an external clock (MIDI clock from Ableton
-  via loopMIDI, say) would be another driver updating the same transport, and nothing downstream changes.
-- **Click** (`src/audio/click.ts`): a look-ahead scheduler (every 25 ms, schedule clicks that must start within the
-  next 120 ms of the audio clock, so the horizon covers any output latency: Bluetooth can add 300 ms), accented on beat 1 of the 4/4 bar, mapped from performance time with `getOutputTimestamp()` so
-  output latency is included (falling back to an estimate if a browser's timestamp disagrees by >250 ms, so clicks
-  are never silently scheduled in the past). It tracks the last click by time, so a tempo change never doubles a
-  click. Audio starts on the first click, tap or key press (browser autoplay rules; unlocked in the capture phase on
-  pointerdown/touchend/click/keydown, with a silent buffer for older iOS), and the beat light says so while it's
-  blocked. On iOS, `navigator.audioSession.type = "playback"` lets it sound with the silent switch on. It reports
-  the output latency the browser gives (`outputLatency + baseLatency`); above 60 ms the metronome options show a
-  note (likely Bluetooth). Browsers can't say what kind of device it is (names need microphone permission), and
-  can under-report Bluetooth delay.
-- **Judging** (`src/timing/grid.ts`): a grid = transport + notes per beat (1, 2 or 4) + strictness (±50 ms strict,
-  ±80 ms loose, never more than 40% of a slot) + `latencyMs` (taken off note times: set it if you're judged
-  consistently late). One step per slot. A run may start on any slot; each step is due on the slot after the
-  previous one; a step a whole slot away has *slipped*, and the run carries on from there, so one stumble doesn't
-  make the rest late. Wrong notes still block the step as before. The summary: share on time, lean (rushing or
-  dragging, ms), spread and slips. The click runs continuously, so there's no count-in: join on any beat.
-- **Sequence and routines:** `SequenceState.grid` (`setGrid`; a new tempo keeps the run, another subdivision or
-  turning the metronome off restarts it) and `timings` per step. Routines pass the grid on to each item, so the
-  click flows through a whole routine; the weakest items are the least on time.
-- **Display:** the beat light above the prompt, the tempo in the instruction, late steps red and early ones blue,
-  and "93% on time · dragging 6 ms" in results.
-- **Latency calibration**, in a dialog (`src/views/calibrationDialog.ts`; Calibrate, next to Latency, or by itself
-  the first time the metronome starts while `latencyCalibrated` is false: set by calibrating, typing a latency, or
-  Cancel, and saved; a latency saved before the flag existed counts unless it's 0): play any note on each click; 4 warm-up taps, then 12
-  measured; taps over 150 ms from the beat are strays; the median offset becomes the latency (− = the player is
-  ahead, e.g. rushing), applied only if steady (median absolute deviation ≤ 25 ms). It covers the click's real
-  arrival, MIDI delay and playing ahead of a click in one number. `AppState.calibrating` makes `onPlayerInput`
-  report nothing meanwhile, so exercises ignore the taps; the metronome stopping cancels it
-  (`src/modes/calibrate.ts`).
-- **Next:** a tempo-ladder routine (raise the tempo after a clean run); an external
-  clock driver (Ableton).
-
-## Circle of fifths (`src/views/circleOfFifths.ts`)
-A visual shown in the top-right corner of the staff card when relevant, hidden otherwise; main hides it on every
-mode switch and modes that use it draw it.
-- **Size:** it scales with the window. `staffCorner()` (staff.ts) gives the corner the staff leaves free, in viewBox
-  units: right of the note column (with a cluster's displaced noteheads and ledger lines; no key signature) and
-  above the treble staff. `fitToStaffCorner` (views/staffCorner.ts) converts it to pixels on every resize (allowing
-  for the drawing being letterboxed in a short window) and sizes the circle to fill it, 10 px clear, at least 110 px.
-  A key signature moves the note column right, so very high notes in keys with many accidentals can reach into it.
-  Over a row of notes (`staffCorner(true)`): the right half, above `ROW_TOP_ROOM` (room for about three ledger lines
-  above the treble staff); `fitToStaffCorner` refits whenever the staff's layout changes.
-- **Drawing:** `circleSvg(model)` is pure: majors on the outer ring, relative minors inside, C at the top, clockwise
-  by fifths. The model can focus a key (amber, its name and signature in the middle), shade and number its
-  neighbourhood (IV I V outside and ii vi iii inside for major; VI III VII and iv i v for minor; `neighbours: false`
-  turns this off), mark a chord (`chordOnCircle(result)`: major-family chords outside, minor-family inside;
-  diminished, augmented and sus chords aren't on the circle), and colour routine progress by key with a centre
-  text and direction arrow. Labels use the circle's fixed spelling (F♯, E♭m), so E♭ minor's VI shows as B.
-- **Where:** free play with a header key (the key, its neighbourhood and the chord being played); scale and
-  diatonic chord exercises (the exercise's key); routines (progress, current key, "4 / 12" and ↻/↺). Not in note,
-  chord or progression practice: the numerals would give answers away.
-
-## Routines
-A set of prescriptive exercises played one after another, e.g. every major scale round the circle of fifths.
-- **Data, not code:** a `Routine` is a list of `RoutineItem`s `{exercise, options}` pointing into `PRESCRIPTIVE`.
-  Items set only what defines them (the key); every other option comes from the player's exercise settings, so
-  "2 octaves" applies to the whole routine. `eachKey(keys, exercises)` builds the usual "for each key, these
-  exercises" shape. Routines are a curated list (`ROUTINES`), not a user builder.
-- **Order:** each routine has an `order`: `"circle"` (`circleOfFifths("sharps")` = C G D A E B F♯ D♭ A♭ E♭ B♭ F;
-  `"flats"` = C F B♭ E♭ A♭ D♭ F♯ B E A D G) or `"chromatic"` (`chromaticKeys`: up C D♭ D E♭ E F F♯ G A♭ A B♭ B, or down
-  C B B♭ A …). The direction is one setting with the saved values "sharps"/"flats"; `DIRECTION_NAMES[order]` names
-  them for the picker ("Sharps first …" / "Up …"), the circle's centre arrow (↻ ↺ ↑ ↓) and the Progress table. F♯
-  stands in for G♭, as in the key lists. Major keys only, for now. A routine with `startsOn` lets the player pick the
-  key it starts on (`RoutineOptions.start`, a major key value, default C; the "Start on" picker shows only then;
-  recorded as `start` in its routine record); `chromaticKeys(direction, from, octave)` starts there and, with
-  `octave`, ends on it again an octave away (13 keys). `initialRoutine` takes the routine options (or just a
-  direction, starting on C). A key a routine comes back to keeps its first visit's colour on the circle until reached.
-- **Running:** `reduceRoutine` forwards input to the item's `reduceSequence`; when the item's run finishes (mistakes
-  allowed, and recorded) it moves on, carrying held keys over so a scale's last note doesn't count against the
-  next item's chord. The previous item's result shows until the next one starts. Skip records "skipped".
-- **End:** `routineSummary`: played, clean, mistakes, total time, skipped, and the weakest items (most mistakes,
-  then least even; at most three, never clean ones).
-- **Built:** major scales round the circle, and chromatically; **major triads up an octave** (`major-triads-octave`:
-  from the chosen root, the major triad on each semitone to the root an octave up, or down; each item the `triad`
-  exercise, a single chord step, `tonicTriadExercise`: the key's tonic triad, in root position or any voicing by the
-  "Root position only" option; a registry entry without a mode of its own); diatonic chords; scale then diatonic
-  chords; technique (five-finger pattern, scale, arpeggio, broken chords per key); each of the last three round the
-  circle. A one-step run's result shows no tempo or evenness (`runText`).
-
-## Ear training (mode "ear", `src/modes/earTraining.ts`)
-All three ear modes are configurations of one runner, `createEarDrill` (`src/modes/earDrill.ts`): it owns answering,
-recording, rounds, the replay after a miss, the next-prompt timer, Skip, Stop/Start, waiting for audio and new options;
-each mode gives it how to sound, make, judge and show its prompts, and hooks for its extras (scale degrees: the drone,
-its introduction, pings, degree keys and pausing while away; chord qualities: the answer board and number keys;
-melodies: the staff). `tests/earDrill.test.ts` runs the modes against fakes.
-First mode: scale degrees over a drone. A drone sounds the tonic (an octave below, plus the octave above it), the
-app plays one note over it (the tonic F♯3–F4, the note in either of the two octaves above it, `EAR_OCTAVES`; never
-the same note twice running, though a degree may repeat in the other octave, so two degrees don't just alternate),
-and the player plays that note in any octave, or presses its degree on the number keys (1–7, no controller needed:
-`src/input/degreeKeys.ts`, a source the mode turns on, emitting the degree's note as source `"deg"`). The circle is the only display: the practice
-card shows no prompt (an empty `promptHtml` hides it) and no feedback text, just the instruction, score and buttons. **No staff and no note names here, only degrees:** `PAGE_SETUP.stage: "degrees"` puts the scale-degree
-circle (`src/views/degreeCircle.ts`: 1–7 round a circle, 1 at the top, the degrees on offer solid) in the staff's
-place. Each time the drone starts (a new key, Start, or new options) it plays the root, the degrees on offer and
-the octave, pinging each node in turn (amber; each ping waits the output latency, `tones.latency()`, so it lands when the note
-is heard, not sent: Bluetooth adds a few hundred ms), then the note to find; every note played pings its degree, green if
-right, red if wrong (a note outside the scale pings between its neighbours with its name, e.g. ♭3). After a wrong note the note plays again 1 s later (another wrong note in that second pushes it back).
-Replay plays the note again; Skip moves on; Stop silences the drone and ignores played notes until Start,
-which brings the drone back (with its lead-in) and plays the note again. Leaving the window (another app, another
-tab) stops it the same way, with the drone fading over 3 s (`AWAY_FADE_S`), and coming back starts it again. The note rings about 3 s. Options (saved, `Settings.ear`): the drone's tonic, or Random
-(a new key every `PROMPTS_PER_KEY` = 10 prompts, with 1.5 s of drone before the first note in a key); and the
-degrees on offer (1–7 of the major scale), starting with 1 and 5, added by the player as they get easy. Each
-prompt is a drill record (`drill: "ear"`, prompt "Degree 5", key and degrees in `detail`), charted with the other
-drills (4th series colour). Sound comes from the browser
-here (unlike the user's keyboard, which they monitor through Ableton); audio waits for a click or computer key
-after a reload: both ear modes then open stopped ("Ready", click anywhere or press a key) and start once audio
-unlocks, instead of queueing sound to burst out on the first click.
-The drone's low pass and detune are constants in `tones.ts` (`DRONE_LOWPASS_HZ`, `DRONE_DETUNE_CENTS`).
-
-**Melodies** (mode "earMelody", `src/modes/earMelody.ts`; `makeMelodyPrompt` and `reduceMelody` in
-`earTraining.ts`): the root, then N notes (Notes: 2–8, default 3) from the allowed degrees within one octave, from
-the root up to the next root (that one only when degree 1 is allowed), no note straight after itself if anything
-else is in reach, never the same melody twice running. No drone. The player plays it all back in order, root first
-(the root is step 0 of `prompt.notes`), at the exact pitch (the right note in another octave is wrong: "Right note,
-wrong octave: too low"); a wrong note holds the step and the whole melody plays again 1 s later. Steps show as dots with the degree
-revealed once played (the root's from the start). The staff draws the melody as it's played back, left to right
-(`StaffRow` in `staff.ts`, passed through `createPerformanceDrawer`'s `rowOf`): the root grey from the start,
-each note once played, and the held keys at the next step. Shares `Settings.ear` with
-scale degrees (its tonic picker reads "Key" here). Recorded as `drill: "melody"`, prompt "Root + 3 notes" (the
-degrees in `detail.melody`), charted as a 5th series. `tones.stopNotes()` cuts off a melody still playing
-(skip, replay, stop).
-
-**Chord qualities** (mode "earChords", `src/modes/earChords.ts`; pure parts in `src/exercises/chordEar.ts`): the app
-plays a chord and the player picks its kind from a board of large boxes in the staff's place (`PAGE_SETUP.stage:
-"answers"`, `src/views/answerBoard.ts`; no staff, so nothing shifts when it's answered; a wide Replay button above the boxes, the only one: the panel has none here), one
-per allowed type (in the
-filter's order, numbered: the number keys 1–9 answer too; `chordEarAnswers` says what each box shows). Options (saved,
-`Settings.earChords`, `setEarChordOptions`): the chord types (the chord practice groups, `CHORD_PRACTICE_GROUPS`, in
-a filter of its own that keeps at least two: `createFilterView`'s `min`; default major and minor), Voicing (root
-position, or any inversion: the lowest tones moved up an octave, `voiceChord`) and Play (together, or broken low to
-high then together). Roots C3–B3, close position, never the same chord twice running; roots spelled as chord names
-usually are; a test checks the recognizer names every generated
-chord as the type meant. A wrong answer strikes its box out and plays the chord again 1 s later; a right one turns
-its box green with the chord named on it ("D♭ minor, 1st inversion", also in the feedback), then the next chord
-comes after 1.5 s. Stop/Start and Skip as in the other ear modes (Replay is on the board); played
-notes are ignored (answering by playing it back is for later). Chord notes play at 1/√n of a single note's level
-(`tones.play`'s `level`). Cutting notes off (replay, skip, stop) holds each note's volume where it has got to and
-fades from there (`holdAt`: `cancelAndHoldAtTime`); `cancelScheduledValues` alone would drop the decay in progress,
-jump back to the attack's peak and click. Recorded as `drill: "chordEar"`, prompt the quality's label ("Major", "Dominant seventh
-(7)"), with the wrong answers given first in `detail.guesses` (type ids, comma-separated; from Nov 2026 on), charted
-as a 7th series (`--series-7`, #9085e9).
-
-**Rounds** (all three ear modes; `src/exercises/rounds.ts` pure, `src/modes/rounds.ts` the `RoundKeeper` each mode
-calls after every answer or skip, `src/views/practice/round.ts`): prompts come in rounds of `ROUND_SIZE` (20),
-counted from the mode's own answered / right-first-time counters (skips count as answered, not right first time); the
-score reads "Round: 7 / 20 · 5 right first time". At 20 nothing new plays (no replay, no next prompt) but what's sounding rings out (the
-chord or note just answered; the drone fades over 2.5 s), answers and replays are ignored, and the panel shows the round: its share right first time, how many and how long, and how it compares with
-earlier rounds of the same drill played the same way (`setup`: the degrees on offer; the melody length and degrees;
-the chord types, voicing and play) — "▲ 10 points on your last round · best 85% · average 72% over your last 10
-rounds" (or "Your first round played this way …"), with small bars of the last ten and this one. The round's last answer stays on screen
-for `SUMMARY_DELAY_MS` (1 s) before the summary replaces it (`over()` blocks answers at once, `summary()` only
-returns once it's showing; at once when the round ended on a skip, or Next is pressed meanwhile: `reveal()`). Skip
-reads "Next round" and starts the next (scale degrees introduce the key again); in chord qualities the answer board instead holds
-one large Next round button in place of the boxes and Replay (`AnswerBoard.renderNext`, mapped as `skip`), and the
-panel's button is hidden (`PracticeDisplay.skipHidden`). New options start a new round. Each finished
-round is a `round` record (drill, size, firstTry, setup, durationMs). The keeper reads the drill's rounds once
-(`ofKind("round")`, so the cost doesn't grow with the rest of the history), keeps them, and adds each round it
-finishes after comparing (so a round isn't compared with itself); a failed read compares with nothing, is logged and
-is tried again next time; leaving the window between rounds doesn't start the next.
-
-**The round's score while playing** (`src/views/roundViz.ts`, in the practice panel above the feedback, all three ear
-modes; the `RoundKeeper` also keeps each prompt's outcome in order, `outcomes()`, and the earlier rounds' average,
-`average()`, read when a round starts): three views being compared with a **TEMPORARY** debug switcher ("Round view
-(debug)" in the panel, saved in localStorage `chordDisplay.debugRoundViz`; default All three): **Dots** (20, green
-right first time, amber right after a miss, grey skipped, hollow to come, the next outlined), **Ring** (filled with
-the share right first time so far, the share and "8 / 20" in the middle, a tick at the earlier average) and **Line**
-(the running share after each prompt, `runningShares`, against a dashed line at the average). Once one is chosen,
-remove the switcher and the others, and consider placing it on the left card (dots above the boxes or circle, the ring
-round Replay or the degree circle).
-
-**Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,
-intervals; chord qualities answered by playing the chord back, and weighting towards the qualities missed.
-
-## Sight reading (mode "reading", `src/modes/sightReading.ts`)
-Replaced note practice. Two sources, chosen by **Level** (`ReadingOptions.level`, saved in `Settings.reading`):
-- **Songs, levels 1–5 (default 1):** a passage from a song (see "Sight-reading excerpts"). **Read**
-  (`ReadingOptions.part`, `READING_PARTS`): Melody (the voice part, default), or the piano part's right hand, left
-  hand, or both hands on a grand staff. Rhythm as written, transposed into the Key (any of the 24, or Random: a new
-  key every `PROMPTS_PER_KEY` = 10 passages; default C major; a passage moves by signature, so G major also reads as
-  E minor, and the sub says "G major / E minor"). The Level list names the part's own levels (melody and piano
-  differ). Each part and level's excerpts are dealt in a shuffled order, all before any repeats. Each part's file is
-  fetched the first time that part is needed (`src/app/excerpts.ts`: `reading/lieder-<part>.json`, only the part
-  chosen; the mode shows "Loading songs…", or "Couldn't load the songs": choosing the level again retries; opened
-  as a local file, where the browser won't fetch, "Songs need the online version (GitHub Pages) or a local
-  server"). Drawn by `src/views/staffMusic.ts` on one staff, or a grand staff with
-  a brace for both hands (clef, key and time signature, bars as written, chords, up to four voices a staff with stems
-  up/down and rests raised/lowered, hidden space where a voice sits out, beams by the time signature's default groups
-  within a voice, dots, ties, tuplet brackets, rests, accidentals per bar and staff via VexFlow's
-  `applyAccidentals`), passed to the staff view as a `StaffMusic` (`"staves" in row`). Title and composer show as
-  the prompt, with "from OpenScore Lieder" as the credit.
-- **Generated notes (level 0):** a line of N notes (Notes: 1–8, default 4) drawn as quarter notes across the grand
-  staff (`StaffRow`), on a staff (Treble C4–A5, Bass E2–C4, or Both E2–A5; Notes and Staff only show for this, Read
-  only for songs). Notes are the key signature's only (natural minor), each a different note from the last and at
-  most a 6th away, steps twice as likely as leaps; never the same line twice running.
-
-**Playing back** (`reduceReading`, `ReadingState` in `src/exercises/sightReading.ts`): a prompt is `steps`, each the
-notes struck at one moment (one note, or a chord across voices and both hands; a tied-over note isn't struck again).
-Each note-on is judged against the current step at the exact pitch. **A chord's notes must come together:** all
-within `CHORD_WINDOW_MS` (200 ms) of its first (any order; `struck`, `attemptAt`), not one by one. An attempt that
-doesn't come together is a mistake ("Play the chord's notes together"; the chord turns red and is played again from
-the start): the mode sends `expire` once the window has passed, and a note that comes later starts a new attempt.
-Any note not in the step is a mistake and holds the step. A note of the step just finished within `CHORD_SPILL_MS` (300 ms) of finishing it is
-ignored, not wrong: playing a whole chord again after a mistake finishes it on its first new note, and the rest of it
-follows a moment later (note-on times come from `onPlayerInput`). Played notes turn green (a chord's as they're struck within its attempt); after a mistake the
-current step's other notes turn red (a generated line draws the wrong note red just right of the step). Feedback:
-"That was E4", ", not in this chord", "Right note, wrong octave: too low", or "Play the chord's notes
-together". No timing yet. The held keys aren't
-drawn (they'd cover the notes to read). Recorded as `drill: "reading"`, prompt "Songs, level 2" (melody), "Piano,
-right hand, level 2" … (detail: key, part, level, excerpt id, notes, chords as "C4+E4") or "4 notes, treble",
-charted as a 6th series (`--series-6`, the palette's green); old note-practice records (`"notes"`) still chart, as
-"Note names (old)": nothing records that kind any more, but it stays in `DrillKind` so old history loads.
-**Next:** judging rhythm against the metronome; more easy piano (see the level counts below).
-
-## Sight-reading excerpts (`src/exercises/excerpts.ts`, `scripts/corpus`)
-Passages from real songs, rhythm as written: the singer's melody, and the piano part. **Not all rhythm is quarter
-notes**: excerpts keep every note value, dot, tie, rest, tuplet, chord and voice, and the drawing shows them.
-- **Source:** the OpenScore Lieder corpus (CC0; https://github.com/OpenScore/Lieder; credit asked, not required:
-  `credit` in the file). The Essen folksong collection was ruled out: its licence is personal single-user use only, no
-  redistribution or teaching materials. Fetch the corpus (not committed, `corpus/` is git-ignored) with
-  `git clone --depth 1 --filter=blob:none --sparse https://github.com/OpenScore/Lieder corpus/lieder`, then
-  `git -C corpus/lieder sparse-checkout set --no-cone '/scores/**/*.mscx' '/LICENSE.txt'` (about 500 MB).
-- **Import:** `node scripts/corpus/import.ts` (Node 22.18+ or 24 runs the TypeScript directly; about 20 s) writes
-  one file per part through `splitByPart`/`writeParts` (`scripts/corpus/parts.ts`), all committed:
-  `public/reading/lieder-voice.json` (melodies; 8.7 MB, 0.50 MB gzipped), `lieder-rh.json` (8.6 MB, 0.47 MB),
-  `lieder-lh.json` (6.3 MB, 0.37 MB) and `lieder-both.json` (13.1 MB, 0.74 MB; the arranged pieces too). It
-  prints, per part, how the excerpts spread over the levels, which single limit holds most back from levels 1–3, and
-  the main measures. `scripts/corpus/xml.ts` is a small XML parser.
-  `mscx.ts` reads the voice part's staff and the piano's two staves (each staff's clef from its `defaultClef` or the
-  instrument's `<clef staff="n">`; a clef before a bar's first note is that bar's) of a MuseScore 2 or 3 score into bars of voices: version 3 `<voice>` wrappers,
-  each with a position cursor (`<location>` jumps; a gap becomes hidden space, `hide`; running back over itself is
-  "overlap"); version 2 only its first voice (`<track>` mod 4; other voices are placed by absolute ticks, so a bar
-  with notes in them is "second voice"). Chords low to high, a unison once; tuplets by id or open until
-  `<endTuplet/>`; ties as `<Tie>` or a Tie spanner with `<next>`; grace notes left out. Flags what can't be used:
-  cross-staff notes, tremolos, a clef change mid-bar, time jumps, nested tuplets, bars that don't add up (the first
-  voice fills the bar; others may stop early). `excerpts.ts`: melodies (`asMelody` adds "chord" and "second
-  voice") are cut into phrases (runs of notes ended by a rest; one cut short by an unusable bar or a key/time/clef
-  change is dropped), each phrase and each neighbouring pair within 4 bars with at least 4 notes, a neighbour's
-  notes in the same bars turned into tidy rests (`restsFor`: on the beat, dotted only in compound time, never across
-  the middle of 4/4), tenor parts written as written (treble, an octave up). **Piano** (`cutPianoExcerpts`): both
-  staves over the same whole bars as each melody excerpt (the song's phrases make musical places to start and
-  stop), when every bar of both is clean, the right hand in treble and the left in bass throughout (a hand in the
-  other clef is left out: a reader expects them there); offered as the right hand or left hand when
-  it has at least 4 strikes, and both when each hand has 2. Duplicates (strophic verses) are dropped.
-  **Arranged easy pieces** (`scripts/corpus/arrange.ts`, `bassFor`): the songs' accompaniments are rarely easy, so
-  each melody excerpt also becomes a both-hands piece: the melody in the right hand, and a left hand of one bass note
-  on beats 1 and 3 (half notes in 4/4 and 2/2; a half on 1 in 2/4, a dotted half on 1 in 3/4; compound and other
-  times left out; a pickup bar rests), each the root of the chord in the key (I ii iii IV V vi, and the relative
-  minor's major V when the melody has its raised note) that best covers the melody sounding over it (weighted by
-  length, more for a note sounding as the bass starts; leaning to I/vi at the start and end and to staying put), in
-  the octave nearest the last, F2–G3. Kept only when it comes out at piano level 1 (508 now), with `arranged: "bass"`
-  and id `<melody id>+bass`; the credit then reads "melody from OpenScore Lieder, bass added".
-  All of `scripts/corpus` is typechecked (the few Node APIs used are declared in `scripts/corpus/node.d.ts`; there's
-  no @types/node) and tested in `tests/corpus.test.ts` and `tests/excerptFiles.test.ts` (splitting; the committed
-  files' level counts; loading). `scripts/corpus/split.ts` was the one-off that split the version 2 files
-  (`lieder.json`, `lieder-piano.json`) into this layout without the corpus.
-- **Format** (version 3, `EXCERPT_FILE_VERSION`, `src/exercises/excerpts.ts`, shared): one `ExcerptFile` per part
-  (`version`, `part`, `credit`, only the `sources` its excerpts use, `excerpts`), read strictly (`checkExcerptFile`:
-  this version, this part). Each excerpt holds only its part: its staves (a melody's or one hand's one staff, or
-  both hands') and its features. An `Excerpt` is key (fifths), time, `staves` (one for a melody; right and left hand
-  for piano as cut), each a clef and `voices[voice][bar]` of `ExcerptEvent`s
-  `{v: "w"|"h"|"q"|"8"|…, d?: dots, t?: [actual, normal], n?: [{p: MIDI, s: tpc spelling, tie?}] (absent: a rest),
-  bar?: whole-bar rest, hide?: space}`, and `parts`: the `ExcerptFeatures` for each part it can be read as (`voice`,
-  or `rh`, `lh`, `both`): strikes, bars, key accidentals, chromatic notes, range (the widest staff), ledger lines (the
-  most any note needs, `ledgerLines`), widest leap and share of steps (each voice's top line in treble, bottom in
-  bass), note values, shortest value, dotted, ties, tuplets, rests inside, syncopations, compound time, chord (most
-  notes struck at once in a hand), span (its widest) and voices (most in a staff). `partStaves` picks a part's staves
-  (a one-staff excerpt's is its staff).
-- **Steps and ties** (`excerptTimeline`, `excerptSteps`): a tied note lands on the same pitch starting as it ends, in
-  its own voice or else another voice of the same staff (piano parts often tie from one voice into another); the
-  steps are every untied note starting at each moment, and `stepOf` gives each event's step (a tied-over chord's is
-  the step it continues) for colouring. The drawing uses the same ties.
-- **Levels** (`levelsFor(part)`, `readingLevel(features, part)`: the first level whose limits an excerpt fits, worked
-  out in the app so the cut-offs can change without re-importing). Melody (`READING_LEVELS`, single notes): 1 steps,
-  simple rhythm; 2 small leaps, dotted notes; 3 wider range, compound time; 4 accidentals, triplets; 5 anything.
-  Piano (`PIANO_LEVELS`, wider ranges, plus chord size, span, voices and strikes a bar): 1 single notes, simple
-  rhythm; 2 two-note chords; 3 triads, two voices; 4 fuller chords, triplets; 5 anything. The key signature isn't a
-  limit: excerpts are transposed. Current counts (levels 1–5): melody 140 / 1,291 / 3,445 / 4,320 / 2,669 of 11,865;
-  right hand 12 / 317 / 1,604 / 2,049 / 2,881; left hand 51 / 728 / 1,355 / 1,665 / 2,754; both hands 508 / 116 / 828 /
-  1,604 / 4,429 (level 1 is all arranged pieces). Lieder accompaniments are rarely single notes, so the hands alone
-  are thin at level 1.
-- **Transposing** (`transposeStaves`): all staves by the same interval, by key signature (fifths), respelling each
-  tpc, in the octave with the fewest ledger lines over all of them (then the smallest move); null if a note would
-  need more than a double sharp/flat. `tupletGroups` splits a bar's tuplet runs into brackets.
-
-## Practice history
-Everything practised is recorded, and the **Progress** page charts it.
-- **Records, not stats:** plain JSON, only ever added. `run` (one per finished exercise run, alone or in a routine:
-  exercise, `exerciseId` with the settings that change what's played, key, metronome settings or null, mistakes,
-  duration, BPM, evenness, timing, routine session), `routine` (one per session, finished or left part-way: routine,
-  direction, start, first-to-last-note time, each item's outcome, total mistakes, metronome), `drill` (one per note,
-  chord or progression prompt answered or skipped: the prompt as asked, grouping details such as chord type and
-  inversion, firstTry/corrected/skipped, time to answer), `round` (one per finished ear-training round: drill, size,
-  right first time, the options as `setup`, duration). Charts are worked out from these, so new charts don't need
-  new records.
-- **Ready to move to a server later:** every record has a random UUID, a schema version (`RECORD_VERSION`; readers go
-  through `upgradeRecord`, which drops malformed records and ones from a newer version), a UTC time and a device id
-  (a UUID kept in localStorage). Everything goes through the `ProgressStore` interface (`add`, `all`, `ofKind` (one
-  kind, oldest first), `merge` by id, `count`); only `idbStore.ts` knows about IndexedDB (database `chordDisplay` v2,
-  store `records` keyed by id, indexes on `at` and, since v2, `kind`: the upgrade adds it to the existing store, keeping
-  the records; an open tab closes its database when a newer version wants to upgrade). A server would be another
-  `ProgressStore`, or a sync step behind IndexedDB.
-- **Recording:** modes hand finished things to a `Recorder` (passed in by main; tests use `noRecorder`), which stamps
-  and stores in the background. Sequence practice records each run; routine practice each item's run (with the
-  session id) and the session when it finishes or is left (restart, another routine, another mode); drills each
-  prompt when answered or skipped (a new prompt from a settings change isn't a skip).
-- **Footer:** the record count, Export (a `chord-display-history-<date>.json` file) and Import (merges by id, so
-  importing twice adds nothing; says how many were new). If IndexedDB won't open, history is kept in memory and the
-  footer says it isn't saved.
-- **Progress page:** not a mode. A Progress button in the header (shown pressed while open) sets `AppState.page`;
-  "← Back to practice", the button again, or choosing any mode returns to practising (`setMode` always leaves the
-  page). What's on screen is `viewOf(state)`: the mode, or "progress", which main starts like a mode (so the mode in
-  progress stops: no metronome, a routine left part-way is recorded) with `pageSetup("progress")` (panel "progress"
-  hides the staff and practice card, and the page area scrolls). The app always opens on practice. The page has one filter row (range: last 7/30/90 days or all time; routine and exercise, defaulting to the most
-  played; the selection lasts while the page is open), summary tiles (days practised, practice time, exercise runs
-  and how many clean, routines finished, drill prompts), and cards: practice time per day (columns); the routine's
-  time to complete and mistakes per finished session; the exercise's mistakes and on-time share (metronome runs) or
-  evenness, each run a faint dot with a line through the day's median; drills' share right first time per day (one
-  line per drill, always with a legend) and the trickiest prompts (asked twice or more, least often right first time);
-  and **one drill on its own** (the Drill filter, defaulting to the drill with the most prompts: `drillOptions`):
-  right first time and median time to answer by day (`drillDays`; skips count against and aren't timed), each
-  prompt's asked / first try / typical time / skipped (`drillPromptStats`, least often right first time first), and
-  for chord qualities what each is mistaken for (`chordConfusions`, from `detail.guesses`; older records without it
-  are left out). Each chart has a Table. Practice time = runs outside routines + routine sessions + drill prompts capped at a minute each.
-  Imports refresh it (`Mode.refresh`).
-- **Charts** (`src/views/charts.ts`): hand-written SVG (no library; the build stays one small offline file), redrawn
-  to the container's width. Dataviz rules: 2px lines, ≥8px markers with a surface ring, hairline grid, columns ≤24px
-  with a 4px rounded end, no dual axes (two measures = two charts), text never in series colours. Series colours are
-  the reference palette's first three dark steps (`--series-1..3`: #3987e5, #d95926, #199e70), validated against the
-  panel surface (#1d2026). Hover: a crosshair snaps to the nearest day and the tooltip (value first) lists every
-  series there, beside the crosshair and level with the pointer; columns lift.
-- **Storage is per address:** the GitHub Pages site and a local file each have their own history; export/import moves
-  it. The user plans to practise on GitHub Pages.
-
-## Planned architecture (agreed direction; do this first)
-1. ✅ **Done.** **Port to Vite + TypeScript** in this repo with identical behavior. Keep single-file offline output
-   (`vite-plugin-singlefile`), and possibly a PWA later. Move the voicing corpus to Vitest and run it against the
-   pure theory module, not through a browser.
-2. ✅ **Done, including the custom recognizer.** **Split into layers that only talk through data:**
-   - **Input sources** (Web MIDI, QWERTY, a future on-screen piano, recorded-MIDI playback) all emit a normalized
-     `NoteEvent {type, note, velocity, time, source, channel}`. Use MIDI event timestamps, not handler time.
-   - **Performance state:** a pure reducer for held, sustained and pedal, plus a history buffer of recent events.
-   - **Theory engine:** pure functions with no DOM and no globals. Pass the key and other context explicitly. Split
-     into spelling, chord recognition, key context and Roman analysis. Plan to **replace `Chord.detect` with our own
-     template-plus-scoring recognizer** whose weights live in a data table, so it can handle omissions, voicing
-     matching and explaining why a reading won. Keep tonal for primitives.
-   - **Views and modes:** subscribe to state. Free play is just one mode.
-3. **Started:** sight reading (a line of notes on the staff, played back at pitch) and chord practice (a chord name or a Roman
-   numeral in a key, from a filtered set of types, played in any voicing or a required inversion) and progression
-   practice (a popular progression in a key, chord by chord), all with right/wrong feedback and a first-try score.
-   Prescriptive exercises (above): scales and diatonic chords, and routines of them round the circle of fifths.
-   **Exercises as data:** a prompt generator, a matcher with configurable tolerances (any voicing or a specific
-   inversion, octave sensitivity, timing window) and feedback.
-4. **Audio:** the metronome is **built** (see "Metronome"), and ear training's synthesised drone and notes (see
-   "Ear training"). Maybe later: a small sampled piano. Keep it switchable, since the user often monitors through
-   Ableton.
-5. **Persistence:** practice history is **built** (see "Practice history"): IndexedDB with schema versioning and
-   JSON export/import, and the Progress view. Local-first, no accounts.
-6. **Tests:** the voicing corpus, recorded MIDI performances replayed through the whole pipeline, and occasional
-   notation screenshot tests.
-
-**Platform:** desktop browser only (Chrome or Edge), decided by the user. Tablet is out of scope for now; Safari has
-no Web MIDI, so an iPad version would need a native wrapper (Tauri or Capacitor), and only the input layer would change.
+## Pending directions (agreed, not done)
+- Prescriptive exercises: cadences with set voicings, hands together, Hanon patterns, a tempo ladder, fingering
+  hints, keeping best runs. Moving through keys (Then) was a first step towards folding single exercises and routines
+  together, which may be revisited.
+- Metronome: an external clock driver (Ableton MIDI clock via loopMIDI) updating the same transport.
+- Ear training: minor and chromatic degrees, drone on/off and volume, resolving the note to the tonic, intervals;
+  chord qualities answered by playing the chord back, weighted towards qualities missed.
+- Sight reading: judging rhythm against the metronome; more easy piano excerpts (the hands alone are thin at level 1).
+- Audio: maybe a small sampled piano, switchable, since the user monitors through Ableton.
+- Input: a future on-screen piano or recorded-MIDI playback would be just another `InputEvent` source.
+- Tests: recorded MIDI performances replayed through the whole pipeline; occasional notation screenshot tests.
+- Possibly a PWA.

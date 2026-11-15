@@ -25,7 +25,7 @@ const TIMED: PageSetup = { ...PRACTICE, metronome: true };
 
 export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   free: { panel: "chordName", stage: "staff", headerKey: true, fadeChordWhenIdle: true, metronome: false },
-  notes: PRACTICE,
+  reading: PRACTICE,
   chords: PRACTICE,
   progressions: PRACTICE,
   scales: TIMED,

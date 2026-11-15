@@ -46,7 +46,7 @@ export interface ModeDeps {
 
 export const MODE_REGISTRY: Record<View, (deps: ModeDeps) => Mode> = {
   free: startFreePlay,
-  notes: startSightReading,
+  reading: startSightReading,
   chords: startChordPractice,
   progressions: startProgressionPractice,
   // The prescriptive exercises share one runner

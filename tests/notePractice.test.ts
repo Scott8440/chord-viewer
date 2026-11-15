@@ -45,8 +45,8 @@ describe("mode setting", () => {
   it("switches mode and ignores a switch to the same mode", () => {
     const s = createAppState();
     expect(s.settings.mode).toBe("free");
-    const t = reduceApp(s, { type: "setMode", mode: "notes" });
-    expect(t.settings.mode).toBe("notes");
-    expect(reduceApp(t, { type: "setMode", mode: "notes" })).toBe(t);
+    const t = reduceApp(s, { type: "setMode", mode: "reading" });
+    expect(t.settings.mode).toBe("reading");
+    expect(reduceApp(t, { type: "setMode", mode: "reading" })).toBe(t);
   });
 });

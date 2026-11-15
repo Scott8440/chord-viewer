@@ -9,7 +9,7 @@ import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/pres
 import { sanitizeRoutineOptions, type RoutineOptions } from "../exercises/routines";
 import { isKeyValue, type KeyContext } from "../theory";
 
-export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "fiveFinger", "arpeggios", "brokenChords", "chromatic", "routines", "ear", "earMelody", "earChords"] as const;
+export const MODES = ["free", "reading", "chords", "progressions", "scales", "diatonic", "fiveFinger", "arpeggios", "brokenChords", "chromatic", "routines", "ear", "earMelody", "earChords"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
@@ -37,7 +37,7 @@ export interface Settings {
   readonly ear: EarOptions;
   /** Ear training, chord qualities: which chord types it plays, inversions, and broken before together */
   readonly earChords: ChordEarOptions;
-  /** Sight reading (mode "notes"): how many notes, which staff, which key (or random) */
+  /** Sight reading (mode "reading"): how many notes, which staff, which key (or random) */
   readonly reading: ReadingOptions;
   /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
   readonly latencyMs: number;
@@ -77,7 +77,8 @@ export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> }
   keyValue: { storage: saved("key", "string"), sanitize: v => typeof v === "string" && isKeyValue(v) ? v : "" },
   // Not in localStorage: it comes from the footer checkbox, which the browser restores itself
   includeSustained: { sanitize: v => typeof v === "boolean" ? v : true },
-  mode: { storage: saved("mode", "string"), sanitize: v => oneOf(MODES, v, "free") },
+  // Sight reading's mode id was "notes" (from the note practice it replaced), so a saved "notes" opens it
+  mode: { storage: saved("mode", "string"), sanitize: v => oneOf(MODES, v === "notes" ? "reading" : v, "free") },
   chordTypes: {
     storage: saved("chordTypes", "json"),
     sanitize: v => sanitizeChordTypes(Array.isArray(v) ? v : DEFAULT_CHORD_TYPES),

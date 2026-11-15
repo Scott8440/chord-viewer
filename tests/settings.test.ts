@@ -108,6 +108,22 @@ describe("legacy saved settings", () => {
   });
 });
 
+describe("renamed modes", () => {
+  it("opens sight reading for a mode saved under its old id, \"notes\"", () => {
+    items.set("chordDisplay.mode", "notes");
+    expect(createAppState(loadSettings(true)).settings.mode).toBe("reading");
+    expect(createAppState({ mode: "notes" }).settings.mode).toBe("reading");
+  });
+
+  it("saves the new id once the mode changes", () => {
+    items.set("chordDisplay.mode", "notes");
+    const store = savingStore();
+    store.dispatch({ type: "setMode", mode: "scales" });
+    store.dispatch({ type: "setMode", mode: "reading" });
+    expect(items.get("chordDisplay.mode")).toBe("reading");
+  });
+});
+
 describe("saving", () => {
   it("writes only the settings that changed", () => {
     const store = savingStore();

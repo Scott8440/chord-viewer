@@ -179,7 +179,7 @@ export function showControls(state: AppState) {
   const order = routineById(s.routine.id)!.order;
   $("routineStartPick").hidden = !routineById(s.routine.id)!.startsOn;
   for (const o of $<HTMLSelectElement>("routineDir").options) o.text = DIRECTION_NAMES[order][o.value as CircleDirection].long;
-  $("readingOptions").hidden = id !== "notes";
+  $("readingOptions").hidden = id !== "reading";
   // Songs come as written; only generated lines have a length and a staff to choose
   $("readingLengthPick").hidden = $("readingRangePick").hidden = s.reading.level !== 0;
   $("readingPartPick").hidden = s.reading.level === 0;

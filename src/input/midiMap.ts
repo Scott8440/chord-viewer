@@ -21,12 +21,18 @@ export const targetFor = (map: MidiMap, scope: string, note: number): string | u
 
 export const noteFor = (map: MidiMap, scope: string, target: string): number | undefined => map[scope]?.[target];
 
-/** Read back from storage: only whole MIDI notes kept */
+/** Scopes saved under a mode id that has since been renamed: sight reading was "notes" */
+const RENAMED_SCOPES: ReadonlyMap<string, string> = new Map([["notes", "reading"]]);
+
+/** Read back from storage: only whole MIDI notes kept, and a renamed mode's mappings under its new id */
 export function sanitizeMidiMap(raw: unknown): MidiMap {
   if (!raw || typeof raw !== "object") return {};
   const out: Record<string, Record<string, number>> = {};
-  for (const [scope, targets] of Object.entries(raw as Record<string, unknown>)) {
+  for (const [saved, targets] of Object.entries(raw as Record<string, unknown>)) {
     if (!targets || typeof targets !== "object") continue;
+    const scope = RENAMED_SCOPES.get(saved) ?? saved;
+    // Mappings saved under the new id win over any left under the old one
+    if (scope !== saved && scope in (raw as Record<string, unknown>)) continue;
     const kept = Object.entries(targets as Record<string, unknown>)
       .filter(([, n]) => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= 127);
     if (kept.length) out[scope] = Object.fromEntries(kept) as Record<string, number>;

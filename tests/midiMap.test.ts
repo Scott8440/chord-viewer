@@ -26,6 +26,11 @@ describe("MIDI map", () => {
     expect(sanitizeMidiMap("nonsense")).toEqual({});
   });
 
+  it("reads sight reading's mappings saved under its old mode id as its new one", () => {
+    expect(sanitizeMidiMap({ notes: { skip: 60 } })).toEqual({ reading: { skip: 60 } });
+    expect(sanitizeMidiMap({ notes: { skip: 60 }, reading: { skip: 62 } })).toEqual({ reading: { skip: 62 } });
+  });
+
   it("labels keys by name and octave", () => {
     expect(midiNoteName(60)).toBe("C4");
     expect(midiNoteName(61)).toBe("C♯4");

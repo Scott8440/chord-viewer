@@ -2,7 +2,7 @@
 // `circleSvg` is pure (model in, SVG out); `createCircleView` shows it, or hides it when a mode has nothing to show.
 import type { KeyProgressState } from "../exercises/routines";
 import {
-  buildKey, circlePosition, CIRCLE_OF_FIFTHS_MAJOR, CIRCLE_OF_FIFTHS_MINOR, keySignature, matchTemplate, prettyAcc,
+  circlePosition, CIRCLE_OF_FIFTHS_MAJOR, CIRCLE_OF_FIFTHS_MINOR, keySignature, matchTemplate, prettyAcc, requireKey,
   templateById, type Analysis,
 } from "../theory";
 import { esc } from "./html";
@@ -60,9 +60,10 @@ export function circleSvg(model: CircleModel): string {
   const numerals = focus && model.neighbours !== false ? neighbourNumerals(focus) : new Map<string, string>();
   const focusRing = focus?.endsWith(":minor") ? "inner" : "outer";
   const focusPos = focus ? circlePosition(focus) : -1;
-  const markRing = model.chord ? (model.chord.minor ? "inner" : "outer") : null;
-  const markPos = model.chord
-    ? (model.chord.minor ? CIRCLE_OF_FIFTHS_MINOR : CIRCLE_OF_FIFTHS_MAJOR).findIndex(t => mod12(pcOf(t)) === model.chord!.rootPc)
+  const chord = model.chord;
+  const markRing = chord ? (chord.minor ? "inner" : "outer") : null;
+  const markPos = chord
+    ? (chord.minor ? CIRCLE_OF_FIFTHS_MINOR : CIRCLE_OF_FIFTHS_MAJOR).findIndex(t => mod12(pcOf(t)) === chord.rootPc)
     : -1;
 
   const parts: string[] = [];
@@ -94,7 +95,7 @@ export function circleSvg(model: CircleModel): string {
              (arrow ? `<text class="c2" x="0" y="12">${esc(arrow)}</text>` : "");
   } else if (focus) {
     const [tonic, mode] = focus.split(":");
-    const sig = keySignature(buildKey(focus)!);
+    const sig = keySignature(requireKey(focus));
     center = `<text class="c1" x="0" y="-2">${esc(prettyAcc(tonic) + (mode === "minor" ? "m" : ""))}</text>` +
              `<text class="c2" x="0" y="11">${esc(sig.count ? sig.count + prettyAcc(sig.accidental) : "no ♯/♭")}</text>`;
   }

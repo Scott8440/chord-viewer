@@ -50,6 +50,13 @@ export interface KeyContext {
   label: string;
 }
 
+/** A key that must be there: from a value that isn't "" (a prompt's or exercise's own key). Throws on "". */
+export function requireKey(value: string): KeyContext {
+  const key = buildKey(value);
+  if (!key) throw new Error(`No key given where one is needed`);
+  return key;
+}
+
 /** Builds a key from a selector value like "C:major" or "F#:minor"; "" means no key. */
 export function buildKey(value: string): KeyContext | null {
   if (!value) return null;

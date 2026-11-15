@@ -1,6 +1,6 @@
 // The prescriptive exercises and the options they share. Each exercise builds a SequenceExercise from the options;
 // the mode (src/modes/sequencePractice.ts) and the options UI are the same for all of them.
-import { buildKey, isKeyValue } from "../theory";
+import { requireKey, isKeyValue } from "../theory";
 import { KEY_PROGRESSIONS, type KeyProgression } from "./keyOrder";
 import { STRICTNESS, SUBDIVISIONS, type Strictness, type Subdivision } from "../timing/grid";
 import { diatonicChordsExercise, tonicTriadExercise } from "./diatonicChords";
@@ -82,44 +82,44 @@ export const PRESCRIPTIVE = {
   scales: {
     short: "scale",
     chords: false,
-    build: o => scaleExercise(buildKey(o.key)!, o.minorForm, o.octaves),
+    build: o => scaleExercise(requireKey(o.key), o.minorForm, o.octaves),
     options: ["key", "progression", "octaves", "minorForm", "metronome"],
   },
   diatonic: {
     short: "chords",
     chords: true,
-    build: o => diatonicChordsExercise(buildKey(o.key)!, { sevenths: o.sevenths, rootPosition: o.rootPosition }),
+    build: o => diatonicChordsExercise(requireKey(o.key), { sevenths: o.sevenths, rootPosition: o.rootPosition }),
     options: ["key", "progression", "sevenths", "rootPosition", "metronome"],
   },
   fiveFinger: {
     short: "five-finger",
     chords: false,
-    build: o => fiveFingerExercise(buildKey(o.key)!),
+    build: o => fiveFingerExercise(requireKey(o.key)),
     options: ["key", "progression", "metronome"],
   },
   arpeggios: {
     short: "arpeggio",
     chords: false,
-    build: o => arpeggioExercise(buildKey(o.key)!, o.octaves, o.inversion),
+    build: o => arpeggioExercise(requireKey(o.key), o.octaves, o.inversion),
     options: ["key", "progression", "octaves", "inversion", "metronome"],
   },
   brokenChords: {
     short: "broken chords",
     chords: false,
-    build: o => brokenChordExercise(buildKey(o.key)!, o.octaves),
+    build: o => brokenChordExercise(requireKey(o.key), o.octaves),
     options: ["key", "progression", "octaves", "metronome"],
   },
   // Not a mode of its own: the item of triad routines, which set its key
   triad: {
     short: "triad",
     chords: true,
-    build: o => tonicTriadExercise(buildKey(o.key)!, o.rootPosition),
+    build: o => tonicTriadExercise(requireKey(o.key), o.rootPosition),
     options: ["rootPosition", "metronome"],
   },
   chromatic: {
     short: "chromatic",
     chords: false,
-    build: o => chromaticExercise(buildKey(o.key)!, o.octaves),
+    build: o => chromaticExercise(requireKey(o.key), o.octaves),
     options: ["key", "progression", "octaves", "metronome"],
   },
 } satisfies Record<string, PrescriptiveExercise>;

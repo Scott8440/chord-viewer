@@ -1,7 +1,7 @@
 // Chord practice: the app names a chord, the player plays it in any voicing, inversion or octave.
 // Pure data and functions; the mode in src/modes/chordPractice.ts drives it. Prompts can also be Roman numerals
 // (romanPrompts.ts) and need an inversion (inversions.ts); answers are judged by chordMatch.ts.
-import { ROOT_MAJOR, ROOT_MINOR, templateById, type KeyContext } from "../theory";
+import { requireTemplate, ROOT_MAJOR, ROOT_MINOR, type KeyContext } from "../theory";
 import { freshAttempt, trackAttempt, type ChordAttempt } from "./chordAttempt";
 import { DEFAULT_CHORD_MATCH, isChord, type ChordMatchOptions } from "./chordMatch";
 import type { ChordPrompt } from "./chordPrompt";
@@ -56,8 +56,7 @@ export function makeChordPrompt(rng: Rng, types: readonly string[], key: KeyCont
     rootPc = randomInt(rng, 12);
     type = pick(rng, types);
   } while (previous && rootPc === previous.rootPc && type === previous.type);
-  const t = templateById(type);
-  if (!t) throw new Error(`Unknown chord type: ${type}`);
+  const t = requireTemplate(type);
   const root = key ? key.spell[rootPc] : (t.minor ? ROOT_MINOR : ROOT_MAJOR)[rootPc];
   return { rootPc, root, type };
 }

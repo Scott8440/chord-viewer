@@ -45,6 +45,13 @@ export function templateById(id: string): ChordTemplate | undefined {
   return COMPILED_BY_ID.get(id)?.template;
 }
 
+/** A chord type that must exist (a prompt's, which was made from the templates); throws for an unknown id */
+export function requireTemplate(id: string): ChordTemplate {
+  const t = templateById(id);
+  if (!t) throw new Error(`Unknown chord type: ${id}`);
+  return t;
+}
+
 /* ---------------------------------------------------------------
    Matching one template on one root
    --------------------------------------------------------------- */

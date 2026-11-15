@@ -2,6 +2,7 @@
 // behind each line) and a column chart (a value per day). The SVG is built by pure functions from a model and a
 // width; `mountChart` shows it, redraws it to the container's width, and adds the hover layer: a crosshair that
 // snaps to the nearest day with every series' value at it (columns: the column under the pointer lifts).
+import { required } from "./dom";
 import { esc } from "./html";
 
 export interface ChartPoint { at: number; value: number }
@@ -133,7 +134,7 @@ export function mountChart(el: HTMLElement, model: ChartModel, label: string): (
     const out = model.kind === "line" ? lineChartSvg(model, width) : columnChartSvg(model, width);
     anchors = out.anchors;
     el.innerHTML = out.svg;
-    el.querySelector("svg")!.setAttribute("aria-label", label);
+    required<SVGSVGElement>(el, "svg").setAttribute("aria-label", label);
     el.append(tip);
   }
   function hover(e: PointerEvent) {

@@ -1,7 +1,7 @@
 // Routines: a set of prescriptive exercises played one after another, e.g. every major scale round the circle of
 // fifths. A routine is data pointing at exercises in PRESCRIPTIVE; the runner wraps the sequence reducer and moves on
 // to the next item each time an item's run finishes (mistakes allowed; they are recorded).
-import { buildKey, CIRCLE_OF_FIFTHS_MAJOR } from "../theory";
+import { requireKey, CIRCLE_OF_FIFTHS_MAJOR } from "../theory";
 import { sanitizeExerciseOptions, PRESCRIPTIVE, type ExerciseOptions, type PrescriptiveId } from "./prescriptive";
 import type { TimingGrid } from "../timing/grid";
 import { initialSequence, reduceSequence, type RunResult, type SequenceAction, type SequenceExercise, type SequenceState } from "./sequence";
@@ -88,6 +88,13 @@ export const ROUTINES: readonly Routine[] = [
 
 export const routineById = (id: string): Routine | undefined => ROUTINES.find(r => r.id === id);
 
+/** A routine that must exist (the saved choice, which the sanitizer keeps to known ids); throws for an unknown id */
+export function requireRoutine(id: string): Routine {
+  const r = routineById(id);
+  if (!r) throw new Error(`Unknown routine: ${id}`);
+  return r;
+}
+
 /** The playable exercise for an item: the item's own options over the player's settings. */
 export function itemExercise(item: RoutineItem, base: ExerciseOptions): SequenceExercise {
   return PRESCRIPTIVE[item.exercise].build(sanitizeExerciseOptions({ ...base, ...item.options }));
@@ -144,10 +151,11 @@ export function reduceRoutine(s: RoutineState, a: RoutineAction): RoutineState {
       const next = { ...s, current,
                      startTime: s.startTime ?? (started ? current.times[0] : null),
                      previous: started ? null : s.previous };
-      if (current.status !== "done") return next;
+      // A finished run always has its result
+      if (current.status !== "done" || !current.result) return next;
       // The item's run finished: record it and move on
       return advance({ ...next, endTime: current.times[current.times.length - 1],
-                       previous: { index: s.index, result: current.result! } }, current.result!, current.tracker.prevHeld);
+                       previous: { index: s.index, result: current.result } }, current.result, current.tracker.prevHeld);
     }
     case "setGrid": {
       // The metronome plays on across items: the next item is built with the same grid
@@ -200,7 +208,7 @@ export function routineSummary(s: RoutineState): RoutineSummary {
 /** Short labels for an item: its key ("G", "Em") and its exercise ("scale"), for routines that mix exercises. */
 export function itemLabel(s: RoutineState, index: number): { key: string; exercise: string } {
   const item = s.items[index];
-  const key = buildKey(item.options.key ?? s.base.key)!;
+  const key = requireKey(item.options.key ?? s.base.key);
   return { key: key.tonic + (key.mode === "minor" ? "m" : ""), exercise: PRESCRIPTIVE[item.exercise].short };
 }
 
@@ -231,7 +239,7 @@ export function keyProgress(r: RoutineState): KeyProgress[] {
     g.state = r.status !== "done" && g.items.includes(r.index) ? "current"
       : outcomes.some(o => o === undefined) ? "upcoming"
       : outcomes.every(o => o === "skipped") ? "skipped"
-      : outcomes.some(o => o !== "skipped" && o!.mistakes) ? "flawed" : "done";
+      : outcomes.some(o => o !== undefined && o !== "skipped" && o.mistakes) ? "flawed" : "done";
   }
   return groups;
 }

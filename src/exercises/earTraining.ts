@@ -4,7 +4,7 @@
 // share the options: which degrees can come up (starting with just 1 and 5) and the tonic.
 // Pure data and functions; the mode in src/modes/earTraining.ts drives it and makes the sound. Answers are judged
 // by reduceNotePractice (src/exercises/notePractice.ts).
-import { buildKey, chromaOf, KEY_MAJORS } from "../theory";
+import { requireKey, chromaOf, KEY_MAJORS } from "../theory";
 import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
 import { pickKey, PROMPTS_PER_KEY } from "./keyRotation";
 import type { NotePracticeAction, NotePracticeState, NotePrompt } from "./notePractice";
@@ -93,7 +93,7 @@ export function makeEarPrompt(rng: Rng, tonic: string, degrees: readonly string[
     d = pick(rng, pool);
     note = tonicMidi(tonic) + d.semitones + 12 * randomInt(rng, EAR_OCTAVES);
   } while (previous && note === previous.note);
-  return { keyValue: tonic + ":major", degree: d.id, note, pc: note % 12, name: buildKey(tonic + ":major")!.spell[note % 12] };
+  return { keyValue: tonic + ":major", degree: d.id, note, pc: note % 12, name: requireKey(tonic + ":major").spell[note % 12] };
 }
 
 /* ---------------------------------------------------------------
@@ -122,7 +122,7 @@ export interface MelodyPrompt {
  */
 export function makeMelodyPrompt(rng: Rng, tonic: string, degrees: readonly string[], length: number,
                                  previous?: MelodyPrompt): MelodyPrompt {
-  const key = buildKey(tonic + ":major")!;
+  const key = requireKey(tonic + ":major");
   const root = tonicMidi(tonic);
   const pool = EAR_DEGREES.filter(d => degrees.includes(d.id)).map(d => ({ degree: d.id, note: root + d.semitones }));
   if (degrees.includes("1")) pool.push({ degree: "1", note: root + 12 });

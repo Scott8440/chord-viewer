@@ -26,7 +26,8 @@ const NEXT_PROMPT_MS = 900;
 /** The passage as drawn: played notes green (a tied note all through, a chord's notes as they're struck), and the
  *  current step's other notes red after a wrong note */
 export function musicOf(s: ReadingState): StaffMusic {
-  const m = s.prompt.music!;
+  const m = s.prompt.music;
+  if (!m) throw new Error("Only a song's passage is drawn as written music");
   const styles = m.staves.map((st, si) => st.voices.map((voice, vi) => voice.map((bar, b) => bar.map((e, i) => {
     const step = m.stepOf[si][vi][b][i];
     return (e.n ?? []).map((n): MusicStyle | undefined =>
@@ -72,7 +73,8 @@ export function startSightReading({
         deckOf = which;
         if (!deck.length) break;
       }
-      const e = deck.pop()!;
+      const e = deck.pop();
+      if (!e) break;
       const p = makeExcerptPrompt(e, f.sources[e.source], o.part, o.level, keys.key);
       if (p) return p;
     }
@@ -151,7 +153,7 @@ export function startSightReading({
     }
     clearTimeout(nextTimer);
     if (state.status === "correct") {
-      nextTimer = setTimeout(() => apply({ type: "next", prompt: nextPrompt(state!.prompt) }), NEXT_PROMPT_MS);
+      nextTimer = setTimeout(() => { if (state) apply({ type: "next", prompt: nextPrompt(state.prompt) }); }, NEXT_PROMPT_MS);
     }
   }
 

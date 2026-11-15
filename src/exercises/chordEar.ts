@@ -43,8 +43,7 @@ export interface ChordEarPrompt {
 /** The chord's notes: close position above the root, with the lowest `inversion` tones moved up an octave */
 export function voiceChord(rootMidi: number, type: string, inversion: number): number[] {
   const tones = chordSemitones(type).map(s => rootMidi + s);
-  for (let i = 0; i < inversion; i++) tones.push(tones.shift()! + 12);
-  return tones;
+  return [...tones.slice(inversion), ...tones.slice(0, inversion).map(t => t + 12)];
 }
 
 /** A chord to play: one of the allowed types on a random root, never the same chord (root and type) twice running. */

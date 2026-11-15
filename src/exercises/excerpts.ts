@@ -263,7 +263,7 @@ export function excerptTimeline(staves: readonly ExcerptStaff[], time: readonly 
       const next = byStart.get(key(x.end)) ?? [];
       const targets = new Map<(typeof placed)[number], number[]>();
       for (const n of tied) {
-        const has = (c: (typeof placed)[number]) => c.e.n!.some(m => m.p === n.p);
+        const has = (c: (typeof placed)[number]) => c.e.n?.some(m => m.p === n.p) ?? false;
         const target = next.find(c => c.pos[1] === x.pos[1] && has(c)) ?? next.find(has);
         if (target) targets.set(target, [...targets.get(target) ?? [], n.p]);
       }
@@ -319,18 +319,20 @@ export function excerptSteps(staves: readonly ExcerptStaff[], time: readonly [nu
  */
 export function tupletGroups(bar: readonly ExcerptEvent[]): { from: number; to: number; t: [number, number] }[] {
   const out: { from: number; to: number; t: [number, number] }[] = [];
-  let from = -1, sum = 0, smallest = Infinity;
-  const close = (to: number) => { out.push({ from, to, t: bar[from].t! }); from = -1; };
+  /** The tuplet being filled: where it started, and its ratio */
+  let open: { from: number; t: [number, number] } | null = null;
+  let sum = 0, smallest = Infinity;
+  const close = (to: number) => { if (open) out.push({ from: open.from, to, t: open.t }); open = null; };
   bar.forEach((e, i) => {
-    if (from >= 0 && (!e.t || e.t[0] !== bar[from].t![0] || e.t[1] !== bar[from].t![1])) close(i);
+    if (open && (!e.t || e.t[0] !== open.t[0] || e.t[1] !== open.t[1])) close(i);
     if (!e.t) return;
-    if (from < 0) { from = i; sum = 0; smallest = Infinity; }
+    if (!open) { open = { from: i, t: e.t }; sum = 0; smallest = Infinity; }
     sum += eventLength({ v: e.v, d: e.d });
     smallest = Math.min(smallest, BASE[e.v]);
     const units = sum / (e.t[0] * smallest);
     if (Math.abs(units - Math.round(units)) < 1e-6) close(i + 1);
   });
-  if (from >= 0) close(bar.length);
+  close(bar.length);
   return out;
 }
 

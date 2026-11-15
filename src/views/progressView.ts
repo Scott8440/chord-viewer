@@ -9,6 +9,7 @@ import {
 } from "../progress/stats";
 import { prettyAcc } from "../theory";
 import { mountChart, type ChartModel, type TimeRange } from "./charts";
+import { required } from "./dom";
 import { esc } from "./html";
 
 export const RANGES = ["7", "30", "90", "all"] as const;
@@ -195,12 +196,12 @@ export function createProgressView(el: HTMLElement, actions: {
         `<div class="pvTiles">${tiles}</div>` +
         `<div class="pvGrid">${practice}${routineCard}${exerciseCard}${drillCard}${drillDetailCard}</div>`;
 
-      for (const c of charts) unmount.push(mountChart(el.querySelector<HTMLElement>(`#${c.id}`)!, c.model, c.label));
+      for (const c of charts) unmount.push(mountChart(required(el, `#${c.id}`), c.model, c.label));
       const pick = (id: string, f: (v: string) => ProgressSelection) => {
         const s = el.querySelector<HTMLSelectElement>(`#${id}`);
         if (s) s.onchange = () => { s.blur(); change(f(s.value)); };
       };
-      el.querySelector<HTMLButtonElement>("#pvBack")!.onclick = () => actions.back();
+      required<HTMLButtonElement>(el, "#pvBack").onclick = () => actions.back();
       pick("pvRange", v => ({ ...sel, range: v as RangeChoice }));
       pick("pvRoutine", v => ({ ...sel, routine: v }));
       pick("pvExercise", v => ({ ...sel, exercise: v }));

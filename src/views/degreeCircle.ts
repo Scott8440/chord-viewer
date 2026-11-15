@@ -4,6 +4,7 @@
 // between their neighbours (♭3 between 2 and 3), with their name shown briefly. It never shows note names: only degrees.
 import { degreeName, EAR_DEGREES } from "../exercises/earTraining";
 import { prettyAcc } from "../theory";
+import { required } from "./dom";
 import { esc } from "./html";
 
 export type PingKind = "hear" | "correct" | "wrong";
@@ -56,7 +57,7 @@ export function createDegreeCircle(el: HTMLElement): DegreeCircleView {
       if (!svg) return;
       const pc = ((semitones % 12) + 12) % 12;
       const { x, y } = degreePoint(pc);
-      const pings = svg.querySelector(".pings")!;
+      const pings = required<SVGGElement>(svg, ".pings");
       const ring = document.createElementNS(SVG_NS, "circle");
       ring.setAttribute("class", `ping ${kind}`);
       ring.setAttribute("cx", x.toFixed(1));

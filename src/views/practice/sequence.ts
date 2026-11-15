@@ -18,8 +18,8 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
     const state = s.status === "done" || (s.status === "playing" && i < s.index) ? "done"
       : i === (s.status === "playing" ? s.index : 0) ? "current" : "upcoming";
     // Played to the metronome: steps that missed their beat say which way
-    const timing = state === "done" && s.grid && s.timings[i];
-    const verdict = timing ? timingVerdict(s.grid!, timing) : "onTime";
+    const timing = state === "done" && s.grid ? s.timings[i] : undefined;
+    const verdict = timing && s.grid ? timingVerdict(s.grid, timing) : "onTime";
     const extra = verdict === "onTime" ? "" : verdict;
     // Note steps are dots, not names: the exercise is to know the notes; chord steps name the chord to play
     return st.kind === "note" ? stepHtml(state, "•", undefined, extra) : chordStepHtml(st.chord, style, state, extra);
@@ -45,8 +45,9 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
     label: prettyNames(ex.instruction) + (s.grid ? ` · ${tempoText(s.grid.transport.bpm, s.grid.subdivision)}` : ""),
     promptHtml: `<div class="seqTitle">${esc(prettyNames(ex.title))}</div><div class="seqRow">${steps.join("")}</div>`,
     size: "sequence", sub, status, feedback,
-    score: s.runs.length
-      ? `${s.runs.length} run${s.runs.length > 1 ? "s" : ""} · ${clean} clean · best: ${best!.mistakes ? `${best!.mistakes} mistake${best!.mistakes > 1 ? "s" : ""}, ` : ""}${steadinessText(best!)}`
+    // There's a best run as soon as there are any
+    score: best
+      ? `${s.runs.length} run${s.runs.length > 1 ? "s" : ""} · ${clean} clean · best: ${best.mistakes ? `${best.mistakes} mistake${best.mistakes > 1 ? "s" : ""}, ` : ""}${steadinessText(best)}`
       : "",
     skipLabel: "Restart",
   };

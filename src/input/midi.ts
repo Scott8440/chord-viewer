@@ -41,13 +41,15 @@ export function createMidiSource(emit: Emit, onStatus: (status: MidiStatus) => v
     const inputs: MidiInputInfo[] = [];
     for (const input of access.inputs.values()) {
       if (input.state !== "connected") continue;
-      if (!enabled.has(input.id)) enabled.set(input.id, true);
+      // A new input starts on
+      const on = enabled.get(input.id) ?? true;
+      enabled.set(input.id, on);
       input.onmidimessage = (e) => {
         if (enabled.get(input.id) === false || !e.data) return;
         const event = parseMidiMessage(e.data, e.timeStamp, input.id);
         if (event) emit(event);
       };
-      inputs.push({ id: input.id, name: input.name || "MIDI input", enabled: enabled.get(input.id)! });
+      inputs.push({ id: input.id, name: input.name || "MIDI input", enabled: on });
     }
     onStatus({ kind: "ready", inputs });
   }

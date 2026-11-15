@@ -6,6 +6,7 @@ import {
   excerptTimeline, staffStep, tpcName, tupletGroups, type Clef, type ExcerptEvent, type ExcerptStaff,
 } from "../exercises/excerpts";
 import type { KeyContext } from "../theory";
+import { required } from "./dom";
 
 export type MusicStyle = "done" | "wrong";
 
@@ -114,7 +115,7 @@ export function drawMusic(el: HTMLElement, m: StaffMusic, key: KeyContext | null
   const renderer = new VF.Renderer(el as HTMLDivElement, VF.Renderer.Backends.SVG);
   renderer.resize(viewW, viewH);
   const ctx = renderer.getContext();
-  const svg = el.querySelector("svg")!;
+  const svg = required<SVGSVGElement>(el, "svg");
   svg.setAttribute("viewBox", `0 0 ${viewW} ${viewH}`);
   svg.removeAttribute("width");
   svg.removeAttribute("height");

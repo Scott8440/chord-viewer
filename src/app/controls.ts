@@ -5,7 +5,7 @@ import { CHORD_KEYS, CHORD_PRACTICE_GROUPS } from "../exercises/chordPractice";
 import type { PromptStyle } from "../exercises/chordPrompt";
 import { EAR_DEGREES, EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTraining";
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
-import { CHROMATIC_TONICS, DIRECTION_NAMES, ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
+import { CHROMATIC_TONICS, DIRECTION_NAMES, ROUTINES, requireRoutine, type CircleDirection } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
 import type { ArpeggioInversion } from "../exercises/technique";
 import { levelsFor, type ReadingPart } from "../exercises/excerpts";
@@ -16,7 +16,7 @@ import { pageSetup, viewOf } from "../modes/page";
 import type { AppStore } from "../modes/performance";
 import type { AppAction, AppState, ModeId, Settings } from "../state/app";
 import type { Strictness, Subdivision } from "../timing/grid";
-import { buildKey, prettyAcc } from "../theory";
+import { prettyAcc, requireKey } from "../theory";
 import { createFilterView, type FilterGroup } from "../views/filter";
 import { fillKeySelect } from "../views/header";
 import { $ } from "./dom";
@@ -77,7 +77,7 @@ export function bindControls(store: AppStore) {
   bindSelect($("promptStyle"), s => s.promptStyle, style => ({ type: "setPromptStyle", style: style as PromptStyle }));
   bindCheckbox($("optInversions"), s => s.inversions, on => ({ type: "setInversions", on }));
   for (const k of CHORD_KEYS) {
-    const label = k === "none" ? "None" : k === "random" ? `Random (new key every ${PROMPTS_PER_KEY})` : prettyAcc(buildKey(k)!.label);
+    const label = k === "none" ? "None" : k === "random" ? `Random (new key every ${PROMPTS_PER_KEY})` : prettyAcc(requireKey(k).label);
     $("chordKey").append(new Option(label, k));
   }
   bindSelect($("chordKey"), s => s.chordKey, value => ({ type: "setChordKey", value }));
@@ -123,7 +123,7 @@ export function bindControls(store: AppStore) {
   for (const [id, r] of Object.entries(READING_RANGES)) $("readingRange").append(new Option(r.label, id));
   bindSelect($("readingRange"), s => s.reading.range, v => setReading({ range: v as ReadingRange }));
   for (const k of READING_KEYS) {
-    $("readingKey").append(new Option(k === "random" ? `Random (new key every ${PROMPTS_PER_KEY})` : prettyAcc(buildKey(k)!.label), k));
+    $("readingKey").append(new Option(k === "random" ? `Random (new key every ${PROMPTS_PER_KEY})` : prettyAcc(requireKey(k).label), k));
   }
   bindSelect($("readingKey"), s => s.reading.key, key => setReading({ key }));
   for (const r of ROUTINES) $("routineSel").append(new Option(r.name, r.id));
@@ -150,7 +150,7 @@ const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRES
 function exercisesOf(s: Settings): { ids: PrescriptiveId[]; keys: string[]; ownKey: boolean } {
   if (isPrescriptive(s.mode)) return { ids: [s.mode], keys: [s.exercise.key], ownKey: true };
   if (s.mode !== "routines") return { ids: [], keys: [], ownKey: false };
-  const items = routineById(s.routine.id)!.items(s.routine.direction, s.routine.start);
+  const items = requireRoutine(s.routine.id).items(s.routine.direction, s.routine.start);
   return { ids: [...new Set(items.map(i => i.exercise))], keys: items.map(i => i.options.key ?? s.exercise.key), ownKey: false };
 }
 
@@ -176,8 +176,8 @@ export function showControls(state: AppState) {
   $<HTMLSelectElement>("chordKey").options[0].text = s.promptStyle === "roman" ? "None (a new key every prompt)" : "None (any chord)";
   $("routineOptions").hidden = id !== "routines";
   // The direction picker names the routine's own directions: round the circle, or up and down chromatically
-  const order = routineById(s.routine.id)!.order;
-  $("routineStartPick").hidden = !routineById(s.routine.id)!.startsOn;
+  const order = requireRoutine(s.routine.id).order;
+  $("routineStartPick").hidden = !requireRoutine(s.routine.id).startsOn;
   for (const o of $<HTMLSelectElement>("routineDir").options) o.text = DIRECTION_NAMES[order][o.value as CircleDirection].long;
   $("readingOptions").hidden = id !== "reading";
   // Songs come as written; only generated lines have a length and a staff to choose

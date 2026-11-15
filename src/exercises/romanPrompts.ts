@@ -1,6 +1,6 @@
 // Diatonic chords by Roman numeral: each key's triads and sevenths, and picking one to ask for.
-import { buildKey, chromaOf, KEY_MAJORS, KEY_MINORS, type KeyContext } from "../theory";
-import type { ChordPrompt } from "./chordPrompt";
+import { requireKey, chromaOf, KEY_MAJORS, KEY_MINORS, type KeyContext } from "../theory";
+import type { ChordPrompt, RomanPrompt } from "./chordPrompt";
 import { pick, type Rng } from "./random";
 
 /**
@@ -30,7 +30,7 @@ const DIATONIC: Record<"major" | "minor", readonly { numeral: string; type: stri
 export function diatonicChords(key: KeyContext): { numeral: string; type: string; root: string; rootPc: number }[] {
   return DIATONIC[key.mode].map(d => {
     // The 7th degree of minor is raised (harmonic minor)
-    const root = key.mode === "minor" && d.degree === 6 ? key.leadingTone! : key.scale[d.degree];
+    const root = key.mode === "minor" && d.degree === 6 && key.leadingTone ? key.leadingTone : key.scale[d.degree];
     return { numeral: d.numeral, type: d.type, root, rootPc: chromaOf(root) };
   });
 }
@@ -42,7 +42,7 @@ export const ALL_KEYS = [...KEY_MAJORS.map(t => t + ":major"), ...KEY_MINORS.map
 /** A diatonic chord of the key (the same pick as `makeRomanPrompt`), asked for by its chord name */
 export function makeDiatonicNamePrompt(rng: Rng, types: readonly string[], key: KeyContext, previous?: ChordPrompt): ChordPrompt {
   const { rootPc, root, type, roman } = makeRomanPrompt(rng, types, key, previous);
-  return { rootPc, root, type, inKey: { keyValue: roman!.keyValue, filterIgnored: roman!.filterIgnored } };
+  return { rootPc, root, type, inKey: { keyValue: roman.keyValue, filterIgnored: roman.filterIgnored } };
 }
 
 /**
@@ -50,10 +50,11 @@ export function makeDiatonicNamePrompt(rng: Rng, types: readonly string[], key: 
  * limited to the allowed types. If none of those types occur in the key, any diatonic triad is used.
  * Never the same chord twice in a row.
  */
-export function makeRomanPrompt(rng: Rng, types: readonly string[], key: KeyContext | null, previous?: ChordPrompt): ChordPrompt {
+export function makeRomanPrompt(rng: Rng, types: readonly string[], key: KeyContext | null,
+                                previous?: ChordPrompt): ChordPrompt & { roman: RomanPrompt } {
   for (let tries = 0; ; tries++) {
     const keyValue = key ? key.tonic + ":" + key.mode : pick(rng, ALL_KEYS);
-    const k = key ?? buildKey(keyValue)!;
+    const k = key ?? requireKey(keyValue);
     const all = diatonicChords(k);
     const allowed = all.filter(c => types.includes(c.type));
     const filterIgnored = allowed.length === 0;

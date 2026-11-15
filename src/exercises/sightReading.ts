@@ -3,7 +3,7 @@
 // transposed into the chosen key; see excerpts.ts): its melody, or its piano part's right hand, left hand or both,
 // at a level; or a generated line: the key's notes (natural minor in minor keys, so nothing goes against the key
 // signature), within the chosen staff's range, moving mostly by small steps and leaps the way written lines do.
-import { buildKey, keySignature, spellNote, type KeyContext } from "../theory";
+import { requireKey, keySignature, spellNote, type KeyContext } from "../theory";
 import {
   excerptSteps, partStaves, READING_LEVELS, readingLevel, transposeStaves, writtenName, type Excerpt, type ExcerptSource,
   type ExcerptStaff, type ReadingPart,
@@ -106,7 +106,7 @@ export function keyFifths(key: KeyContext): number {
  *  if it can't be written there */
 export function makeExcerptPrompt(e: Excerpt, source: ExcerptSource, part: ReadingPart, level: number,
                                   keyValue: string): ReadingPrompt | null {
-  const staves = transposeStaves(partStaves(e, part), e.key, keyFifths(buildKey(keyValue)!));
+  const staves = transposeStaves(partStaves(e, part), e.key, keyFifths(requireKey(keyValue)));
   if (!staves) return null;
   const { steps, stepOf } = excerptSteps(staves, e.time);
   return {
@@ -147,7 +147,7 @@ export const noteName = (midi: number, key: KeyContext) => {
  */
 export function makeReadingPrompt(rng: Rng, keyValue: string, range: ReadingRange, length: number,
                                   previous?: ReadingPrompt): ReadingPrompt {
-  const key = buildKey(keyValue)!;
+  const key = requireKey(keyValue);
   const pool = readingPool(key, range);
   for (let tries = 0; ; tries++) {
     const notes: number[] = [pick(rng, pool)];

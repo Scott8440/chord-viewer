@@ -7,7 +7,7 @@ import { withInversion } from "../exercises/inversions";
 import { makeDiatonicNamePrompt, makeRomanPrompt } from "../exercises/romanPrompts";
 import { keyRotation, rotateKey } from "../exercises/keyRotation";
 import type { Rng } from "../exercises/random";
-import { buildKey } from "../theory";
+import { buildKey, requireKey } from "../theory";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { chordDrillBody } from "../progress/records";
 import { chordPracticeDisplay, type PracticeView } from "../views/practice";
@@ -34,7 +34,7 @@ export function startChordPractice({ store, views, recorder = noRecorder, rng = 
   const newPrompt = (previous?: ChordPracticeState["prompt"]) => {
     const { promptStyle, chordTypes, inversions, chordKey } = settings();
     keys = rotateKey(keys, chordKey, (choice, before) => pickChordKey(rng, choice, before));
-    const key = keys.key ? buildKey(keys.key)! : null;
+    const key = keys.key ? requireKey(keys.key) : null;
     const prompt = promptStyle === "roman" ? makeRomanPrompt(rng, chordTypes, key, previous)
       : key ? makeDiatonicNamePrompt(rng, chordTypes, key, previous)
       : makeChordPrompt(rng, chordTypes, null, previous);

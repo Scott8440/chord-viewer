@@ -1,6 +1,7 @@
 // Grand staff rendering (VexFlow).
 import * as VF from "vexflow/bravura";
 import { spelledAs, spellNote, type Analysis, type KeyContext, type SpelledNote } from "../theory";
+import { required } from "./dom";
 import { drawMusic, type StaffMusic } from "./staffMusic";
 
 const STAFF_W = 300;
@@ -96,7 +97,7 @@ export function createStaffView(el: HTMLElement): StaffView {
       const staffW = row ? ROW_STAFF_W : STAFF_W, viewW = staffW + 40;
       renderer.resize(viewW, VIEW_H);
       const ctx = renderer.getContext();
-      const svg = el.querySelector("svg")!;
+      const svg = required<SVGSVGElement>(el, "svg");
       svg.setAttribute("viewBox", `0 0 ${viewW} ${VIEW_H}`);
       // Which layout this is, for the circle of fifths in the corner (staffCorner)
       svg.dataset.layout = row ? "row" : "chord";

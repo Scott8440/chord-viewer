@@ -4,6 +4,7 @@ import type { CalibrationProgress } from "../modes/calibrate";
 import { CALIBRATION_TAPS, CALIBRATION_WARMUP } from "../timing/calibration";
 import type { Transport } from "../timing/transport";
 import { createBeatView } from "./beat";
+import { required } from "./dom";
 
 export interface CalibrationDialog {
   /** Opens (if closed) following the transport's beats; call again when the transport changes */
@@ -30,7 +31,7 @@ export function createCalibrationDialog(el: HTMLDialogElement, actions: {
       <button class="calRetry" hidden>Try again</button>
       <button class="calClose"></button>
     </div>`;
-  const q = <T extends HTMLElement>(sel: string) => el.querySelector<T>(sel)!;
+  const q = <T extends HTMLElement>(sel: string) => required<T>(el, sel);
   const beat = createBeatView(q(".calBeat"));
   let done = false;
 

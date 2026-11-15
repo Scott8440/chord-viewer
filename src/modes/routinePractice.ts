@@ -1,5 +1,5 @@
 // Routine mode: plays a routine's exercises one after another, moving on whenever an item's run finishes.
-import { DIRECTION_NAMES, initialRoutine, itemExercise, keyProgress, reduceRoutine, routineById, type RoutineAction, type RoutineState } from "../exercises/routines";
+import { DIRECTION_NAMES, initialRoutine, itemExercise, keyProgress, reduceRoutine, requireRoutine, type RoutineAction, type RoutineState } from "../exercises/routines";
 import { noRecorder, toWallTime, uuid, type Recorder } from "../progress/recorder";
 import { routineBody, runBody } from "../progress/records";
 import { buildKey } from "../theory";
@@ -14,7 +14,7 @@ export function startRoutinePractice({ store, views, recorder = noRecorder }: {
 }): Mode {
   const fresh = (): RoutineState => {
     const s = store.getState();
-    return initialRoutine(routineById(s.settings.routine.id)!, s.settings.routine, s.settings.exercise, heldNotes(s),
+    return initialRoutine(requireRoutine(s.settings.routine.id), s.settings.routine, s.settings.exercise, heldNotes(s),
                           timingGrid(s));
   };
   let state = fresh();

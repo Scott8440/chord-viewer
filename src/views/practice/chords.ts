@@ -3,7 +3,7 @@
 import { Note } from "tonal";
 import { chordCorrections, hasBass, hasChordTones } from "../../exercises/chordMatch";
 import type { ChordPrompt, PromptStyle } from "../../exercises/chordPrompt";
-import { analyze, pcName, prettyAcc, templateById, type KeyContext } from "../../theory";
+import { analyze, pcName, prettyAcc, requireTemplate, type KeyContext } from "../../theory";
 import { chordSymbolHtml } from "../chordName";
 import { esc } from "../html";
 import { stepHtml, type StepState } from "./steps";
@@ -63,7 +63,7 @@ export function describeMiss(prompt: ChordPrompt, notes: number[], key: KeyConte
 
 /** A chord's name with its required bass, e.g. "Cmaj7/E" */
 export function chordName(c: ChordPrompt): string {
-  return c.root + templateById(c.type)!.symbol + (c.inversion && c.inversion.number > 0 ? "/" + c.inversion.bass : "");
+  return c.root + requireTemplate(c.type).symbol + (c.inversion && c.inversion.number > 0 ? "/" + c.inversion.bass : "");
 }
 
 /** How a chord is asked for in a prompt style: "Cmaj7/E" or "Imaj7" (with figures when an inversion is required) */
@@ -76,10 +76,10 @@ export function chordPromptText(c: ChordPrompt, style: PromptStyle): string {
  * underneath once it has been played.
  */
 export function chordStepHtml(c: ChordPrompt, style: PromptStyle, state: StepState, extra = ""): string {
-  const t = templateById(c.type)!;
+  const t = requireTemplate(c.type);
   const slash = c.inversion && c.inversion.number > 0 ? c.inversion.bass : "";
   const roman = style === "roman" && c.roman;
-  const main = roman ? romanHtml(c.roman!.numeral, c.inversion?.number) : chordSymbolHtml(c.root, t.symbol, slash);
+  const main = roman ? romanHtml(roman.numeral, c.inversion?.number) : chordSymbolHtml(c.root, t.symbol, slash);
   const other = roman ? esc(prettyAcc(chordName(c))) : c.roman ? esc(prettyAcc(c.roman.numeral)) : "";
   return stepHtml(state, main, state === "done" ? other : "", extra);
 }

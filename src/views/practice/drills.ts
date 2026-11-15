@@ -6,7 +6,7 @@ import { answerOrder, qualityLabel, type ChordEarState } from "../../exercises/c
 import { degreeName, type EarState, type MelodyState } from "../../exercises/earTraining";
 import type { ProgressionState } from "../../exercises/progressions";
 import { noteName, READING_PARTS, READING_RANGES, type ReadingState } from "../../exercises/sightReading";
-import { buildKey, chromaOf, prettyAcc, templateById, type KeyContext } from "../../theory";
+import { chromaOf, prettyAcc, requireKey, requireTemplate, templateById, type KeyContext } from "../../theory";
 import { chordSymbolHtml } from "../chordName";
 import { esc } from "../html";
 import { chordStepHtml, describeMiss, inversionName, romanHtml } from "./chords";
@@ -23,7 +23,7 @@ const withRelative = (k: KeyContext) =>
 /** Sight reading: the notes are on the staff, so no prompt here, except a song's title and composer; a wrong note is
  *  named, and an octave out says which way (for a chord, when it's one of the chord's notes in another octave) */
 export function sightReadingDisplay(s: ReadingState): PracticeDisplay {
-  const key = buildKey(s.prompt.keyValue)!;
+  const key = requireKey(s.prompt.keyValue);
   const m = s.prompt.music;
   const n = s.prompt.steps.length;
   const single = s.prompt.steps.every(step => step.length === 1);
@@ -33,11 +33,11 @@ export function sightReadingDisplay(s: ReadingState): PracticeDisplay {
   } else if (s.status === "wrong" && s.played == null) {
     feedback = "✗ Play the chord's notes together";
   } else if (s.status === "wrong" && s.played != null) {
-    const step = s.prompt.steps[s.index];
-    const near = step.filter(t => t.note % 12 === s.played! % 12 && !s.struck.includes(t.note));
+    const step = s.prompt.steps[s.index], played = s.played;
+    const near = step.filter(t => t.note % 12 === played % 12 && !s.struck.includes(t.note));
     feedback = near.length === 1
-      ? `✗ Right note, wrong octave: ${s.played < near[0].note ? "too low" : "too high"}`
-      : `✗ That was ${prettyAcc(noteName(s.played, key))}${step.length > 1 ? ", not in this chord" : ""}. Try again`;
+      ? `✗ Right note, wrong octave: ${played < near[0].note ? "too low" : "too high"}`
+      : `✗ That was ${prettyAcc(noteName(played, key))}${step.length > 1 ? ", not in this chord" : ""}. Try again`;
   }
   const progress = `${single ? "note " : ""}${Math.min(s.index + 1, n)} of ${n}`;
   const score = s.answered ? `${s.firstTry} / ${s.answered} lines right first time` : "";
@@ -98,7 +98,7 @@ export function earDisplay(s: EarState, soundBlocked: boolean, running: boolean)
 /** Ear-training melodies: a dot per note, green once played back, its degree revealed underneath (the root's from
  *  the start) */
 export function earMelodyDisplay(s: MelodyState, degrees: readonly string[], soundBlocked: boolean, running: boolean): PracticeDisplay {
-  const key = buildKey(s.prompt.keyValue)!;
+  const key = requireKey(s.prompt.keyValue);
   const steps = s.prompt.notes.map((n, i) => stepHtml(
     i < s.index ? "done" : i === s.index && running ? "current" : "upcoming", "•",
     i < s.index || i === 0 ? esc(prettyAcc(n.degree)) : ""));
@@ -129,10 +129,11 @@ export function earMelodyDisplay(s: MelodyState, degrees: readonly string[], sou
 }
 
 export function chordPracticeDisplay(s: ChordPracticeState, key: KeyContext | null): PracticeDisplay {
-  const t = templateById(s.prompt.type)!;
+  const t = requireTemplate(s.prompt.type);
   const roman = s.prompt.roman;
   // A Roman numeral prompt carries its own key (a random one when none is selected)
-  const promptKey = roman ? buildKey(roman.keyValue) : key;
+  const romanKey = roman ? requireKey(roman.keyValue) : null;
+  const promptKey = romanKey ?? key;
   const inv = s.prompt.inversion;
   // Slash bass for inversions; root position has none
   const slash = inv && inv.number > 0 ? inv.bass : "";
@@ -147,15 +148,15 @@ export function chordPracticeDisplay(s: ChordPracticeState, key: KeyContext | nu
     label: inv ? "Play this chord, with this note in the bass" : "Play this chord, any voicing or inversion",
     promptHtml: roman ? romanHtml(roman.numeral, inv?.number) : chordSymbolHtml(s.prompt.root, t.symbol, slash),
     size: "chord",
-    sub: roman
-      ? `in ${prettyAcc(promptKey!.label)}${invText}` + (roman.filterIgnored ? " · no selected chord type is in this key, so any triad" : "")
+    sub: roman && romanKey
+      ? `in ${prettyAcc(romanKey.label)}${invText}` + (roman.filterIgnored ? " · no selected chord type is in this key, so any triad" : "")
       : prettyAcc(`${s.prompt.root} ${t.name}`) + invText + keyText,
     status: s.status, feedback, score: scoreText(s),
   };
 }
 
 export function progressionDisplay(s: ProgressionState, style: PromptStyle): PracticeDisplay {
-  const key = buildKey(s.prompt.keyValue)!;
+  const key = requireKey(s.prompt.keyValue);
   const steps = s.prompt.chords.map((c, i) =>
     chordStepHtml(c, style, i < s.index ? "done" : i === s.index && s.status !== "done" ? "current" : "upcoming"));
   let feedback = "";

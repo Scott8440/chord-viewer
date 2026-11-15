@@ -1,6 +1,6 @@
 // Progression practice: the app names a chord progression in a key; the player plays it one chord at a time.
 // Pure data and functions; the mode in src/modes/progressionPractice.ts drives it.
-import { buildKey, chromaOf, KEY_MAJORS, KEY_MINORS, type KeyContext } from "../theory";
+import { requireKey, chromaOf, KEY_MAJORS, KEY_MINORS, type KeyContext } from "../theory";
 import { freshAttempt, trackAttempt, type ChordAttempt } from "./chordAttempt";
 import { isChord } from "./chordMatch";
 import type { ChordPrompt } from "./chordPrompt";
@@ -109,7 +109,7 @@ export function makeProgressionPrompt(rng: Rng, key: KeyContext | null, previous
   for (let tries = 0; ; tries++) {
     const def = weightedPick(rng, candidates);
     const tonics = def.mode === "major" ? KEY_MAJORS : KEY_MINORS;
-    const k = key ?? buildKey(pick(rng, tonics) + ":" + def.mode)!;
+    const k = key ?? requireKey(pick(rng, tonics) + ":" + def.mode);
     const keyValue = k.tonic + ":" + k.mode;
     if (!previous || previous.id !== def.id || previous.keyValue !== keyValue || tries > 20) {
       return { id: def.id, name: def.name, keyValue, chords: progressionChords(def, k) };

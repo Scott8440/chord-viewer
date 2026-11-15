@@ -51,13 +51,14 @@ export function startSequencePractice({ store, views, id, recorder = noRecorder 
     const prev = state;
     state = reduceSequence(state, action);
     if (state === prev) return;
-    if (state.status === "done" && prev.status !== "done") {
-      const { exercise, latencyMs } = store.getState().settings;
-      recorder.record(runBody(id, state.exercise, exercise, latencyMs, state.result!));
+    // A finished run always has its result
+    if (state.status === "done" && prev.status !== "done" && state.result) {
+      const { result } = state, { exercise, latencyMs } = store.getState().settings;
+      recorder.record(runBody(id, state.exercise, exercise, latencyMs, result));
       if (progressing()) {
-        previous = { title: state.exercise.title, result: state.result! };
+        previous = { title: state.exercise.title, result };
         played++;
-        if (!state.result!.mistakes) clean++;
+        if (!result.mistakes) clean++;
         // After this action has finished: the new key arrives as a settings change
         queueMicrotask(advance);
       }

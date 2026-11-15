@@ -35,7 +35,8 @@ export function createKeyboardSource(emit: Emit, onOctave: (octave: number) => v
   window.addEventListener("keyup", (e) => {
     const k = e.key.toLowerCase();
     if (k === " ") { emit({ type: "pedal", down: false, time: e.timeStamp, ...src }); return; }
-    if (down.has(k)) { emit({ type: "noteOff", note: down.get(k)!, velocity: 0, time: e.timeStamp, ...src }); down.delete(k); }
+    const note = down.get(k);
+    if (note != null) { emit({ type: "noteOff", note, velocity: 0, time: e.timeStamp, ...src }); down.delete(k); }
   });
   // Losing focus means we will never see the key-ups, so release everything now
   window.addEventListener("blur", (e) => {

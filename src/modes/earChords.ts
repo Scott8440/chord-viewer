@@ -164,9 +164,6 @@ export function startEarChords(store: AppStore, views: {
       running = true;
       apply({ type: "skip", prompt: makeChordEarPrompt(rng, options(), state.prompt) });
     },
-    replay() {
-      if (running && !rounds.summary()) sound();
-    },
     toggleRunning() {
       if (rounds.summary()) return;
       awaitingSound = false;

@@ -405,7 +405,7 @@ degrees in `detail.melody`), charted as a 5th series. `tones.stopNotes()` cuts o
 
 **Chord qualities** (mode "earChords", `src/modes/earChords.ts`; pure parts in `src/exercises/chordEar.ts`): the app
 plays a chord and the player picks its kind from a board of large boxes in the staff's place (`PAGE_SETUP.stage:
-"answers"`, `src/views/answerBoard.ts`; no staff, so nothing shifts when it's answered; a wide Replay button above the boxes, as well as the panel's), one
+"answers"`, `src/views/answerBoard.ts`; no staff, so nothing shifts when it's answered; a wide Replay button above the boxes, the only one: the panel has none here), one
 per allowed type (in the
 filter's order, numbered: the number keys 1–9 answer too; `chordEarAnswers` says what each box shows). Options (saved,
 `Settings.earChords`, `setEarChordOptions`): the chord types (the chord practice groups, `CHORD_PRACTICE_GROUPS`, in
@@ -415,7 +415,7 @@ high then together). Roots C3–B3, close position, never the same chord twice r
 usually are; a test checks the recognizer names every generated
 chord as the type meant. A wrong answer strikes its box out and plays the chord again 1 s later; a right one turns
 its box green with the chord named on it ("D♭ minor, 1st inversion", also in the feedback), then the next chord
-comes after 1.5 s. Replay, Stop/Start and Skip as in the other ear modes; played
+comes after 1.5 s. Stop/Start and Skip as in the other ear modes (Replay is on the board); played
 notes are ignored (answering by playing it back is for later). Chord notes play at 1/√n of a single note's level
 (`tones.play`'s `level`). Cutting notes off (replay, skip, stop) holds each note's volume where it has got to and
 fades from there (`holdAt`: `cancelAndHoldAtTime`); `cancelScheduledValues` alone would drop the decay in progress,

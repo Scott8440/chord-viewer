@@ -161,7 +161,8 @@ export function showControls(state: AppState) {
   // Both ear-training modes share their options; melodies have no drone, so the tonic is just the key
   const ear = id === "ear" || id === "earMelody";
   $("earOptions").hidden = !ear;
-  $("practiceReplay").hidden = !ear && id !== "earChords";
+  // Chord qualities has its Replay on the answer board instead
+  $("practiceReplay").hidden = !ear;
   $("earChordOptions").hidden = id !== "earChords";
   $("melodyLengthPick").hidden = id !== "earMelody";
   $("earTonicLabel").textContent = id === "earMelody" ? "Key" : "Drone";

@@ -1,5 +1,5 @@
-// The round's score while it's played, three ways to compare (TEMPORARY: the switcher goes once one is chosen):
-// dots, one per prompt (green right first time, amber right after a miss, grey skipped, hollow to come); a ring
+// The round's score while it's played, three ways at once: dots and the ring side by side, the line below them.
+// Dots, one per prompt (green right first time, amber right after a miss, grey skipped, hollow to come); a ring
 // filling with the share right first time so far, with a tick at the average of earlier rounds; a running line of
 // the share after each prompt, against a dashed line at that average.
 import { ROUND_SIZE, runningShares, type PromptOutcome } from "../exercises/rounds";
@@ -9,9 +9,6 @@ export interface RoundVizModel {
   /** Earlier rounds' average share right first time, null if none */
   average: number | null;
 }
-
-export const ROUND_VIZ_STYLES = ["dots", "ring", "line", "all", "off"] as const;
-export type RoundVizStyle = (typeof ROUND_VIZ_STYLES)[number];
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
@@ -60,7 +57,7 @@ export function ringSvg(m: RoundVizModel): string {
 
 /** 3. The share after each prompt, across the round, against a dashed line at the earlier average */
 export function lineSvg(m: RoundVizModel): string {
-  const W = 240,
+  const W = 518, // as wide as the dots and the ring beside them
     H = 64,
     pad = 4;
   const x = (i: number) => pad + (i / (ROUND_SIZE - 1)) * (W - 2 * pad),
@@ -90,46 +87,19 @@ export interface RoundVizView {
   render(model: RoundVizModel | null): void;
 }
 
-const STORAGE = "chordDisplay.debugRoundViz";
-
-/** `el` holds the chart; `picker` is the temporary switcher (a select), shown with it */
-export function createRoundVizView(el: HTMLElement, picker: HTMLSelectElement): RoundVizView {
-  let style: RoundVizStyle = "all";
-  try {
-    const saved = localStorage.getItem(STORAGE);
-    if ((ROUND_VIZ_STYLES as readonly string[]).includes(saved ?? "")) style = saved as RoundVizStyle;
-  } catch {}
-  let last: RoundVizModel | null = null;
-  picker.value = style;
-  picker.onchange = () => {
-    picker.blur();
-    style = picker.value as RoundVizStyle;
-    try {
-      localStorage.setItem(STORAGE, style);
-    } catch {}
-    draw();
-  };
-  function draw() {
-    const pickerRow = picker.closest<HTMLElement>("label");
-    if (pickerRow) pickerRow.hidden = !last;
-    el.hidden = !last || style === "off";
-    if (!last || style === "off") {
-      el.innerHTML = "";
-      return;
-    }
-    const m = last;
-    const parts =
-      style === "all"
-        ? [dotsSvg(m), ringSvg(m), lineSvg(m)]
-        : [{ dots: dotsSvg, ring: ringSvg, line: lineSvg }[style](m)];
-    const legend =
-      m.average != null && style !== "dots" ? `<span class="rvNote">Mark: your average, ${pct(m.average)}</span>` : "";
-    el.innerHTML = parts.map(p => `<div class="rvPart">${p}</div>`).join("") + legend;
-  }
+/** `el` holds the charts */
+export function createRoundVizView(el: HTMLElement): RoundVizView {
   return {
-    render(model) {
-      last = model;
-      draw();
+    render(m) {
+      el.hidden = !m;
+      if (!m) {
+        el.innerHTML = "";
+        return;
+      }
+      const legend = m.average != null ? `<span class="rvNote">Mark: your average, ${pct(m.average)}</span>` : "";
+      el.innerHTML =
+        `<div class="rvTop"><div class="rvPart">${dotsSvg(m)}</div><div class="rvPart">${ringSvg(m)}</div></div>` +
+        `<div class="rvPart">${lineSvg(m)}</div>${legend}`;
     },
   };
 }

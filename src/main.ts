@@ -71,8 +71,7 @@ const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
 const degreeCircle = createDegreeCircle($("degreeCircle"));
 const answerBoard = createAnswerBoard($("answerBoard"));
-// TEMPORARY switcher between the round score views (see roundViz.ts)
-const roundViz = createRoundVizView($("roundViz"), $<HTMLSelectElement>("roundVizStyle"));
+const roundViz = createRoundVizView($("roundViz"));
 const progressView = createProgressView($("progressView"), {
   change(selection) {
     selectProgress(selection);

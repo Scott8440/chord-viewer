@@ -158,9 +158,8 @@ Layers that only talk through data. Read the file before changing a layer; this 
   `cancelScheduledValues` alone, which jumps back to the attack's peak and clicks.
 - **Audio waits for a gesture:** after a reload the ear modes open stopped ("Ready") and start once audio unlocks,
   rather than queueing sound that bursts out on the first click.
-- **TEMPORARY round-viz debug switcher** (`src/views/roundViz.ts`, saved as `chordDisplay.debugRoundViz`): Dots, Ring
-  and Line are being compared. Keep it for now; once the user picks one, remove the switcher and the other two, and
-  consider moving it to the left card.
+- **Round score** (`src/views/roundViz.ts`): all three views show at once (dots and ring side by side, the line
+  below); the debug switcher that compared them is gone.
 - **The staff never moves:** room is reserved for A0–C8 and both chords share one fixed `TickContext`. Treble/bass
   split at middle C (≥ 60 treble). Rows of notes use the wider row staff.
 - **Practice modes don't show the circle of fifths** where its numerals would give answers away (chord, progression

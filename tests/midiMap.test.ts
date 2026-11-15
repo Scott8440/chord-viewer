@@ -1,13 +1,24 @@
 // MIDI mapping: keys pressing controls, per mode.
 import { describe, expect, it } from "vitest";
-import { assignNote, clearTarget, midiNoteName, noteFor, sanitizeMidiMap, targetFor } from "../src/input/midiMap";
+import { assignNote, clearTarget, midiNoteName, noteFor, sanitizeMidiMap, targetsFor } from "../src/input/midiMap";
 
 describe("MIDI map", () => {
   it("maps a key to a control in one mode only", () => {
     const map = assignNote({}, "earChords", "answer:M", 48);
-    expect(targetFor(map, "earChords", 48)).toBe("answer:M");
-    expect(targetFor(map, "scales", 48)).toBeUndefined();
+    expect(targetsFor(map, "earChords", 48)).toEqual(["answer:M"]);
+    expect(targetsFor(map, "scales", 48)).toEqual([]);
     expect(noteFor(map, "earChords", "answer:M")).toBe(48);
+  });
+
+  it("a key can stay on controls that aren't showing together; the rest lose it", () => {
+    let map = assignNote({}, "earChords", "replay", 60);
+    map = assignNote(map, "earChords", "answer:M", 62);
+    // Next round shows in Replay's place: Replay keeps the key
+    map = assignNote(map, "earChords", "skip", 60, other => other === "replay");
+    expect(targetsFor(map, "earChords", 60).sort()).toEqual(["replay", "skip"]);
+    // A major-chord box showing alongside Skip takes 60 from it, but not from the hidden Replay
+    map = assignNote(map, "earChords", "answer:M", 60, other => other === "replay");
+    expect(map.earChords).toEqual({ replay: 60, "answer:M": 60 });
   });
 
   it("a key presses one control: mapping it again moves it; a control has one key", () => {

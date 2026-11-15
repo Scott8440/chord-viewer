@@ -114,7 +114,10 @@ Layers that only talk through data. Read the file before changing a layer; this 
   latency used to time visuals to what's heard.
 - **MIDI mapping** (`src/input/midiMap.ts` pure, `src/app/midiMap.ts`): maps a key to any control with
   `data-midi-map`, per mode, active only while the control is on screen; a mapped key's note-on/off never reaches the
-  performance (main's input asks the mapper first). Saved in `chordDisplay.midiMap`.
+  performance (main's input asks the mapper first). One key may press several controls that never show together:
+  mapping takes the key from controls showing at the time and leaves it on hidden ones; so controls that appear
+  together need distinct ids (the board's Next round is `nextRound`, not the panel's `skip`). Saved in
+  `chordDisplay.midiMap`.
 - **Chord recognizer** (`src/theory/chords.ts`, templates and `RECOGNIZER_WEIGHTS` in `chordTemplates.ts`): template
   matching plus a cost score; every reading carries `reasons`. No two templates share a pitch-class set (a test
   enforces it). The key only re-ranks readings, never turns a real chord into "?". Ties are broken so results are the

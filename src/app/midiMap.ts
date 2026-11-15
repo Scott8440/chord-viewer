@@ -1,7 +1,9 @@
 // MIDI mapping on the page: the footer's "MIDI map" button turns mapping on, outlining every control that can be
 // mapped (anything with `data-midi-map`); click one and the next key pressed is mapped to it (Delete clears it, Esc
 // cancels, Esc again or the button ends mapping). Then that key presses the control instead of playing a note, in the
-// mode it was mapped in. Mapped controls show their key in a corner badge. Saved in localStorage.
+// mode it was mapped in. One key can press several controls that are never on screen together (Replay, and Next
+// round in its place): mapping a key takes it from any other control showing at the time, and leaves it on hidden
+// ones. Mapped controls show their key in a corner badge. Saved in localStorage.
 import type { InputEvent } from "../input/events";
 import {
   assignNote,
@@ -9,7 +11,7 @@ import {
   midiNoteName,
   noteFor,
   sanitizeMidiMap,
-  targetFor,
+  targetsFor,
   type MidiMap,
 } from "../input/midiMap";
 import { loadJson, saveItem } from "./safeStorage";
@@ -133,19 +135,28 @@ export function createMidiMapper(o: {
       const scope = o.scope();
       if (!scope) return false;
       if (waiting) {
-        map = assignNote(map, scope, waiting, event.note);
+        const target = waiting;
+        // Controls showing now would clash with this one; hidden ones keep the key for when they show instead
+        map = assignNote(map, scope, target, event.note, other => other !== target && !visible(other));
         save();
-        const el = visible(waiting);
+        const el = visible(target);
+        const others = targetsFor(map, scope, event.note).filter(t => t !== target);
         say(
-          `${midiNoteName(event.note)} now presses “${el ? nameOf(el) : waiting}” · click another control, or MIDI map to finish`,
+          `${midiNoteName(event.note)} now presses “${el ? nameOf(el) : target}”` +
+            (others.length
+              ? ` (and ${others.length === 1 ? "one other control" : `${others.length} other controls`} when showing instead)`
+              : "") +
+            " · click another control, or MIDI map to finish",
         );
         waiting = null;
         refresh();
         pressed.add(key);
         return true;
       }
-      const target = targetFor(map, scope, event.note);
-      const el = target && visible(target);
+      // The one of its controls on screen (mapping keeps a key off controls showing together)
+      const el = targetsFor(map, scope, event.note)
+        .map(visible)
+        .find(e => e != null);
       if (!el) return false;
       // A mapped key presses its control (a disabled one just does nothing) and isn't played
       el.click();

@@ -4,9 +4,21 @@
 /** scope (mode id) → control id (its `data-midi-map`) → MIDI note */
 export type MidiMap = Readonly<Record<string, Readonly<Record<string, number>>>>;
 
-/** Maps `note` to a control in a scope; a note presses one control, so it leaves any other in that scope. */
-export function assignNote(map: MidiMap, scope: string, target: string, note: number): MidiMap {
-  const inScope = Object.fromEntries(Object.entries(map[scope] ?? {}).filter(([, n]) => n !== note));
+/**
+ * Maps `note` to a control in a scope. A note may press several controls as long as they're never on screen together
+ * (Replay, then Next round in its place): `shared(other)` says whether another control already on this note may keep
+ * it; any it doesn't allow (by default, all) loses the note. A control has one note.
+ */
+export function assignNote(
+  map: MidiMap,
+  scope: string,
+  target: string,
+  note: number,
+  shared: (other: string) => boolean = () => false,
+): MidiMap {
+  const inScope = Object.fromEntries(
+    Object.entries(map[scope] ?? {}).filter(([other, n]) => n !== note || shared(other)),
+  );
   return { ...map, [scope]: { ...inScope, [target]: note } };
 }
 
@@ -15,9 +27,11 @@ export function clearTarget(map: MidiMap, scope: string, target: string): MidiMa
   return { ...map, [scope]: rest };
 }
 
-/** The control a note presses in a scope, if any */
-export const targetFor = (map: MidiMap, scope: string, note: number): string | undefined =>
-  Object.entries(map[scope] ?? {}).find(([, n]) => n === note)?.[0];
+/** The controls a note presses in a scope (whichever is on screen) */
+export const targetsFor = (map: MidiMap, scope: string, note: number): string[] =>
+  Object.entries(map[scope] ?? {})
+    .filter(([, n]) => n === note)
+    .map(([target]) => target);
 
 export const noteFor = (map: MidiMap, scope: string, target: string): number | undefined => map[scope]?.[target];
 

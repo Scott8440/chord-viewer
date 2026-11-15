@@ -76,7 +76,7 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
       };
     },
     renderNext(label) {
-      const html = `<button class="next" data-midi-map="skip" data-midi-name="Skip / Next">${esc(label)} <span aria-hidden="true">→</span></button>`;
+      const html = `<button class="next" data-midi-map="nextRound" data-midi-name="Next round">${esc(label)} <span aria-hidden="true">→</span></button>`;
       if (html !== shown) el.innerHTML = shown = html;
     },
     onNext(listener) {

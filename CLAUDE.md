@@ -436,8 +436,8 @@ as a 7th series (`--series-7`, #9085e9).
 **Rounds** (all three ear modes; `src/exercises/rounds.ts` pure, `src/modes/rounds.ts` the `RoundKeeper` each mode
 calls after every answer or skip, `src/views/practice/round.ts`): prompts come in rounds of `ROUND_SIZE` (20),
 counted from the mode's own answered / right-first-time counters (skips count as answered, not right first time); the
-score reads "Round: 7 / 20 · 5 right first time". At 20 the sound stops (the drone too), answers and replays are
-ignored, and the panel shows the round: its share right first time, how many and how long, and how it compares with
+score reads "Round: 7 / 20 · 5 right first time". At 20 nothing new plays (no replay, no next prompt) but what's sounding rings out (the
+chord or note just answered; the drone fades over 2.5 s), answers and replays are ignored, and the panel shows the round: its share right first time, how many and how long, and how it compares with
 earlier rounds of the same drill played the same way (`setup`: the degrees on offer; the melody length and degrees;
 the chord types, voicing and play) — "▲ 10 points on your last round · best 85% · average 72% over your last 10
 rounds" (or "Your first round played this way …"), with small bars of the last ten and this one. Skip reads "Next

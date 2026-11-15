@@ -91,10 +91,9 @@ export function startEarMelody(store: AppStore, views: {
     } else if (action.type === "skip" && prev.status !== "correct") {
       recorder.record(melodyDrillBody(prev.prompt, options().degrees, false, prev.missed, Date.now() - shownAt));
     }
-    // The round's last melody: stop, and show how the round went until Next round
+    // The round's last melody: show how the round went until Next round; anything still sounding rings out
     if (state.answered !== prev.answered && rounds.check(state, action.type === "skip")) {
       clearTimers();
-      views.tones.stopNotes();
       render();
       return;
     }

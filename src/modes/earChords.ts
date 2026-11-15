@@ -80,10 +80,10 @@ export function startEarChords(store: AppStore, views: {
     } else if (action.type === "skip" && prev.status !== "correct") {
       recorder.record(chordEarDrillBody(prev.prompt, qualityLabel(prev.prompt.type), types, false, prev.missed, Date.now() - shownAt, prev.wrong));
     }
-    // The round's last chord: stop, and show how the round went until Next round
+    // The round's last chord: show how the round went until Next round. Nothing new plays (no replay, no next
+    // chord), but the chord just named rings out rather than being cut off
     if (state.answered !== prev.answered && rounds.check(state, action.type === "skip")) {
       clearTimers();
-      views.tones.stopNotes();
       render();
       return;
     }

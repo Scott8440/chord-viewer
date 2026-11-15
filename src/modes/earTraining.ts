@@ -28,6 +28,8 @@ const INTRO_GAP_S = 0.6;
 const INTRO_RING_S = 1.2;
 /** Then this long before the note to find */
 const INTRO_PAUSE_S = 1.2;
+/** At a round's end the drone fades out over this long (the last note rings out over it) */
+const ROUND_END_FADE_S = 2.5;
 /** Leaving the window (another app or tab) fades the drone out over this long */
 const AWAY_FADE_S = 3;
 /** After a wrong note, the prompt note plays again this long after it */
@@ -170,12 +172,11 @@ export function startEarTraining(store: AppStore, views: {
     } else if (action.type === "skip" && prev.status !== "correct") {
       recorder.record(earDrillBody(prev.prompt, options().degrees, false, prev.missed, Date.now() - shownAt));
     }
-    // The round's last note: the drone stops, and the round's summary shows until Next round
+    // The round's last note: the drone fades away under it, and the round's summary shows until Next round
     if (state.answered !== prev.answered && rounds.check(state, action.type === "skip")) {
       clearTimeout(nextTimer);
       clearTimeout(replayTimer);
-      silence();
-      views.tones.stopNotes();
+      silence(ROUND_END_FADE_S);
       render();
       return;
     }

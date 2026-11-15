@@ -1,0 +1,5 @@
+# Commits git blame should skip (formatting only). Enable with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Format the code with Prettier
+a4d6e3d3a5448154e21e8f115e3295a4dc3c870c

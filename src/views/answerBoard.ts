@@ -22,10 +22,14 @@ export interface AnswerBoard {
   onAnswer(listener: (id: string) => void): () => void;
   /** Called when the Replay button is pressed; returns a function that stops it */
   onReplay(listener: () => void): () => void;
+  /** In place of everything else, one large button (between rounds: "Next round"); mapped like Skip */
+  renderNext(label: string): void;
+  /** Called when that button is pressed; returns a function that stops it */
+  onNext(listener: () => void): () => void;
 }
 
 export function createAnswerBoard(el: HTMLElement): AnswerBoard {
-  const listeners = new Set<(id: string) => void>(), replayListeners = new Set<() => void>();
+  const listeners = new Set<(id: string) => void>(), replayListeners = new Set<() => void>(), nextListeners = new Set<() => void>();
   // The buttons are redrawn with each render, so one listener on the board catches them all
   el.addEventListener("click", e => {
     const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
@@ -33,6 +37,7 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
     button.blur();   // so Space stays the pedal
     if (button.dataset.answer) for (const l of listeners) l(button.dataset.answer);
     else if (button.classList.contains("replay")) for (const l of replayListeners) l();
+    else if (button.classList.contains("next")) for (const l of nextListeners) l();
   });
   let shown = "";
   return {
@@ -53,6 +58,14 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
     onReplay(listener) {
       replayListeners.add(listener);
       return () => { replayListeners.delete(listener); };
+    },
+    renderNext(label) {
+      const html = `<button class="next" data-midi-map="skip" data-midi-name="Skip / Next">${esc(label)} <span aria-hidden="true">→</span></button>`;
+      if (html !== shown) el.innerHTML = shown = html;
+    },
+    onNext(listener) {
+      nextListeners.add(listener);
+      return () => { nextListeners.delete(listener); };
     },
   };
 }

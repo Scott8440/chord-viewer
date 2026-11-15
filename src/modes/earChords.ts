@@ -60,8 +60,9 @@ export function startEarChords(store: AppStore, views: {
     const summary = rounds.summary();
     views.roundViz.render({ outcomes: rounds.outcomes(), average: rounds.average() });
     if (summary) {
-      views.practice.render(roundSummaryDisplay(summary, "Chord qualities"));
-      views.answers.render(chordEarAnswers(state, options().types, false), { enabled: false });
+      // Between rounds the board holds just the way on: one large Next round
+      views.practice.render({ ...roundSummaryDisplay(summary, "Chord qualities"), skipHidden: true });
+      views.answers.renderNext("Next round");
       return;
     }
     views.practice.render({ ...chordEarDisplay(state, options().types, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
@@ -101,6 +102,7 @@ export function startEarChords(store: AppStore, views: {
   const answer = (quality: string) => { if (running && !rounds.summary()) apply({ type: "answer", quality }); };
   const offAnswer = views.answers.onAnswer(answer);
   const offReplay = views.answers.onReplay(() => { if (running && !rounds.summary()) sound(); });
+  const offNext = views.answers.onNext(() => { if (rounds.summary()) nextRound(); });
 
   /** Next round: on to a new chord (the last round's last one was answered, or skipped onto a new one) */
   function nextRound() {
@@ -152,6 +154,7 @@ export function startEarChords(store: AppStore, views: {
     stop() {
       offAnswer();
       offReplay();
+      offNext();
       offSettings();
       offBlocked();
       window.removeEventListener("keydown", onKey);

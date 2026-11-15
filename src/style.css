@@ -251,6 +251,12 @@ body.midiMapping [data-midi-map].midiWaiting { outline-style: solid; outline-wid
 #answerBoard .box.wrong { color: #b3ad9f; background: #f3efe6; }
 #answerBoard .box.wrong .boxLabel { text-decoration: line-through; }
 #answerBoard .box:disabled { cursor: default; }
+/* Between rounds: one large Next round in place of everything else */
+#answerBoard .next {
+  min-width: min(100%, 360px); padding: 28px 48px; border-radius: 16px; border: 2px solid #2e8b57; background: #e6f3ea;
+  color: #1f6a40; font: 600 clamp(24px, 3vw, 34px) system-ui, sans-serif; cursor: pointer;
+}
+#answerBoard .next:hover { background: #d8ecdf; }
 /* Replay, across the top of the board */
 #answerBoard .replay {
   display: inline-flex; align-items: center; gap: 10px;

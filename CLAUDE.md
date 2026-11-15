@@ -441,7 +441,9 @@ ignored, and the panel shows the round: its share right first time, how many and
 earlier rounds of the same drill played the same way (`setup`: the degrees on offer; the melody length and degrees;
 the chord types, voicing and play) — "▲ 10 points on your last round · best 85% · average 72% over your last 10
 rounds" (or "Your first round played this way …"), with small bars of the last ten and this one. Skip reads "Next
-round" and starts the next (scale degrees introduce the key again). New options start a new round. Each finished
+round" and starts the next (scale degrees introduce the key again); in chord qualities the answer board instead holds
+one large Next round button in place of the boxes and Replay (`AnswerBoard.renderNext`, mapped as `skip`), and the
+panel's button is hidden (`PracticeDisplay.skipHidden`). New options start a new round. Each finished
 round is a `round` record (drill, size, firstTry, setup, durationMs), read back from the history for the comparison
 before it's recorded; leaving the window between rounds doesn't start the next.
 

@@ -14,6 +14,8 @@ export interface PracticeDisplay {
   score: string;
   /** Text of the button under the prompt; defaults to "Skip" */
   skipLabel?: string;
+  /** Hide that button (its job is done elsewhere: chord qualities' Next round is on the answer board) */
+  skipHidden?: boolean;
   /** Text of the Stop/Start button, for exercises that make sound (ear training); hidden when absent */
   stopLabel?: string;
 }
@@ -37,6 +39,7 @@ export function createPracticeView(els: {
       els.feedback.textContent = d.feedback;
       els.score.textContent = d.score;
       els.skip.textContent = d.skipLabel ?? "Skip";
+      els.skip.hidden = !!d.skipHidden;
       els.stop.hidden = !d.stopLabel;
       els.stop.textContent = d.stopLabel ?? "";
     },

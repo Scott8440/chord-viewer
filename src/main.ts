@@ -27,6 +27,7 @@ import { createChordNameView } from "./views/chordName";
 import { createCircleView } from "./views/circleOfFifths";
 import { createAnswerBoard } from "./views/answerBoard";
 import { createRoundVizView } from "./views/roundViz";
+import { createLadderPick } from "./views/ladderPick";
 import { createDegreeCircle } from "./views/degreeCircle";
 import { createHeaderView } from "./views/header";
 import { createPracticeView } from "./views/practice";
@@ -72,6 +73,7 @@ const circle = createCircleView($("circle"));
 const degreeCircle = createDegreeCircle($("degreeCircle"));
 const answerBoard = createAnswerBoard($("answerBoard"));
 const roundViz = createRoundVizView($("roundViz"));
+const ladderPick = createLadderPick($<HTMLSelectElement>("earChordLevel"));
 const progressView = createProgressView($("progressView"), {
   change(selection) {
     selectProgress(selection);
@@ -130,6 +132,7 @@ const modeDeps: ModeDeps = {
     degrees: degreeCircle,
     answers: answerBoard,
     roundViz,
+    ladder: ladderPick,
     progress: progressView,
   },
   recorder: history.recorder,

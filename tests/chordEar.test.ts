@@ -2,7 +2,9 @@
 import { describe, expect, it } from "vitest";
 import {
   answerOrder,
+  chordEarLadderTag,
   initialChordEar,
+  playedChordEar,
   makeChordEarPrompt,
   qualityLabel,
   reduceChordEar,
@@ -10,6 +12,7 @@ import {
   voiceChord,
   type ChordEarOptions,
 } from "../src/exercises/chordEar";
+import { CHORD_EAR_LADDER } from "../src/exercises/ladders";
 import { chordEarDrillBody } from "../src/progress/records";
 import { createAppState, reduceApp } from "../src/state/app";
 import { analyze, chordSemitones } from "../src/theory";
@@ -20,7 +23,13 @@ const seq = (...xs: number[]) => {
   let i = 0;
   return () => xs[i++ % xs.length];
 };
-const opts: ChordEarOptions = { types: ["M", "m", "dim", "7"], inversions: false, broken: false };
+const opts: ChordEarOptions = {
+  types: ["M", "m", "dim", "7"],
+  inversions: false,
+  broken: false,
+  ladder: false,
+  level: 0,
+};
 
 describe("chord tones", () => {
   it("a chord type's semitones, optional tones included", () => {
@@ -115,13 +124,35 @@ describe("answers", () => {
 
 describe("options", () => {
   it("at least two known types, else major and minor; inversions and broken off unless set", () => {
-    expect(sanitizeChordEarOptions(undefined)).toEqual({ types: ["M", "m"], inversions: false, broken: false });
+    expect(sanitizeChordEarOptions(undefined)).toEqual({
+      types: ["M", "m"],
+      inversions: false,
+      broken: false,
+      ladder: true,
+      level: 0,
+    });
     expect(sanitizeChordEarOptions({ types: ["dim", "nonsense"] }).types).toEqual(["M", "m"]);
     expect(sanitizeChordEarOptions({ types: ["dim", "aug", "x"], inversions: true, broken: true })).toEqual({
       types: ["dim", "aug"],
       inversions: true,
       broken: true,
+      ladder: true,
+      level: 0,
     });
+  });
+
+  it("the ladder: on unless turned off, its level kept to the ladder, and it decides what's played", () => {
+    expect(sanitizeChordEarOptions({ ladder: false, level: 3 })).toMatchObject({ ladder: false, level: 3 });
+    expect(sanitizeChordEarOptions({ level: 99 }).level).toBe(CHORD_EAR_LADDER.levels.length - 1);
+    expect(sanitizeChordEarOptions({ level: -2 }).level).toBe(0);
+    expect(sanitizeChordEarOptions({ level: 1.5 }).level).toBe(0);
+    const own = sanitizeChordEarOptions({ types: ["maj7", "m7"], ladder: true, level: 3 });
+    expect(playedChordEar(own)).toMatchObject({ types: ["M", "m", "dim", "aug"], inversions: true });
+    expect(playedChordEar({ ...own, ladder: false })).toMatchObject({ types: ["maj7", "m7"], inversions: false });
+    // Rounds count for the ladder only when played on it, and not with the notes played one by one first
+    expect(chordEarLadderTag(own)).toEqual({ id: CHORD_EAR_LADDER.id, level: 3 });
+    expect(chordEarLadderTag({ ...own, broken: true })).toBeNull();
+    expect(chordEarLadderTag({ ...own, ladder: false })).toBeNull();
   });
 
   it("saved in settings, changed one at a time", () => {

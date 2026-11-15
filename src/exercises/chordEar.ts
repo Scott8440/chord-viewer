@@ -3,6 +3,7 @@
 import { chordSemitones, ROOT_MAJOR, ROOT_MINOR, templateById } from "../theory";
 import { CHORD_PRACTICE_GROUPS, CHORD_PRACTICE_TYPES } from "./chordPractice";
 import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
+import { CHORD_EAR_LADDER } from "./ladders";
 import { pick, randomInt, type Rng } from "./random";
 
 export interface ChordEarOptions {
@@ -12,17 +13,44 @@ export interface ChordEarOptions {
   inversions: boolean;
   /** Play the notes one by one, low to high, before the chord together */
   broken: boolean;
+  /** Climb the ladder (CHORD_EAR_LADDER): its level sets the types and inversions, and `types`/`inversions` above
+   *  wait, kept, for free choice */
+  ladder: boolean;
+  /** The ladder level being played (0-based); the mode keeps it to the levels unlocked */
+  level: number;
 }
 
-export const DEFAULT_CHORD_EAR: ChordEarOptions = { types: ["M", "m"], inversions: false, broken: false };
+export const DEFAULT_CHORD_EAR: ChordEarOptions = {
+  types: ["M", "m"],
+  inversions: false,
+  broken: false,
+  ladder: true,
+  level: 0,
+};
+
+/** What's played: on the ladder, its level's types and inversions; otherwise the player's own choice */
+export function playedChordEar(o: ChordEarOptions): ChordEarOptions {
+  if (!o.ladder) return o;
+  const level = CHORD_EAR_LADDER.levels[o.level] ?? CHORD_EAR_LADDER.levels[0];
+  return { ...o, types: level.options.types, inversions: level.options.inversions };
+}
+
+/** The ladder and level a round counts for: none for free choice, nor when the notes are played one by one first
+ *  (a help, so it doesn't count towards unlocking) */
+export const chordEarLadderTag = (o: ChordEarOptions): { id: string; level: number } | null =>
+  o.ladder && !o.broken ? { id: CHORD_EAR_LADDER.id, level: o.level } : null;
 
 export function sanitizeChordEarOptions(raw: unknown): ChordEarOptions {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const types = Array.isArray(o.types) ? CHORD_PRACTICE_TYPES.filter(id => (o.types as unknown[]).includes(id)) : [];
+  const level = typeof o.level === "number" && Number.isInteger(o.level) ? o.level : 0;
   return {
     types: types.length >= 2 ? types : [...DEFAULT_CHORD_EAR.types],
     inversions: o.inversions === true,
     broken: o.broken === true,
+    // Options saved before the ladder existed start on it (the old types are kept for free choice)
+    ladder: o.ladder !== false,
+    level: Math.min(Math.max(level, 0), CHORD_EAR_LADDER.levels.length - 1),
   };
 }
 

@@ -13,6 +13,7 @@ import type { DegreeCircleView } from "../views/degreeCircle";
 import type { PracticeView } from "../views/practice";
 import type { ProgressView } from "../views/progressView";
 import type { RoundVizView } from "../views/roundViz";
+import type { LadderPickView } from "../views/ladderPick";
 import type { StaffView } from "../views/staff";
 import { startChordPractice } from "./chordPractice";
 import { startEarChords } from "./earChords";
@@ -39,6 +40,7 @@ export interface ModeDeps {
     degrees: DegreeCircleView;
     answers: AnswerBoard;
     roundViz: RoundVizView;
+    ladder: LadderPickView;
     progress: ProgressView;
   };
   recorder: Recorder;

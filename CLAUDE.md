@@ -26,7 +26,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 468 tests (54 voicings) should pass
+npm test           # Vitest: 479 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -102,6 +102,11 @@ Layers that only talk through data. Read the file before changing a layer; this 
   `ROUND_SIZE` (20); each finished round is a `round` record compared with earlier rounds of the same drill and
   `setup`. The keeper reads rounds once with `ofKind("round")` (cost doesn't grow with history) and adds each round
   only after comparing it; a failed read is logged and retried next time.
+- **Ladders** (`src/exercises/ladders.ts` pure; chord qualities only so far, `src/modes/earChords.ts`): a drill's
+  options as levels (data, like `ROUTINES`). Unlocking is never stored: it's worked out from `round` records tagged
+  `ladder: {id, level}` (two rounds in a row at 85%+ at the top level unlock the next; only ever up). Rounds played
+  broken, or with free choice, aren't tagged. Changing what a level means needs a new ladder id. The saved level is
+  pulled back to the highest unlocked once history is read; after an unlocking round, Next round moves up.
 - **Metronome / timing** (`src/timing/`): `AppState.transport` is the one source of truth for where the beats are.
   Only the driver (today the built-in clock, `src/modes/metronome.ts`) dispatches `setTransport`; the click
   (`src/audio/click.ts`, look-ahead scheduler), beat light and judging (`grid.ts`) only read it, so an external clock
@@ -176,6 +181,7 @@ Layers that only talk through data. Read the file before changing a layer; this 
   hints, keeping best runs. Moving through keys (Then) was a first step towards folding single exercises and routines
   together, which may be revisited.
 - Metronome: an external clock driver (Ableton MIDI clock via loopMIDI) updating the same transport.
+- Ladders for scale degrees and melodies, then perhaps other exercises (sight-reading levels, a tempo ladder).
 - Ear training: minor and chromatic degrees, drone on/off and volume, resolving the note to the tonic, intervals;
   chord qualities answered by playing the chord back, weighted towards qualities missed.
 - Sight reading: judging rhythm against the metronome; more easy piano excerpts (the hands alone are thin at level 1).

@@ -654,6 +654,20 @@ body.midiMapping [data-midi-map].midiWaiting {
   text-decoration: none;
   pointer-events: none;
 }
+/* Ladders (src/views/practice/ladder.ts): the level while playing, and what a round did for unlocking */
+#practicePrompt .ladderLine {
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.roundLadder {
+  font-family: system-ui, sans-serif;
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 500;
+}
 /* Ear training rounds: the score while playing (src/views/roundViz.ts) */
 #roundViz {
   display: flex;

@@ -4,10 +4,15 @@
 // staff's place (no staff: the chord isn't for reading). Played notes are ignored (answering by playing comes later).
 // Stop silences it; Start plays the chord again. Rounds, replays and Stop/Start are the shared ear-drill runner's
 // (earDrill.ts); this sounds the chord and runs the answer board.
+// On the ladder (the default), the level sets the types and inversions: rounds played on it are tagged with it, the
+// levels unlocked are worked out from those rounds (src/exercises/ladders.ts), and after a round that unlocks the next
+// level, Next round moves up to it.
 import type { TonePlayer } from "../audio/tones";
 import {
   answerOrder,
+  chordEarLadderTag,
   initialChordEar,
+  playedChordEar,
   makeChordEarPrompt,
   qualityLabel,
   reduceChordEar,
@@ -16,13 +21,25 @@ import {
   type ChordEarPrompt,
   type ChordEarState,
 } from "../exercises/chordEar";
+import { CHORD_EAR_LADDER, ladderProgress, type LadderProgress } from "../exercises/ladders";
 import type { Rng } from "../exercises/random";
+import { esc } from "../views/html";
+import type { LadderPickView } from "../views/ladderPick";
 import { isTypingOrModified } from "../input/keys";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { chordEarDrillBody } from "../progress/records";
 import type { AnswerBoard } from "../views/answerBoard";
 import type { ProgressStore } from "../progress/store";
-import { chordEarAnswers, chordEarDisplay, roundSummaryDisplay, type PracticeView } from "../views/practice";
+import {
+  chordEarAnswers,
+  chordEarDisplay,
+  justUnlocked,
+  ladderPlayingText,
+  ladderSummaryText,
+  roundSummaryDisplay,
+  type LadderStatus,
+  type PracticeView,
+} from "../views/practice";
 import { createEarDrill } from "./earDrill";
 import type { AppStore, Mode } from "./performance";
 import type { RoundVizView } from "../views/roundViz";
@@ -42,12 +59,41 @@ export function startEarChords({
   rng = Math.random,
 }: {
   store: AppStore;
-  views: { practice: PracticeView; tones: TonePlayer; answers: AnswerBoard; roundViz: RoundVizView };
+  views: {
+    practice: PracticeView;
+    tones: TonePlayer;
+    answers: AnswerBoard;
+    roundViz: RoundVizView;
+    /** The level picker (left out in tests) */
+    ladder?: LadderPickView;
+  };
   recorder?: Recorder;
   history?: Promise<ProgressStore> | null;
   rng?: Rng;
 }): Mode {
-  const options = () => store.getState().settings.earChords;
+  /** The options as saved, and what they play (on the ladder, its level's types and inversions) */
+  const saved = () => store.getState().settings.earChords;
+  const options = () => playedChordEar(saved());
+  const setLevel = (level: number) => store.dispatch({ type: "setEarChordOptions", options: { level } });
+
+  /** The rounds played on the ladder so far, oldest first (empty until the history is read) */
+  const ladderRounds = (rounds = drill.knownRounds() ?? []) =>
+    rounds.flatMap(r => (r.ladder?.id === CHORD_EAR_LADDER.id ? [{ level: r.ladder.level, share: r.share }] : []));
+  /** Where the player is on the ladder (null off it) */
+  function ladderStatus(): LadderStatus | null {
+    const o = saved();
+    if (!o.ladder) return null;
+    return {
+      levels: CHORD_EAR_LADDER.levels,
+      level: o.level,
+      progress: ladderProgress(CHORD_EAR_LADDER.levels.length, ladderRounds()),
+      counts: chordEarLadderTag(o) != null,
+    };
+  }
+  /** The level a round just unlocked, while its summary shows: Next round moves up to it */
+  let promoteTo: number | null = null;
+  let showingSummary = false;
+  let stopped = false;
 
   const drill = createEarDrill<ChordEarPrompt, ChordEarState, ChordEarAction, ChordEarOptions>(
     store,
@@ -59,10 +105,11 @@ export function startEarChords({
         const o = options();
         return `types:${answerOrder(o.types).join(",")};inversions:${o.inversions};broken:${o.broken}`;
       },
+      ladder: () => chordEarLadderTag(saved()),
       initial: initialChordEar(makeChordEarPrompt(rng, options())),
       reduce: reduceChordEar,
       nextPrompt: previous => makeChordEarPrompt(rng, options(), previous),
-      freshPrompt: (o, _before, previous) => makeChordEarPrompt(rng, o, previous),
+      freshPrompt: (o, _before, previous) => makeChordEarPrompt(rng, playedChordEar(o), previous),
       nextPromptMs: NEXT_PROMPT_MS,
       record: (s, answered, ms) =>
         chordEarDrillBody(s.prompt, qualityLabel(s.prompt.type), options().types, answered, s.missed, ms, s.wrong),
@@ -77,12 +124,41 @@ export function startEarChords({
       },
       // At a round's end the chord just named rings out rather than being cut off
       silence: () => views.tones.stopNotes(),
-      display: (s, blocked, running) => chordEarDisplay(s, options().types, blocked, running),
+      display(s, blocked, running) {
+        const d = chordEarDisplay(s, options().types, blocked, running),
+          st = ladderStatus();
+        return st ? { ...d, promptHtml: `<div class="ladderLine">${esc(ladderPlayingText(st))}</div>` } : d;
+      },
       // Between rounds the board holds just the way on: one large Next round, so the panel's button is hidden
-      summaryDisplay: summary => ({ ...roundSummaryDisplay(summary, "Chord qualities"), skipHidden: true }),
+      summaryDisplay(summary) {
+        const d = { ...roundSummaryDisplay(summary, "Chord qualities"), skipHidden: true },
+          st = ladderStatus();
+        promoteTo = null;
+        // Once the round is among the known ones (its comparison is in): what it did for unlocking
+        if (!st || !summary.comparison || !drill.knownRounds()) return d;
+        const before: LadderProgress = st.counts
+          ? ladderProgress(CHORD_EAR_LADDER.levels.length, ladderRounds().slice(0, -1))
+          : st.progress;
+        promoteTo = justUnlocked(st, before);
+        const text = ladderSummaryText(st, before, summary.firstTry / summary.size);
+        return { ...d, promptHtml: d.promptHtml + `<div class="roundLadder">${esc(text)}</div>` };
+      },
       rendered(s, { summary, running, over }) {
-        if (summary) views.answers.renderNext("Next round");
+        showingSummary = !!summary;
+        if (!summary) promoteTo = null;
+        if (summary) views.answers.renderNext(promoteTo != null ? `Next round: level ${promoteTo + 1}` : "Next round");
         else views.answers.render(chordEarAnswers(s, options().types, running), { enabled: running && !over });
+        const st = ladderStatus();
+        if (st && drill.knownRounds()) {
+          views.ladder?.render(st.levels, st.progress.unlocked, st.level);
+          // A level not unlocked here (another browser's, or history cleared) goes back to the highest that is
+          if (st.level > st.progress.unlocked) {
+            const to = st.progress.unlocked;
+            queueMicrotask(() => {
+              if (!stopped && saved().level > to) setLevel(to);
+            });
+          }
+        }
       },
     },
     recorder,
@@ -92,7 +168,17 @@ export function startEarChords({
   const answer = (quality: string) => drill.answer({ type: "answer", quality });
   const offAnswer = views.answers.onAnswer(answer);
   const offReplay = views.answers.onReplay(drill.replay);
-  const offNext = views.answers.onNext(drill.nextRound);
+  /** Next round: up a level if the round just finished unlocked one (new options start the round), else the same */
+  function nextRound() {
+    if (showingSummary && promoteTo != null) {
+      const to = promoteTo;
+      promoteTo = null;
+      setLevel(to);
+    } else drill.nextRound();
+  }
+  const offNext = views.answers.onNext(nextRound);
+  // Picking a level starts a new round on it
+  const offPick = views.ladder?.onPick(setLevel) ?? (() => {});
 
   /** The number keys answer: 1 for the first button, and so on (not while typing in a field, nor with modifiers) */
   function onKey(e: KeyboardEvent) {
@@ -109,13 +195,15 @@ export function startEarChords({
   // No replay here: the board's Replay is the only one
   return {
     stop() {
+      stopped = true;
+      offPick();
       offAnswer();
       offReplay();
       offNext();
       window.removeEventListener("keydown", onKey);
       drill.stop();
     },
-    skip: drill.skip,
+    skip: () => (showingSummary ? nextRound() : drill.skip()),
     toggleRunning: drill.toggleRunning,
   };
 }

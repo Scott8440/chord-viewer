@@ -123,6 +123,9 @@ export interface RoundBody {
   setup: string;
   /** First prompt to the round's end */
   durationMs: number;
+  /** Played on a ladder (src/exercises/ladders.ts): which, and at which level. Absent for free choice, and in older
+   *  records; only these rounds count towards unlocking */
+  ladder?: { id: string; level: number };
 }
 
 export type RecordBody = RunBody | RoutineBody | DrillBody | RoundBody;

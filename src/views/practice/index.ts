@@ -13,4 +13,5 @@ export {
 export { progressingDisplay, sequenceDisplay, tempoText, timingText } from "./sequence";
 export { routineDisplay } from "./routine";
 export { roundScore, roundSummaryDisplay } from "./round";
+export { justUnlocked, ladderPlayingText, ladderSummaryText, type LadderStatus } from "./ladder";
 export { inversionFigures, inversionName } from "./chords";

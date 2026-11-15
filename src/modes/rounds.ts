@@ -39,12 +39,24 @@ export interface RoundKeeper {
   summary(): RoundSummary | null;
   /** Start a round from these counters (Next round, or new options) */
   next(now: Counters): void;
+  /** This drill's rounds so far, oldest first, once read from the history (null until then); a finished round is in
+   *  it by the time its comparison shows */
+  known(): readonly KnownRound[] | null;
+}
+
+/** A finished round of the drill, as the keeper keeps it */
+export interface KnownRound {
+  setup: string;
+  share: number;
+  ladder?: { id: string; level: number };
 }
 
 export function createRoundKeeper(o: {
   drill: DrillKind;
   /** The options that make rounds comparable, as a key */
   setup(): string;
+  /** The ladder and level a round is played on, if it is (kept on its record) */
+  ladder?(): { id: string; level: number } | null;
   recorder: Recorder;
   history: Promise<ProgressStore> | null;
   /** Called when the summary has its comparison, to show it */
@@ -74,12 +86,18 @@ export function createRoundKeeper(o: {
   /** This drill's rounds so far (the earlier ones from the history, then each one finished here), read once per
    *  keeper: reading the history costs more the longer it gets, and a round finishes every few minutes. Null if the
    *  read failed (then tried again when next needed). */
-  let rounds: Promise<{ setup: string; share: number }[] | null> | null = null;
+  let rounds: Promise<KnownRound[] | null> | null = null;
+  /** The list once read, for `known` */
+  let read: KnownRound[] | null = null;
   function drillRounds() {
     rounds ??= (async () => {
-      if (!o.history) return [];
+      if (!o.history) return (read = []);
       const kept = await (await o.history).ofKind("round");
-      return kept.flatMap(r => (r.drill === o.drill && r.size ? [{ setup: r.setup, share: r.firstTry / r.size }] : []));
+      return (read = kept.flatMap(r =>
+        r.drill === o.drill && r.size
+          ? [{ setup: r.setup, share: r.firstTry / r.size, ...(r.ladder ? { ladder: r.ladder } : {}) }]
+          : [],
+      ));
     })().catch(e => {
       console.error("Couldn't read earlier rounds", e);
       rounds = null;
@@ -88,7 +106,7 @@ export function createRoundKeeper(o: {
     return rounds;
   }
   /** Earlier rounds of this drill played this way, as shares right first time, oldest first */
-  const sharesOf = (list: { setup: string; share: number }[] | null, setup: string) =>
+  const sharesOf = (list: KnownRound[] | null, setup: string) =>
     list ? list.flatMap(r => (r.setup === setup ? [r.share] : [])) : [];
   /** Reads the earlier rounds' average for the round starting now (shown while it's played) */
   function loadAverage() {
@@ -112,7 +130,8 @@ export function createRoundKeeper(o: {
       }
       if (!roundDone(start, now)) return false;
       const p = roundProgress(start, now),
-        setup = o.setup();
+        setup = o.setup(),
+        ladder = o.ladder?.() ?? null;
       const done: RoundSummary = {
         size: p.answered,
         firstTry: p.firstTry,
@@ -129,13 +148,14 @@ export function createRoundKeeper(o: {
         firstTry: done.firstTry,
         setup,
         durationMs: done.durationMs,
+        ...(ladder ? { ladder } : {}),
       };
       // Earlier rounds first, then this one is recorded and added to the list (so it isn't compared with itself)
       void (async () => {
         const list = await drillRounds(),
           earlier = sharesOf(list, setup);
         o.recorder.record(body);
-        list?.push({ setup, share: done.firstTry / done.size });
+        list?.push({ setup, share: done.firstTry / done.size, ...(ladder ? { ladder } : {}) });
         if (summary === done) {
           summary = { ...done, comparison: compareRound(done.firstTry / done.size, earlier) };
           if (shown) changed();
@@ -152,6 +172,7 @@ export function createRoundKeeper(o: {
     },
     outcomes: () => outcomes,
     average: () => average,
+    known: () => read,
     next(now) {
       start = { answered: now.answered, firstTry: now.firstTry };
       last = start;

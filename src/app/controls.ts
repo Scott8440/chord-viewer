@@ -222,6 +222,11 @@ export function bindControls(store: AppStore) {
     tonic => ({ type: "setEarOptions", options: { tonic } }),
   );
   bindSelect(
+    $("earChordLadder"),
+    s => (s.earChords.ladder ? "ladder" : "free"),
+    v => ({ type: "setEarChordOptions", options: { ladder: v === "ladder" } }),
+  );
+  bindSelect(
     $("earChordVoicing"),
     s => (s.earChords.inversions ? "inversions" : "root"),
     v => ({ type: "setEarChordOptions", options: { inversions: v === "inversions" } }),
@@ -381,6 +386,9 @@ export function showControls(state: AppState) {
   // Chord qualities has its Replay on the answer board instead
   $("practiceReplay").hidden = !ear;
   $("earChordOptions").hidden = id !== "earChords";
+  // On the ladder its level decides the types and voicing; with free choice the player does
+  $("earChordLevelPick").hidden = !s.earChords.ladder;
+  $("earChordVoicingPick").hidden = $("earChordFilters").hidden = s.earChords.ladder;
   $("melodyLengthPick").hidden = id !== "earMelody";
   $("earTonicLabel").textContent = id === "earMelody" ? "Key" : "Drone";
   const used = new Set<ExerciseOption>(ex.ids.flatMap(e => PRESCRIPTIVE[e].options));

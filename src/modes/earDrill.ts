@@ -16,7 +16,7 @@ import { roundScore, type PracticeDisplay, type PracticeView } from "../views/pr
 import type { RoundVizView } from "../views/roundViz";
 import type { AppStore } from "./performance";
 import { createPromptRecords } from "./promptRecords";
-import { createRoundKeeper } from "./rounds";
+import { createRoundKeeper, type KnownRound } from "./rounds";
 
 /** After a wrong answer, the prompt sounds again this long after it */
 export const REPLAY_AFTER_MISS_MS = 1000;
@@ -35,6 +35,8 @@ export interface EarDrillConfig<P, S extends Judged<P>, A extends { type: string
   options(s: AppState): O;
   /** The options that make rounds comparable, as a key */
   setup(): string;
+  /** The ladder and level its rounds are played on, if they are */
+  ladder?(): { id: string; level: number } | null;
   initial: S;
   reduce(s: S, a: A | MoveOn<P>): S;
   /** The prompt after this one */
@@ -82,6 +84,10 @@ export interface EarDrill<S, A> {
   running(): boolean;
   /** The round is over (its summary may not be showing yet) */
   over(): boolean;
+  /** The drill's rounds so far, once read from the history */
+  knownRounds(): readonly KnownRound[] | null;
+  /** Draws it again (something outside the runner that it shows has changed) */
+  render(): void;
   /** Stops the runner: no more sounds, renders or records */
   stop(): void;
 }
@@ -94,7 +100,14 @@ export function createEarDrill<P, S extends Judged<P>, A extends { type: string 
   history: Promise<ProgressStore> | null,
 ): EarDrill<S, A> {
   // In rounds of ROUND_SIZE prompts, compared at the end with earlier rounds played the same way
-  const rounds = createRoundKeeper({ drill: cfg.drill, recorder, history, changed: () => render(), setup: cfg.setup });
+  const rounds = createRoundKeeper({
+    drill: cfg.drill,
+    recorder,
+    history,
+    changed: () => render(),
+    setup: cfg.setup,
+    ladder: cfg.ladder,
+  });
   let state = cfg.initial;
   const records = createPromptRecords<S>(recorder, cfg.record);
   let nextTimer: ReturnType<typeof setTimeout> | undefined, replayTimer: ReturnType<typeof setTimeout> | undefined;
@@ -243,6 +256,8 @@ export function createEarDrill<P, S extends Judged<P>, A extends { type: string 
     resume,
     running: () => running,
     over: () => rounds.over(),
+    knownRounds: () => rounds.known(),
+    render,
     stop() {
       rounds.dispose();
       offSettings();

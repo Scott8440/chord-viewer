@@ -199,6 +199,51 @@ describe("chord qualities", () => {
     expect(t.answers.shown[t.answers.shown.length - 1].boxes).toHaveLength(2);
   });
 
+  it("climbs the ladder: two rounds at 85%+ unlock the next level, and Next round moves up to it", async () => {
+    const t = start();
+    /** A round all right first time, through to its summary */
+    async function perfectRound() {
+      for (let i = 0; i < ROUND_SIZE; i++) {
+        t.answers.press(t.right());
+        await vi.advanceTimersByTimeAsync(i < ROUND_SIZE - 1 ? 1500 : SUMMARY_DELAY_MS);
+      }
+    }
+    expect(t.store.getState().settings.earChords).toMatchObject({ ladder: true, level: 0 });
+    expect(t.shown().promptHtml).toContain("Level 1 of 12 · Major and minor · 0 of 2 rounds");
+    await perfectRound();
+    expect(t.shown().promptHtml).toContain("1 more round at 85% or better unlocks level 2: Add diminished.");
+    expect(t.answers.shown[t.answers.shown.length - 1]).toEqual({ next: "Next round" });
+    t.answers.next();
+    expect(t.shown().promptHtml).toContain("1 of 2 rounds");
+    await perfectRound();
+    expect(t.shown().promptHtml).toContain("Unlocked level 2: Add diminished. Next round moves you up.");
+    expect(t.answers.shown[t.answers.shown.length - 1]).toEqual({ next: "Next round: level 2" });
+    // Both rounds were recorded as played on the ladder, at its first level
+    expect(t.records.filter(r => r.kind === "round").map(r => r.kind === "round" && r.ladder)).toEqual([
+      { id: "chordEar.1", level: 0 },
+      { id: "chordEar.1", level: 0 },
+    ]);
+    t.answers.next();
+    expect(t.store.getState().settings.earChords.level).toBe(1);
+    expect(t.shown().score).toBe(`Round: 0 / ${ROUND_SIZE}`);
+    expect(t.answers.shown[t.answers.shown.length - 1].boxes?.map(b => b.id)).toEqual(["M", "m", "dim"]);
+    expect(t.shown().promptHtml).toContain("Level 2 of 12 · Add diminished");
+  });
+
+  it("keeps the level to those unlocked, and doesn't count broken rounds", async () => {
+    const t = start();
+    t.store.dispatch({ type: "setEarChordOptions", options: { level: 5 } });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(t.store.getState().settings.earChords.level).toBe(0);
+    t.store.dispatch({ type: "setEarChordOptions", options: { broken: true } });
+    for (let i = 0; i < ROUND_SIZE; i++) t.mode.skip!();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(t.records.filter(r => r.kind === "round")).toEqual([
+      expect.not.objectContaining({ ladder: expect.anything() }),
+    ]);
+    expect(t.shown().promptHtml).toContain("Played broken");
+  });
+
   it("shows the summary at once when the round ends on a skip", async () => {
     const t = start();
     for (let i = 0; i < ROUND_SIZE; i++) t.mode.skip!();

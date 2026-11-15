@@ -29,10 +29,13 @@ export function startSequencePractice({ store, views, id, recorder = noRecorder 
   let played = 0, clean = 0;
   /** Set while this mode itself moves the key on, so the settings change isn't taken for the player's */
   let advancing = false;
+  /** Once stopped, a key change queued by the last run must not land on the next mode */
+  let stopped = false;
   const progressing = () => store.getState().settings.exercise.progression !== "repeat";
 
   /** On to the next key in the progression (it becomes the exercise's Key, so the picker follows) */
   function advance() {
+    if (stopped) return;
     const o = store.getState().settings.exercise;
     advancing = true;
     store.dispatch({ type: "setExerciseOptions", options: { key: nextKey(o.key, o.progression) } });
@@ -85,6 +88,7 @@ export function startSequencePractice({ store, views, id, recorder = noRecorder 
 
   return {
     stop() {
+      stopped = true;
       offInput();
       offGrid();
       offSettings();

@@ -1,7 +1,7 @@
 // Rounds for the ear-training modes: counts a round's prompts from the mode's own counters, and when ROUND_SIZE are
 // done, records the round and compares it with earlier rounds of the same drill played the same way (read from the
-// practice history). The mode then waits for "Next round". The last answer stays on screen for a moment
-// (SUMMARY_DELAY_MS) before the summary replaces it.
+// practice history once per mode session, then kept up to date here). The mode then waits for "Next round". The last
+// answer stays on screen for a moment (SUMMARY_DELAY_MS) before the summary replaces it.
 import { compareRound, roundDone, roundProgress, type Counters, type PromptOutcome, type RoundSummary } from "../exercises/rounds";
 import type { Recorder } from "../progress/recorder";
 import type { DrillKind, RoundBody } from "../progress/records";
@@ -62,23 +62,32 @@ export function createRoundKeeper(o: {
     changed();
   }
 
-  /** Earlier rounds of this drill played this way, as shares right first time, oldest first */
-  async function earlierShares(setup: string): Promise<number[]> {
-    try {
-      const all = o.history ? await (await o.history).all() : [];
-      return all.flatMap(r => r.kind === "round" && r.drill === o.drill && r.setup === setup && r.size ? [r.firstTry / r.size] : []);
-    } catch (e) {
+  /** This drill's rounds so far (the earlier ones from the history, then each one finished here), read once per
+   *  keeper: reading the history costs more the longer it gets, and a round finishes every few minutes. Null if the
+   *  read failed (then tried again when next needed). */
+  let rounds: Promise<{ setup: string; share: number }[] | null> | null = null;
+  function drillRounds() {
+    rounds ??= (async () => {
+      if (!o.history) return [];
+      const kept = await (await o.history).ofKind("round");
+      return kept.flatMap(r => r.drill === o.drill && r.size ? [{ setup: r.setup, share: r.firstTry / r.size }] : []);
+    })().catch(e => {
       console.error("Couldn't read earlier rounds", e);
-      return [];
-    }
+      rounds = null;
+      return null;
+    });
+    return rounds;
   }
+  /** Earlier rounds of this drill played this way, as shares right first time, oldest first */
+  const sharesOf = (list: { setup: string; share: number }[] | null, setup: string) =>
+    list ? list.flatMap(r => r.setup === setup ? [r.share] : []) : [];
   /** Reads the earlier rounds' average for the round starting now (shown while it's played) */
   function loadAverage() {
     const setup = o.setup();
     average = null;
-    void earlierShares(setup).then(shares => {
+    void drillRounds().then(list => {
       if (setup !== o.setup()) return;
-      average = compareRound(0, shares).average;
+      average = compareRound(0, sharesOf(list, setup)).average;
       changed();
     });
   }
@@ -99,10 +108,11 @@ export function createRoundKeeper(o: {
       shown = false;
       revealTimer = setTimeout(reveal, skipped ? 0 : SUMMARY_DELAY_MS);
       const body: RoundBody = { kind: "round", drill: o.drill, size: done.size, firstTry: done.firstTry, setup, durationMs: done.durationMs };
-      // Earlier rounds first, then this one is recorded (so it isn't compared with itself)
+      // Earlier rounds first, then this one is recorded and added to the list (so it isn't compared with itself)
       void (async () => {
-        const earlier = await earlierShares(setup);
+        const list = await drillRounds(), earlier = sharesOf(list, setup);
         o.recorder.record(body);
+        list?.push({ setup, share: done.firstTry / done.size });
         if (summary === done) {
           summary = { ...done, comparison: compareRound(done.firstTry / done.size, earlier) };
           if (shown) changed();

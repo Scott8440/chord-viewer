@@ -136,6 +136,15 @@ describe("store", () => {
     expect(await s.merge([rec("b", 2)])).toBe(0);
     expect(await s.count()).toBe(3);
   });
+
+  it("reads one kind of record, oldest first", async () => {
+    const round = (id: string, at: number) =>
+      ({ kind: "round", drill: "ear", size: 20, firstTry: 10, setup: "", durationMs: 1, ...meta(id, at) }) as ProgressRecord;
+    const s = createMemoryStore([round("r2", 5), rec("a", 1), round("r1", 3), rec("b", 4)]);
+    expect((await s.ofKind("round")).map(r => r.id)).toEqual(["r1", "r2"]);
+    expect((await s.ofKind("drill")).map(r => r.id)).toEqual(["a", "b"]);
+    expect(await s.ofKind("routine")).toEqual([]);
+  });
 });
 
 describe("recorder", () => {

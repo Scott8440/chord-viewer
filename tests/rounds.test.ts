@@ -98,6 +98,68 @@ describe("the round keeper", () => {
     } finally { vi.useRealTimers(); }
   });
 
+  it("reads the history once per keeper, adding each round it finishes, through rounds and new options", async () => {
+    const store = createMemoryStore([record(round(10), 1), record(round(14), 2), record(round(4, "types:M,m,dim"), 3),
+      record({ kind: "drill", drill: "chordEar", prompt: "Major", outcome: "firstTry", ms: 1 } as RecordBody, 4)]);
+    const reads = { all: 0, ofKind: 0 };
+    const spy = { ...store,
+      all: () => { reads.all++; return store.all(); },
+      ofKind: ((kind: ProgressRecord["kind"]) => { reads.ofKind++; return store.ofKind(kind); }) as typeof store.ofKind };
+    let setup = "types:M,m";
+    const recorded: RecordBody[] = [];
+    const keeper = createRoundKeeper({ drill: "chordEar", setup: () => setup, history: Promise.resolve(spy),
+      recorder: { record: b => { recorded.push(b); }, onRecorded: () => () => {} }, changed: () => {} });
+    const tick = () => new Promise(r => setTimeout(r, 0));
+    await tick();
+    expect(keeper.average()).toBeCloseTo(0.6);
+    // A round of 16 / 20: compared with the two earlier ones, then counted in the next average
+    keeper.check({ answered: 20, firstTry: 16 }, true);
+    await tick();
+    expect(keeper.summary()!.comparison).toMatchObject({ share: 0.8, previous: [0.5, 0.7] });
+    keeper.next({ answered: 20, firstTry: 16 });
+    await tick();
+    expect(keeper.average()).toBeCloseTo(2 / 3);
+    // The next round is compared with all three, not with itself
+    keeper.check({ answered: 40, firstTry: 26 }, true);
+    await tick();
+    expect(keeper.summary()!.comparison).toMatchObject({ share: 0.5, previous: [0.5, 0.7, 0.8], last: 0.8 });
+    // New options: the average for those, from the same list
+    keeper.next({ answered: 40, firstTry: 26 });
+    setup = "types:M,m,dim";
+    keeper.next({ answered: 40, firstTry: 26 });
+    await tick();
+    expect(keeper.average()).toBeCloseTo(0.2);
+    keeper.check({ answered: 60, firstTry: 46 }, true);
+    await tick();
+    expect(keeper.summary()!.comparison).toMatchObject({ share: 1, previous: [0.2] });
+    expect(recorded.map(b => b.kind === "round" && [b.firstTry, b.setup])).toEqual([[16, "types:M,m"], [10, "types:M,m"], [20, "types:M,m,dim"]]);
+    expect(reads).toEqual({ all: 0, ofKind: 1 });
+  });
+
+  it("without the history, compares with nothing (logged) and tries reading again next time", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      let fail = true, reads = 0;
+      const store = createMemoryStore([record(round(10), 1)]);
+      const spy = { ...store,
+        ofKind: ((kind: ProgressRecord["kind"]) => { reads++; return fail ? Promise.reject(new Error("no")) : store.ofKind(kind); }) as typeof store.ofKind };
+      const keeper = createRoundKeeper({ drill: "chordEar", setup: () => "types:M,m", history: Promise.resolve(spy),
+        recorder: { record: () => {}, onRecorded: () => () => {} }, changed: () => {} });
+      const tick = () => new Promise(r => setTimeout(r, 0));
+      await tick();
+      expect(keeper.average()).toBeNull();
+      keeper.check({ answered: 20, firstTry: 16 }, true);
+      await tick();
+      expect(keeper.summary()!.comparison).toMatchObject({ share: 0.8, previous: [] });
+      expect(error).toHaveBeenCalled();
+      fail = false;
+      keeper.next({ answered: 20, firstTry: 16 });
+      await tick();
+      expect(keeper.average()).toBeCloseTo(0.5);
+      expect(reads).toBe(3);
+    } finally { error.mockRestore(); }
+  });
+
   it("round records survive reading back", () => {
     const r = record(round(12), 5);
     expect(upgradeRecord(r)).toEqual(r);

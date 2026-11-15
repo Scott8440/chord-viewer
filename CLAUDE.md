@@ -459,8 +459,10 @@ returns once it's showing; at once when the round ended on a skip, or Next is pr
 reads "Next round" and starts the next (scale degrees introduce the key again); in chord qualities the answer board instead holds
 one large Next round button in place of the boxes and Replay (`AnswerBoard.renderNext`, mapped as `skip`), and the
 panel's button is hidden (`PracticeDisplay.skipHidden`). New options start a new round. Each finished
-round is a `round` record (drill, size, firstTry, setup, durationMs), read back from the history for the comparison
-before it's recorded; leaving the window between rounds doesn't start the next.
+round is a `round` record (drill, size, firstTry, setup, durationMs). The keeper reads the drill's rounds once
+(`ofKind("round")`, so the cost doesn't grow with the rest of the history), keeps them, and adds each round it
+finishes after comparing (so a round isn't compared with itself); a failed read compares with nothing, is logged and
+is tried again next time; leaving the window between rounds doesn't start the next.
 
 **The round's score while playing** (`src/views/roundViz.ts`, in the practice panel above the feedback, all three ear
 modes; the `RoundKeeper` also keeps each prompt's outcome in order, `outcomes()`, and the earlier rounds' average,
@@ -598,9 +600,11 @@ Everything practised is recorded, and the **Progress** page charts it.
   new records.
 - **Ready to move to a server later:** every record has a random UUID, a schema version (`RECORD_VERSION`; readers go
   through `upgradeRecord`, which drops malformed records and ones from a newer version), a UTC time and a device id
-  (a UUID kept in localStorage). Everything goes through the `ProgressStore` interface (`add`, `all`, `merge` by id,
-  `count`); only `idbStore.ts` knows about IndexedDB (database `chordDisplay` v1, store `records` keyed by id, index on
-  `at`). A server would be another `ProgressStore`, or a sync step behind IndexedDB.
+  (a UUID kept in localStorage). Everything goes through the `ProgressStore` interface (`add`, `all`, `ofKind` (one
+  kind, oldest first), `merge` by id, `count`); only `idbStore.ts` knows about IndexedDB (database `chordDisplay` v2,
+  store `records` keyed by id, indexes on `at` and, since v2, `kind`: the upgrade adds it to the existing store, keeping
+  the records; an open tab closes its database when a newer version wants to upgrade). A server would be another
+  `ProgressStore`, or a sync step behind IndexedDB.
 - **Recording:** modes hand finished things to a `Recorder` (passed in by main; tests use `noRecorder`), which stamps
   and stores in the background. Sequence practice records each run; routine practice each item's run (with the
   session id) and the session when it finishes or is left (restart, another routine, another mode); drills each

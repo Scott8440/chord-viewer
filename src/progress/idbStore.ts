@@ -1,11 +1,11 @@
 // The browser's practice history: IndexedDB, one object store of records keyed by id. Records are stored exactly as
 // they are (plain JSON), and read back through `upgradeRecord`, so older records keep working as the schema moves on.
 import { upgradeRecord, type ProgressRecord } from "./records";
-import { byTime, type ProgressStore } from "./store";
+import { byTime, type OfKind, type ProgressStore } from "./store";
 
 const DB_NAME = "chordDisplay";
 /** Bump with an upgrade step in `onupgradeneeded` when the database layout changes */
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const RECORDS = "records";
 
 const done = <T>(req: IDBRequest<T>) => new Promise<T>((resolve, reject) => {
@@ -21,12 +21,18 @@ const committed = (tx: IDBTransaction) => new Promise<void>((resolve, reject) =>
 export async function openIdbStore(): Promise<ProgressStore> {
   if (typeof indexedDB === "undefined") throw new Error("IndexedDB isn't available");
   const open = indexedDB.open(DB_NAME, DB_VERSION);
-  open.onupgradeneeded = () => {
-    const db = open.result;
+  open.onupgradeneeded = e => {
+    const db = open.result, tx = open.transaction!;
     // Version 1: the records, by id, with an index on time for date ranges later
-    if (!db.objectStoreNames.contains(RECORDS)) db.createObjectStore(RECORDS, { keyPath: "id" }).createIndex("at", "at");
+    if (e.oldVersion < 1) db.createObjectStore(RECORDS, { keyPath: "id" }).createIndex("at", "at");
+    // Version 2: an index on kind, so one kind (e.g. rounds) is read without the rest. Added to the existing store,
+    // which keeps its records (IndexedDB builds the index from them)
+    if (e.oldVersion < 2) tx.objectStore(RECORDS).createIndex("kind", "kind");
   };
   const db = await done(open);
+  // A newer version opened in another tab waits until this one lets go: close rather than hold up its upgrade
+  // (this tab's later writes then fail and are logged, like any storage failure)
+  db.onversionchange = () => db.close();
 
   return {
     async add(r) {
@@ -37,6 +43,10 @@ export async function openIdbStore(): Promise<ProgressStore> {
     async all() {
       const raw = await done(db.transaction(RECORDS).objectStore(RECORDS).getAll());
       return raw.map(upgradeRecord).filter((r): r is ProgressRecord => !!r).sort(byTime);
+    },
+    async ofKind<K extends ProgressRecord["kind"]>(kind: K) {
+      const raw = await done(db.transaction(RECORDS).objectStore(RECORDS).index("kind").getAll(kind));
+      return raw.map(upgradeRecord).filter((r): r is OfKind<K> => r?.kind === kind).sort(byTime);
     },
     async merge(rs) {
       const tx = db.transaction(RECORDS, "readwrite");

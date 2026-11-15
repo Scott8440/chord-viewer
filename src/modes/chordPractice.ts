@@ -3,9 +3,9 @@ import {
   type ChordPracticeAction, type ChordPracticeState, initialChordPractice, makeChordPrompt, pickChordKey, reduceChordPractice,
 } from "../exercises/chordPractice";
 import type { ChordPrompt } from "../exercises/chordPrompt";
-import { PROMPTS_PER_KEY } from "../exercises/earTraining";
 import { withInversion } from "../exercises/inversions";
 import { makeDiatonicNamePrompt, makeRomanPrompt } from "../exercises/romanPrompts";
+import { keyRotation, rotateKey } from "../exercises/keyRotation";
 import type { Rng } from "../exercises/notePractice";
 import { buildKey } from "../theory";
 import { noRecorder, type Recorder } from "../progress/recorder";
@@ -13,6 +13,7 @@ import { chordDrillBody } from "../progress/records";
 import { chordPracticeDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type Mode } from "./performance";
+import { createPromptRecords } from "./promptRecords";
 
 /** How long "✓ Correct" stays up before the next prompt */
 const NEXT_PROMPT_MS = 900;
@@ -29,16 +30,11 @@ export function startChordPractice(store: AppStore, views: {
   const settings = () => store.getState().settings;
   // Exercises don't use the header key; chord practice has its own (see CHORD_KEYS). With none, Roman numeral
   // prompts pick a key each time and chord names any chord. With one, the key's diatonic chords, either way.
-  let keyValue = pickChordKey(rng, settings().chordKey);
-  let inKey = 0;
+  let keys = keyRotation(pickChordKey(rng, settings().chordKey));
   const newPrompt = (previous?: ChordPracticeState["prompt"]) => {
     const { promptStyle, chordTypes, inversions, chordKey } = settings();
-    if (previous && chordKey === "random" && inKey >= PROMPTS_PER_KEY) {
-      keyValue = pickChordKey(rng, "random", keyValue);
-      inKey = 0;
-    }
-    inKey++;
-    const key = keyValue ? buildKey(keyValue)! : null;
+    keys = rotateKey(keys, chordKey, (choice, before) => pickChordKey(rng, choice, before));
+    const key = keys.key ? buildKey(keys.key)! : null;
     const prompt = promptStyle === "roman" ? makeRomanPrompt(rng, chordTypes, key, previous)
       : key ? makeDiatonicNamePrompt(rng, chordTypes, key, previous)
       : makeChordPrompt(rng, chordTypes, null, previous);
@@ -46,8 +42,8 @@ export function startChordPractice(store: AppStore, views: {
   };
   let state: ChordPracticeState = initialChordPractice(newPrompt(), heldNotes(store.getState()));
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
-  /** When the current prompt appeared, to time the answer */
-  let shownAt = Date.now();
+  // Answered, or skipped before being answered (a new prompt from a settings change isn't a skip)
+  const records = createPromptRecords<ChordPracticeState>(recorder, (s, answered, ms) => chordDrillBody(s.prompt, answered, s.missed, ms));
   // The staff follows the prompt's key, if it has one
   const drawer = createPerformanceDrawer(store, views, () => promptKey(state.prompt));
 
@@ -55,13 +51,7 @@ export function startChordPractice(store: AppStore, views: {
     const prev = state;
     state = reduceChordPractice(state, action);
     if (state === prev) return;
-    // Answered, or skipped before being answered (a new prompt from a settings change isn't a skip)
-    if (state.status === "correct" && prev.status !== "correct") {
-      recorder.record(chordDrillBody(state.prompt, true, state.missed, Date.now() - shownAt));
-    } else if (action.type === "skip" && prev.status !== "correct") {
-      recorder.record(chordDrillBody(prev.prompt, false, prev.missed, Date.now() - shownAt));
-    }
-    if (state.prompt !== prev.prompt) shownAt = Date.now();
+    records.changed(prev, state, action.type === "skip");
     views.practice.render(chordPracticeDisplay(state, promptKey(state.prompt)));
     if (state.prompt !== prev.prompt) drawer.schedule();
     clearTimeout(nextTimer);
@@ -73,10 +63,7 @@ export function startChordPractice(store: AppStore, views: {
   const offInput = onPlayerInput(store, { held: notes => apply({ type: "held", notes }) });
   const offSettings = store.subscribe((s, prev) => {
     // A new key starts its count afresh
-    if (s.settings.chordKey !== prev.settings.chordKey) {
-      keyValue = pickChordKey(rng, s.settings.chordKey, keyValue);
-      inKey = 0;
-    }
+    if (s.settings.chordKey !== prev.settings.chordKey) keys = keyRotation(pickChordKey(rng, s.settings.chordKey, keys.key));
     // A new prompt style or key needs a new prompt; a narrower filter may rule out the current chord
     if (s.settings.promptStyle !== prev.settings.promptStyle || s.settings.inversions !== prev.settings.inversions ||
         s.settings.chordKey !== prev.settings.chordKey ||

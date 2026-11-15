@@ -8,6 +8,8 @@ import {
   excerptSteps, partStaves, READING_LEVELS, readingLevel, transposeStaves, writtenName, type Excerpt, type ExcerptSource,
   type ExcerptStaff, type ReadingPart,
 } from "./excerpts";
+import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
+import { pickKey } from "./keyRotation";
 import type { Rng } from "./notePractice";
 import { ALL_KEYS } from "./romanPrompts";
 
@@ -58,11 +60,7 @@ export function sanitizeReadingOptions(raw: unknown): ReadingOptions {
 }
 
 /** The key to read in: the chosen one, or a random one other than the last */
-export function pickReadingKey(rng: Rng, choice: string, previous?: string): string {
-  if (choice !== "random") return choice;
-  const others = ALL_KEYS.filter(k => k !== previous);
-  return others[Math.floor(rng() * others.length)];
-}
+export const pickReadingKey = (rng: Rng, choice: string, previous?: string): string => pickKey(rng, choice, ALL_KEYS, previous);
 
 export interface ReadingNote {
   /** MIDI */
@@ -169,23 +167,17 @@ export function makeReadingPrompt(rng: Rng, keyValue: string, range: ReadingRang
 
 /* ------------------------------------------------------------------ playing it back */
 
-export interface ReadingState {
-  prompt: ReadingPrompt;
+export interface ReadingState extends Judged<ReadingPrompt> {
   /** The step being played */
   index: number;
   /** The current step's notes struck so far in this attempt (a chord's in any order, all within CHORD_WINDOW_MS) */
   struck: readonly number[];
   /** When this attempt's first note was struck (note-on time), or null */
   attemptAt: number | null;
-  status: "waiting" | "wrong" | "correct";
   /** The last wrong note played, or null (wrong with none: a chord's notes didn't come together) */
   played: number | null;
-  /** Any wrong note in this prompt */
-  missed: boolean;
   /** The step just finished and when (note-on time), so the rest of that chord's notes aren't held against the next */
   finished: { notes: readonly number[]; time: number } | null;
-  answered: number;
-  firstTry: number;
 }
 
 /** A chord's notes must all be struck within this long of the first (ms): played together, not one by one */
@@ -200,8 +192,7 @@ export type ReadingAction =
   | { type: "play"; note: number; time?: number }
   /** Time has passed (now, on the same clock): a chord attempt that hasn't come together is a mistake */
   | { type: "expire"; time: number }
-  | { type: "next"; prompt: ReadingPrompt }
-  | { type: "skip"; prompt: ReadingPrompt };
+  | MoveOn<ReadingPrompt>;
 
 export function initialReading(prompt: ReadingPrompt): ReadingState {
   return { prompt, index: 0, struck: [], attemptAt: null, status: "waiting", played: null, missed: false, finished: null,
@@ -209,8 +200,7 @@ export function initialReading(prompt: ReadingPrompt): ReadingState {
 }
 
 /** A chord attempt whose notes didn't all come within CHORD_WINDOW_MS: a mistake, played again from the start */
-const apart = (s: ReadingState): ReadingState =>
-  ({ ...s, struck: [], attemptAt: null, status: "wrong", played: null, missed: true });
+const apart = (s: ReadingState): ReadingState => answeredWrong(s, { struck: [], attemptAt: null, played: null });
 
 /**
  * Each note-on is judged against the current step at the exact pitch. A chord's notes must come together: all
@@ -229,7 +219,7 @@ export function reduceReading(s: ReadingState, a: ReadingAction): ReadingState {
       const cur = late ? apart(s) : s;
       if (!step.some(n => n.note === a.note)) {
         const spill = s.finished?.notes.includes(a.note) && a.time != null && a.time - s.finished.time <= CHORD_SPILL_MS;
-        return spill ? cur : { ...cur, status: "wrong", played: a.note, missed: true };
+        return spill ? cur : answeredWrong(cur, { played: a.note });
       }
       const struck = cur.struck.includes(a.note) ? cur.struck : [...cur.struck, a.note];
       if (struck.length < step.length) return { ...cur, struck, attemptAt: cur.attemptAt ?? time };
@@ -238,17 +228,12 @@ export function reduceReading(s: ReadingState, a: ReadingAction): ReadingState {
       const finished = a.time == null ? null : { notes: step.map(n => n.note), time: a.time };
       const done = { struck: [], attemptAt: null, played: null, finished };
       if (index < s.prompt.steps.length) return { ...s, ...done, index, status: "waiting" };
-      return { ...s, ...done, index, status: "correct", answered: s.answered + 1, firstTry: s.firstTry + (s.missed ? 0 : 1) };
+      return answeredRight(s, { ...done, index });
     }
     case "expire":
       return s.status !== "correct" && s.attemptAt != null && a.time - s.attemptAt > CHORD_WINDOW_MS ? apart(s) : s;
     case "next":
-      return { ...s, prompt: a.prompt, index: 0, struck: [], attemptAt: null, status: "waiting", played: null, missed: false,
-               finished: null };
     case "skip":
-      // A skipped line counts as answered, but not right first time
-      return { ...s, prompt: a.prompt, index: 0, struck: [], attemptAt: null, status: "waiting", played: null, missed: false,
-               finished: null,
-               answered: s.status === "correct" ? s.answered : s.answered + 1 };
+      return movedOn(s, a, { index: 0, struck: [], attemptAt: null, played: null, finished: null });
   }
 }

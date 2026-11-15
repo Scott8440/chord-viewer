@@ -5,6 +5,8 @@ import { ROOT_MAJOR, ROOT_MINOR, templateById, type KeyContext } from "../theory
 import { freshAttempt, trackAttempt, type ChordAttempt } from "./chordAttempt";
 import { DEFAULT_CHORD_MATCH, isChord, type ChordMatchOptions } from "./chordMatch";
 import type { ChordPrompt } from "./chordPrompt";
+import { answeredRight, answeredWrong, movedOn, type Judged } from "./judging";
+import { pickKey } from "./keyRotation";
 import type { Rng } from "./notePractice";
 import { ALL_KEYS } from "./romanPrompts";
 
@@ -35,13 +37,8 @@ export const CHORD_KEYS: readonly string[] = ["none", "random", ...ALL_KEYS];
 export const sanitizeChordKey = (v: unknown): string => CHORD_KEYS.includes(v as string) ? v as string : "none";
 
 /** The key for the next prompts: the chosen one, or a random one other than the previous (null for "none") */
-export function pickChordKey(rng: Rng, choice: string, previous?: string | null): string | null {
-  if (choice === "none") return null;
-  if (choice !== "random") return choice;
-  let k: string;
-  do k = ALL_KEYS[Math.floor(rng() * ALL_KEYS.length)]; while (k === previous);
-  return k;
-}
+export const pickChordKey = (rng: Rng, choice: string, previous?: string | null): string | null =>
+  choice === "none" ? null : pickKey(rng, choice, ALL_KEYS, previous);
 
 /** Keeps only known practice types, in display order; falls back to the defaults if nothing is left. */
 export function sanitizeChordTypes(ids: readonly string[]): string[] {
@@ -65,20 +62,11 @@ export function makeChordPrompt(rng: Rng, types: readonly string[], key: KeyCont
   return { rootPc, root, type };
 }
 
-export interface ChordPracticeState {
-  prompt: ChordPrompt;
-  /** waiting: no judged attempt yet; wrong: the last attempt was wrong; correct: answered, about to move on */
-  status: "waiting" | "wrong" | "correct";
+export interface ChordPracticeState extends Judged<ChordPrompt> {
   /** The attempt in progress (see chordAttempt.ts) */
   tracker: ChordAttempt;
   /** Notes of the last judged attempt, for feedback */
   attempt: number[] | null;
-  /** A wrong attempt was made on this prompt */
-  missed: boolean;
-  /** Prompts finished (answered or skipped) */
-  answered: number;
-  /** Prompts answered with no wrong attempt first */
-  firstTry: number;
 }
 
 export type ChordPracticeAction =
@@ -93,23 +81,11 @@ export function initialChordPractice(prompt: ChordPrompt, held: number[] = []): 
 
 export function reduceChordPractice(s: ChordPracticeState, a: ChordPracticeAction,
                                     opts: ChordMatchOptions = DEFAULT_CHORD_MATCH): ChordPracticeState {
-  switch (a.type) {
-    case "held": {
-      if (s.status === "correct") return s;   // answered; ignore input until the next prompt
-      const { attempt: tracker, outcome } = trackAttempt(s.tracker, a.notes, notes => isChord(notes, s.prompt, opts));
-      if (outcome.kind === "match") {
-        return { ...s, tracker, status: "correct", attempt: a.notes, answered: s.answered + 1, firstTry: s.firstTry + (s.missed ? 0 : 1) };
-      }
-      if (outcome.kind === "miss") return { ...s, tracker, status: "wrong", attempt: outcome.notes, missed: true };
-      return { ...s, tracker };
-    }
-    case "next":
-    case "skip":
-      return {
-        ...initialChordPractice(a.prompt, a.held),
-        // A skipped prompt counts as answered, but not right first time
-        answered: a.type === "skip" && s.status !== "correct" ? s.answered + 1 : s.answered,
-        firstTry: s.firstTry,
-      };
-  }
+  // The keys held as the new prompt comes up are its starting point
+  if (a.type !== "held") return movedOn(s, a, { tracker: freshAttempt(a.held), attempt: null });
+  if (s.status === "correct") return s;   // answered; ignore input until the next prompt
+  const { attempt: tracker, outcome } = trackAttempt(s.tracker, a.notes, notes => isChord(notes, s.prompt, opts));
+  if (outcome.kind === "match") return answeredRight(s, { tracker, attempt: a.notes });
+  if (outcome.kind === "miss") return answeredWrong(s, { tracker, attempt: outcome.notes });
+  return { ...s, tracker };
 }

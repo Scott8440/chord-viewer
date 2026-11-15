@@ -2,22 +2,24 @@
 // correct answer; with a random tonic, the drone moves to a new key every PROMPTS_PER_KEY prompts. Stop silences
 // everything and ignores played notes; Start brings the drone back and plays the current note again.
 // Shown on the scale-degree circle, not the staff: each new drone first plays the degrees on offer, root to octave,
-// pinging each, and every note played pings its degree, green or red.
+// pinging each, and every note played pings its degree, green or red. Rounds, replays and Stop/Start are the shared
+// ear-drill runner's (earDrill.ts); this adds the drone, its introduction and stopping while the window is away.
 import type { TonePlayer } from "../audio/tones";
 import {
-  degreeNote, EAR_DEGREES, makeEarPrompt, pickTonic, PROMPTS_PER_KEY, tonicMidi, type EarAction, type EarOptions,
-  type EarPrompt, type EarState,
+  degreeNote, EAR_DEGREES, makeEarPrompt, pickTonic, tonicMidi, type EarAction, type EarOptions, type EarPrompt,
+  type EarState,
 } from "../exercises/earTraining";
+import { countInKey, keyRotation, rotateKey } from "../exercises/keyRotation";
 import { initialNotePractice, reduceNotePractice, type Rng } from "../exercises/notePractice";
 import { createDegreeKeys } from "../input/degreeKeys";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { earDrillBody } from "../progress/records";
 import type { DegreeCircleView } from "../views/degreeCircle";
 import type { ProgressStore } from "../progress/store";
-import { earDisplay, roundScore, roundSummaryDisplay, type PracticeView } from "../views/practice";
+import { earDisplay, roundSummaryDisplay, type PracticeView } from "../views/practice";
+import { createEarDrill } from "./earDrill";
 import { onPlayerInput, type AppStore, type Mode } from "./performance";
 import type { RoundVizView } from "../views/roundViz";
-import { createRoundKeeper } from "./rounds";
 
 /** How long "✓" stays up before the next note */
 const NEXT_PROMPT_MS = 1000;
@@ -32,39 +34,20 @@ const INTRO_PAUSE_S = 1.2;
 const ROUND_END_FADE_S = 2.5;
 /** Leaving the window (another app or tab) fades the drone out over this long */
 const AWAY_FADE_S = 3;
-/** After a wrong note, the prompt note plays again this long after it */
-const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarTraining(store: AppStore, views: {
   practice: PracticeView; tones: TonePlayer; degrees: DegreeCircleView; roundViz: RoundVizView;
 }, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.ear;
-  // In rounds of ROUND_SIZE notes, compared at the end with earlier rounds with the same degrees on offer
-  const rounds = createRoundKeeper({
-    drill: "ear", recorder, history, changed: () => render(),
-    setup: () => `degrees:${options().degrees.join(",")}`,
-  });
-  let tonic = pickTonic(rng, options().tonic);
-  let inKey = 0;
-  let state: EarState = initialNotePractice(newPrompt());
-  let nextTimer: ReturnType<typeof setTimeout> | undefined, replayTimer: ReturnType<typeof setTimeout> | undefined;
-  let shownAt = Date.now();
+  let keys = keyRotation(pickTonic(rng, options().tonic));
+  const tonic = () => keys.key;
 
   /** The next prompt: in the same key, or a new one (when the tonic is random and this key has had its turn) */
   function newPrompt(previous?: EarPrompt): EarPrompt {
-    if (previous && options().tonic === "random" && inKey >= PROMPTS_PER_KEY) {
-      tonic = pickTonic(rng, "random", tonic);
-      inKey = 0;
-    }
-    inKey++;
-    return makeEarPrompt(rng, tonic, options().degrees, previous);
+    keys = rotateKey(keys, options().tonic, (choice, before) => pickTonic(rng, choice, before));
+    return makeEarPrompt(rng, tonic(), options().degrees, previous);
   }
 
-  /** Stopped: no drone, no notes, the player's notes are ignored. Start carries on. */
-  let running = !views.tones.blocked();
-  /** Opened before any click or key press, so the browser hasn't let audio start: wait, and begin once it can,
-   *  rather than queue the introduction to burst out on the first click */
-  let awaitingSound = !running;
   /** The key the drone is sounding in, if it is */
   let droneKey: string | null = null;
 
@@ -84,19 +67,18 @@ export function startEarTraining(store: AppStore, views: {
   }
 
   /** Sounds the prompt; when the drone is new (a new key, or just started), introduces the key first */
-  function sound() {
-    if (!running) return;
+  function sound(state: EarState) {
     cancelIntro();
     let delay = 0;
     if (droneKey !== state.prompt.keyValue) {
-      views.tones.drone(tonicMidi(tonic) - 12);
+      views.tones.drone(tonicMidi(tonic()) - 12);
       droneKey = state.prompt.keyValue;
       const steps = introSteps();
       // Each ping waits for its note to be heard, not just sent (Bluetooth headphones add a few hundred ms)
       const heard = views.tones.latency();
       steps.forEach((semitones, i) => {
         const at = DRONE_LEAD_S + i * INTRO_GAP_S;
-        views.tones.play(tonicMidi(tonic) + semitones, at, INTRO_RING_S);
+        views.tones.play(tonicMidi(tonic()) + semitones, at, INTRO_RING_S);
         introTimers.push(setTimeout(() => views.degrees.ping(semitones, "hear"), (at + heard) * 1000));
       });
       delay = DRONE_LEAD_S + (steps.length - 1) * INTRO_GAP_S + INTRO_PAUSE_S;
@@ -105,169 +87,89 @@ export function startEarTraining(store: AppStore, views: {
     views.tones.play(state.prompt.note, delay);
   }
 
+  /** Stops the drone (fading out over `fadeOut` seconds) and the introduction; the next sound introduces the key */
   function silence(fadeOut?: number) {
     cancelIntro();
     views.tones.drone(null, fadeOut);
     droneKey = null;
   }
 
-  /** Stops (Stop, or leaving the window); the drone fades out over `fadeOut` seconds */
-  function pause(fadeOut?: number) {
-    clearTimeout(nextTimer);
-    clearTimeout(replayTimer);
-    running = false;
-    silence(fadeOut);
-    render();
-  }
-
-  /** Starts again (Start, or coming back): the drone and its introduction, then the note */
-  function resume() {
-    clearTimeout(nextTimer);
-    clearTimeout(replayTimer);
-    running = true;
-    if (state.status === "correct") {
-      // Stopped between an answer and the next note: go straight on to it
-      apply({ type: "next", prompt: newPrompt(state.prompt) });
-    } else {
-      shownAt = Date.now();
-      sound();
-      render();
-    }
-  }
+  const drill = createEarDrill<EarPrompt, EarState, EarAction, EarOptions>(store, views, {
+    drill: "ear",
+    options: s => s.settings.ear,
+    setup: () => `degrees:${options().degrees.join(",")}`,
+    initial: initialNotePractice(newPrompt()),
+    reduce: reduceNotePractice,
+    nextPrompt: newPrompt,
+    // Introduced again (in `restarted`), since the degrees on offer may have changed
+    freshPrompt(o, before, previous) {
+      if (o.tonic !== before.tonic) keys = keyRotation(pickTonic(rng, o.tonic, tonic()));
+      keys = countInKey(keys);
+      return makeEarPrompt(rng, tonic(), o.degrees, previous);
+    },
+    nextPromptMs: NEXT_PROMPT_MS,
+    record: (s, answered, ms) => earDrillBody(s.prompt, options().degrees, answered, s.missed, ms),
+    sound,
+    // The note again, not the introduction
+    replay: s => views.tones.play(s.prompt.note),
+    silence,
+    display: earDisplay,
+    summaryDisplay: summary => roundSummaryDisplay(summary, "Scale degrees"),
+    rendered: () => views.degrees.render(options().degrees),
+    judged(a, now) {
+      if (a.type === "play") views.degrees.ping(a.note - tonicMidi(tonic()), now.status === "correct" ? "correct" : "wrong");
+    },
+    // The drone fades away under the round's last note
+    roundOver: () => silence(ROUND_END_FADE_S),
+    restarted: () => { droneKey = null; },
+  }, recorder, history);
 
   /** Paused by leaving the window (another app, another tab): carries on when the player comes back */
   let pausedAway = false;
   function away() {
     // Between rounds nothing is playing, and coming back mustn't start the next round by itself
-    if (!running || rounds.over()) return;
+    if (!drill.running() || drill.over()) return;
     pausedAway = true;
-    pause(AWAY_FADE_S);
+    drill.pause(AWAY_FADE_S);
   }
   function back() {
     if (!pausedAway || document.hidden || !document.hasFocus()) return;
     pausedAway = false;
     backAt = performance.now();
-    resume();
+    drill.resume();
   }
   /** When `back` last resumed: coming back by clicking Start would otherwise resume on focus, then stop on the click */
   let backAt = -Infinity;
   const onVisibility = () => document.hidden ? away() : back();
 
-  function render() {
-    const summary = rounds.summary();
-    views.roundViz.render({ outcomes: rounds.outcomes(), average: rounds.average() });
-    views.practice.render(summary ? roundSummaryDisplay(summary, "Scale degrees")
-      : { ...earDisplay(state, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
-    views.degrees.render(options().degrees);
-  }
-
-  function apply(action: EarAction) {
-    const prev = state;
-    state = reduceNotePractice(state, action);
-    if (state === prev) return;
-    if (action.type === "play") views.degrees.ping(action.note - tonicMidi(tonic), state.status === "correct" ? "correct" : "wrong");
-    // Answered, or skipped before being answered
-    if (state.status === "correct" && prev.status !== "correct") {
-      recorder.record(earDrillBody(state.prompt, options().degrees, true, state.missed, Date.now() - shownAt));
-    } else if (action.type === "skip" && prev.status !== "correct") {
-      recorder.record(earDrillBody(prev.prompt, options().degrees, false, prev.missed, Date.now() - shownAt));
-    }
-    // The round's last note: the drone fades away under it, and the round's summary shows until Next round
-    if (state.answered !== prev.answered && rounds.check(state, action.type === "skip")) {
-      clearTimeout(nextTimer);
-      clearTimeout(replayTimer);
-      silence(ROUND_END_FADE_S);
-      render();
-      return;
-    }
-    if (state.prompt !== prev.prompt) {
-      shownAt = Date.now();
-      sound();
-    }
-    render();
-    clearTimeout(nextTimer);
-    clearTimeout(replayTimer);
-    // A miss: hear the note again (another miss meanwhile pushes it back, so it never plays over your trying)
-    if (state.status === "wrong") replayTimer = setTimeout(() => { if (running) views.tones.play(state.prompt.note); }, REPLAY_AFTER_MISS_MS);
-    if (state.status === "correct") {
-      nextTimer = setTimeout(() => apply({ type: "next", prompt: newPrompt(state.prompt) }), NEXT_PROMPT_MS);
-    }
-  }
-
-  /** New options: a fresh prompt in the right key (not a skip), introduced again since the degrees on offer changed */
-  function restart(o: EarOptions, before: EarOptions) {
-    clearTimeout(nextTimer);
-    clearTimeout(replayTimer);
-    rounds.next(state);
-    if (o.tonic !== before.tonic) { tonic = pickTonic(rng, o.tonic, tonic); inKey = 0; }
-    const prev = state.prompt;
-    inKey++;
-    state = { ...state, prompt: makeEarPrompt(rng, tonic, o.degrees, prev), status: "waiting", played: null, missed: false };
-    shownAt = Date.now();
-    droneKey = null;
-    sound();
-    render();
-  }
-
-  const offInput = onPlayerInput(store, { noteOn: note => { if (running && !rounds.over()) apply({ type: "play", note }); } });
-
-  /** Next round: the drone and its introduction again, then a new note */
-  function nextRound() {
-    rounds.next(state);
-    running = true;
-    if (state.status === "correct") apply({ type: "next", prompt: newPrompt(state.prompt) });
-    else { shownAt = Date.now(); sound(); render(); }
-  }
+  const offInput = onPlayerInput(store, { noteOn: note => drill.answer({ type: "play", note }) });
   // No controller needed: 1–7 play that degree, so they're judged like any other note
   const offDegreeKeys = createDegreeKeys(event => store.dispatch({ type: "input", event }),
-    digit => degreeNote(tonicMidi(tonic), digit));
-  const offSettings = store.subscribe((s, p) => { if (s.settings.ear !== p.settings.ear) restart(s.settings.ear, p.settings.ear); });
-  const offBlocked = views.tones.onBlockedChange(() => {
-    if (awaitingSound && !views.tones.blocked()) {
-      awaitingSound = false;
-      if (!running) {
-        running = true;
-        shownAt = Date.now();
-        sound();
-      }
-    }
-    render();
-  });
+    digit => degreeNote(tonicMidi(tonic()), digit));
   window.addEventListener("blur", away);
   window.addEventListener("focus", back);
   document.addEventListener("visibilitychange", onVisibility);
-  render();
-  sound();
+  drill.start();
 
   return {
     stop() {
-      rounds.dispose();
       window.removeEventListener("blur", away);
       window.removeEventListener("focus", back);
       document.removeEventListener("visibilitychange", onVisibility);
       offInput();
       offDegreeKeys();
-      offSettings();
-      offBlocked();
-      clearTimeout(nextTimer);
-      clearTimeout(replayTimer);
-      silence();
+      drill.stop();
     },
     skip() {
-      if (rounds.over()) { awaitingSound = pausedAway = false; if (rounds.summary()) nextRound(); else rounds.reveal(); return; }
-      awaitingSound = pausedAway = false;
-      running = true;   // skipping while stopped starts again, on the new note
-      apply({ type: "skip", prompt: newPrompt(state.prompt) });
+      pausedAway = false;
+      drill.skip();
     },
-    replay() {
-      if (running && !rounds.over()) views.tones.play(state.prompt.note);
-    },
+    replay: drill.replay,
     toggleRunning() {
-      if (rounds.over()) return;
-      awaitingSound = pausedAway = false;
-      if (running && performance.now() - backAt < 600) return;
-      if (running) pause();
-      else resume();
+      if (drill.over()) return;
+      pausedAway = false;
+      if (drill.running() && performance.now() - backAt < 600) return;
+      drill.toggleRunning();
     },
   };
 }

@@ -4,8 +4,8 @@
 // until the right one; the next passage comes after the last. With a random key, a new key every PROMPTS_PER_KEY
 // passages. The songs are fetched the first time a level asks for them (only the part chosen).
 import type { ExcerptLibrary } from "../app/excerpts";
-import { PROMPTS_PER_KEY } from "../exercises/earTraining";
 import type { Excerpt, ExcerptFile } from "../exercises/excerpts";
+import { countInKey, keyRotation, rotateKey } from "../exercises/keyRotation";
 import type { Rng } from "../exercises/notePractice";
 import {
   CHORD_WINDOW_MS, excerptLevel, initialReading, makeExcerptPrompt, makeReadingPrompt, pickReadingKey, reduceReading,
@@ -18,6 +18,7 @@ import { readingLoadingDisplay, sightReadingDisplay, type PracticeView } from ".
 import type { StaffView } from "../views/staff";
 import type { MusicStyle, StaffMusic } from "../views/staffMusic";
 import { createPerformanceDrawer, onPlayerInput, type AppStore, type Mode } from "./performance";
+import { createPromptRecords } from "./promptRecords";
 
 /** How long the finished passage stays up before the next */
 const NEXT_PROMPT_MS = 900;
@@ -53,8 +54,7 @@ export function startSightReading(store: AppStore, views: {
    library: (which: ExcerptLibrary) => Promise<ExcerptFile> = () => Promise.reject(new Error("no excerpts")),
    rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.reading;
-  let keyValue = pickReadingKey(rng, options().key);
-  let inKey = 0;
+  let keys = keyRotation(pickReadingKey(rng, options().key));
   const files = new Map<ExcerptLibrary, ExcerptFile>();
   const loading = new Set<ExcerptLibrary>();
   let failed = false, stopped = false;
@@ -67,8 +67,8 @@ export function startSightReading(store: AppStore, views: {
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
   /** Ends a chord attempt that hasn't come together in time */
   let expireTimer: ReturnType<typeof setTimeout> | undefined;
-  /** When the current passage appeared, to time the answer */
-  let shownAt = Date.now();
+  // Played through, or skipped before the end
+  const records = createPromptRecords<ReadingState>(recorder, (s, answered, ms) => readingDrillBody(s.prompt, answered, s.missed, ms));
 
   /** A song's passage at the level, in the key; a generated line if none at the level can be written in it */
   function dealExcerpt(f: ExcerptFile, o: ReadingOptions, previous?: ReadingPrompt): ReadingPrompt {
@@ -80,27 +80,23 @@ export function startSightReading(store: AppStore, views: {
         if (!deck.length) break;
       }
       const e = deck.pop()!;
-      const p = makeExcerptPrompt(e, f.sources[e.source], o.part, o.level, keyValue);
+      const p = makeExcerptPrompt(e, f.sources[e.source], o.part, o.level, keys.key);
       if (p) return p;
     }
-    return makeReadingPrompt(rng, keyValue, o.range, o.length, previous);
+    return makeReadingPrompt(rng, keys.key, o.range, o.length, previous);
   }
 
   /** A passage in the current key; null when the level's songs aren't loaded */
   function makePrompt(previous?: ReadingPrompt): ReadingPrompt | null {
     const o = options();
-    if (!o.level) return makeReadingPrompt(rng, keyValue, o.range, o.length, previous);
+    if (!o.level) return makeReadingPrompt(rng, keys.key, o.range, o.length, previous);
     const f = files.get(libraryOf(o));
     return f ? dealExcerpt(f, o, previous) : null;
   }
 
   /** The next passage: in the same key, or a new one (when the key is random and this one has had its turn) */
   function nextPrompt(previous: ReadingPrompt): ReadingPrompt {
-    if (options().key === "random" && inKey >= PROMPTS_PER_KEY) {
-      keyValue = pickReadingKey(rng, "random", keyValue);
-      inKey = 0;
-    }
-    inKey++;
+    keys = rotateKey(keys, options().key, (choice, before) => pickReadingKey(rng, choice, before));
     return makePrompt(previous)!;
   }
 
@@ -109,7 +105,7 @@ export function startSightReading(store: AppStore, views: {
     const before = state ?? carried;
     if (!prompt) carried = before;
     state = !prompt ? null : before ? reduceReading(before, { type: "next", prompt }) : initialReading(prompt);
-    shownAt = Date.now();
+    records.shown();
     if (!prompt) load(libraryOf(options()));
     render();
   }
@@ -121,7 +117,7 @@ export function startSightReading(store: AppStore, views: {
     library(which).then(f => { files.set(which, f); }, () => { failed = true; }).finally(() => {
       loading.delete(which);
       if (stopped || state) return;
-      if (files.has(libraryOf(options()))) { inKey++; show(makePrompt()); } else render();
+      if (files.has(libraryOf(options()))) { keys = countInKey(keys); show(makePrompt()); } else render();
     });
   }
 
@@ -154,13 +150,7 @@ export function startSightReading(store: AppStore, views: {
     const prev = state;
     state = reduceReading(state, action);
     if (state === prev) return;
-    // Played through, or skipped before the end
-    if (state.status === "correct" && prev.status !== "correct") {
-      recorder.record(readingDrillBody(state.prompt, true, state.missed, Date.now() - shownAt));
-    } else if (action.type === "skip" && prev.status !== "correct") {
-      recorder.record(readingDrillBody(prev.prompt, false, prev.missed, Date.now() - shownAt));
-    }
-    if (state.prompt !== prev.prompt) shownAt = Date.now();
+    records.changed(prev, state, action.type === "skip");
     render();
     clearTimeout(expireTimer);
     if (state.attemptAt != null) {
@@ -175,14 +165,14 @@ export function startSightReading(store: AppStore, views: {
   /** New options: a fresh passage (not a skip) */
   function restart(o: ReadingOptions, before: ReadingOptions) {
     clearTimeout(nextTimer);
-    if (o.key !== before.key) { keyValue = pickReadingKey(rng, o.key, keyValue); inKey = 0; }
-    inKey++;
+    if (o.key !== before.key) keys = keyRotation(pickReadingKey(rng, o.key, keys.key));
+    keys = countInKey(keys);
     show(makePrompt(state?.prompt));
   }
 
   const offInput = onPlayerInput(store, { noteOn: (note, time) => apply({ type: "play", note, time }) });
   const offSettings = store.subscribe((s, p) => { if (s.settings.reading !== p.settings.reading) restart(s.settings.reading, p.settings.reading); });
-  inKey++;
+  keys = countInKey(keys);
   show(makePrompt());
 
   return {

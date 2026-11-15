@@ -5,7 +5,11 @@
 // Pure data and functions; the mode in src/modes/earTraining.ts drives it and makes the sound. Answers are judged
 // like note practice (reduceNotePractice).
 import { buildKey, chromaOf, KEY_MAJORS } from "../theory";
+import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
+import { pickKey, PROMPTS_PER_KEY } from "./keyRotation";
 import type { NotePracticeAction, NotePracticeState, NotePrompt, Rng } from "./notePractice";
+
+export { PROMPTS_PER_KEY };
 
 /** The degrees of the major scale that can be asked for, in the filter's order. Ids are what's saved. */
 export const EAR_DEGREES: readonly { id: string; label: string; semitones: number }[] = [
@@ -25,10 +29,8 @@ export function degreeNote(tonic: number, degree: string): number | null {
   return d ? tonic + d.semitones : null;
 }
 
-/** Drone tonic: one of the major key tonics, or a random one that changes every few prompts */
+/** Drone tonic: one of the major key tonics, or a random one that changes every PROMPTS_PER_KEY prompts */
 export const EAR_TONICS: readonly string[] = ["random", ...KEY_MAJORS];
-/** With a random tonic, a new key every this many prompts */
-export const PROMPTS_PER_KEY = 10;
 
 /** Melodies: how many notes after the root */
 export const MELODY_LENGTHS: readonly number[] = [2, 3, 4, 5, 6, 8];
@@ -57,12 +59,7 @@ export function sanitizeEarOptions(raw: unknown): EarOptions {
 }
 
 /** Picks the drone's tonic: the chosen one, or a random one (not the previous one) */
-export function pickTonic(rng: Rng, choice: string, previous?: string): string {
-  if (choice !== "random") return choice;
-  let tonic: string;
-  do tonic = KEY_MAJORS[Math.floor(rng() * KEY_MAJORS.length)]; while (tonic === previous);
-  return tonic;
-}
+export const pickTonic = (rng: Rng, choice: string, previous?: string): string => pickKey(rng, choice, KEY_MAJORS, previous);
 
 /** MIDI note of the tonic the prompt notes are played from: F♯3 up to F4, around the middle of the keyboard */
 const LOWEST_TONIC = 54;
@@ -150,44 +147,25 @@ export interface PlaybackPrompt {
   notes: readonly { note: number }[];
 }
 
-export interface MelodyState<P extends PlaybackPrompt = MelodyPrompt> {
-  prompt: P;
+export interface MelodyState<P extends PlaybackPrompt = MelodyPrompt> extends Judged<P> {
   /** How many notes have been played back so far */
   index: number;
-  /** waiting: playing it back; wrong: the last note was wrong (the step waits for the right one); correct: all played */
-  status: "waiting" | "wrong" | "correct";
   /** The last note played (MIDI) */
   played: number | null;
-  /** A wrong note was played on this melody */
-  missed: boolean;
-  answered: number;
-  firstTry: number;
 }
 
-export type MelodyAction<P extends PlaybackPrompt = MelodyPrompt> =
-  | { type: "play"; note: number }
-  | { type: "next"; prompt: P }
-  | { type: "skip"; prompt: P };
+export type MelodyAction<P extends PlaybackPrompt = MelodyPrompt> = { type: "play"; note: number } | MoveOn<P>;
 
 export function initialMelody<P extends PlaybackPrompt>(prompt: P): MelodyState<P> {
   return { prompt, index: 0, status: "waiting", played: null, missed: false, answered: 0, firstTry: 0 };
 }
 
 export function reduceMelody<P extends PlaybackPrompt>(s: MelodyState<P>, a: MelodyAction<P>): MelodyState<P> {
-  switch (a.type) {
-    case "play": {
-      if (s.status === "correct") return s;   // done; ignore notes until the next melody
-      // The exact note, octave included: the melody's shape is part of it
-      if (a.note !== s.prompt.notes[s.index].note) return { ...s, status: "wrong", played: a.note, missed: true };
-      const index = s.index + 1;
-      if (index < s.prompt.notes.length) return { ...s, index, status: "waiting", played: a.note };
-      return { ...s, index, status: "correct", played: a.note, answered: s.answered + 1, firstTry: s.firstTry + (s.missed ? 0 : 1) };
-    }
-    case "next":
-      return { ...s, prompt: a.prompt, index: 0, status: "waiting", played: null, missed: false };
-    case "skip":
-      // A skipped melody counts as answered, but not right first time
-      return { ...s, prompt: a.prompt, index: 0, status: "waiting", played: null, missed: false,
-               answered: s.status === "correct" ? s.answered : s.answered + 1 };
-  }
+  if (a.type !== "play") return movedOn(s, a, { index: 0, played: null });
+  if (s.status === "correct") return s;   // done; ignore notes until the next melody
+  // The exact note, octave included: the melody's shape is part of it
+  if (a.note !== s.prompt.notes[s.index].note) return answeredWrong(s, { played: a.note });
+  const index = s.index + 1;
+  if (index < s.prompt.notes.length) return { ...s, index, status: "waiting", played: a.note };
+  return answeredRight(s, { index, played: a.note });
 }

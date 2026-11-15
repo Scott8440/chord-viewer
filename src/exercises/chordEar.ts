@@ -2,6 +2,7 @@
 // seventh …) from the types they've chosen. Pure data and functions; the mode (src/modes/earChords.ts) plays it.
 import { chordSemitones, ROOT_MAJOR, ROOT_MINOR, templateById } from "../theory";
 import { CHORD_PRACTICE_GROUPS, CHORD_PRACTICE_TYPES } from "./chordPractice";
+import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
 import type { Rng } from "./notePractice";
 
 export interface ChordEarOptions {
@@ -72,41 +73,18 @@ export function qualityLabel(type: string): string {
 export const answerOrder = (types: readonly string[]): string[] =>
   CHORD_PRACTICE_GROUPS.flatMap(g => g.types.map(t => t.id)).filter(id => types.includes(id));
 
-export interface ChordEarState {
-  prompt: ChordEarPrompt;
-  /** waiting: not answered; wrong: the last answer was wrong; correct: answered, about to move on */
-  status: "waiting" | "wrong" | "correct";
+export interface ChordEarState extends Judged<ChordEarPrompt> {
   /** Wrong answers given for this chord, so their buttons can show it */
   wrong: string[];
-  /** A wrong answer was given for this chord */
-  missed: boolean;
-  /** Chords finished (answered or skipped) */
-  answered: number;
-  /** Chords answered right with no wrong answer first */
-  firstTry: number;
 }
 
-export type ChordEarAction =
-  | { type: "answer"; quality: string }
-  | { type: "next"; prompt: ChordEarPrompt }
-  | { type: "skip"; prompt: ChordEarPrompt };
+export type ChordEarAction = { type: "answer"; quality: string } | MoveOn<ChordEarPrompt>;
 
 export const initialChordEar = (prompt: ChordEarPrompt): ChordEarState =>
   ({ prompt, status: "waiting", wrong: [], missed: false, answered: 0, firstTry: 0 });
 
 export function reduceChordEar(s: ChordEarState, a: ChordEarAction): ChordEarState {
-  switch (a.type) {
-    case "answer":
-      if (s.status === "correct" || s.wrong.includes(a.quality)) return s;
-      if (a.quality === s.prompt.type) {
-        return { ...s, status: "correct", answered: s.answered + 1, firstTry: s.firstTry + (s.missed ? 0 : 1) };
-      }
-      return { ...s, status: "wrong", wrong: [...s.wrong, a.quality], missed: true };
-    case "next":
-      return { ...s, prompt: a.prompt, status: "waiting", wrong: [], missed: false };
-    case "skip":
-      // A skipped chord counts as answered, but not right first time
-      return { ...s, prompt: a.prompt, status: "waiting", wrong: [], missed: false,
-               answered: s.status === "correct" ? s.answered : s.answered + 1 };
-  }
+  if (a.type !== "answer") return movedOn(s, a, { wrong: [] });
+  if (s.status === "correct" || s.wrong.includes(a.quality)) return s;
+  return a.quality === s.prompt.type ? answeredRight(s) : answeredWrong(s, { wrong: [...s.wrong, a.quality] });
 }

@@ -1,186 +1,88 @@
 // Ear training, melodies: the root, then a few notes in the key; the player plays the notes back in order. A wrong
 // note waits on its step and the melody plays again a second later. With a random tonic the key changes every
 // PROMPTS_PER_KEY melodies. Stop silences everything and ignores played notes; Start plays the melody again.
+// Rounds, replays and Stop/Start are the shared ear-drill runner's (earDrill.ts); this sounds the melody and draws it.
 import type { TonePlayer } from "../audio/tones";
 import {
-  makeMelodyPrompt, pickTonic, PROMPTS_PER_KEY, reduceMelody, initialMelody,
-  type EarOptions, type MelodyAction, type MelodyPrompt, type MelodyState,
+  initialMelody, makeMelodyPrompt, pickTonic, reduceMelody, type EarOptions, type MelodyAction, type MelodyPrompt,
+  type MelodyState,
 } from "../exercises/earTraining";
+import { countInKey, keyRotation, rotateKey } from "../exercises/keyRotation";
 import type { Rng } from "../exercises/notePractice";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { melodyDrillBody } from "../progress/records";
 import { buildKey } from "../theory";
 import type { ProgressStore } from "../progress/store";
-import { earMelodyDisplay, roundScore, roundSummaryDisplay, type PracticeView } from "../views/practice";
+import { earMelodyDisplay, roundSummaryDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
+import { createEarDrill } from "./earDrill";
 import { createPerformanceDrawer, onPlayerInput, type AppStore, type Mode } from "./performance";
 import type { RoundVizView } from "../views/roundViz";
-import { createRoundKeeper } from "./rounds";
 
 /** Seconds from the root to the first note, and between notes; how long each note rings */
 const ROOT_GAP_S = 1.1, NOTE_GAP_S = 0.65, NOTE_RING_S = 1.4;
 /** How long "✓" stays up before the next melody */
 const NEXT_PROMPT_MS = 1500;
-/** After a wrong note, the melody plays again this long after it */
-const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarMelody(store: AppStore, views: {
   staff: StaffView; practice: PracticeView; tones: TonePlayer; roundViz: RoundVizView;
 }, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.ear;
-  // In rounds of ROUND_SIZE melodies, compared at the end with earlier rounds of the same length and degrees
-  const rounds = createRoundKeeper({
-    drill: "melody", recorder, history, changed: () => render(),
-    setup: () => `length:${options().melodyLength};degrees:${options().degrees.join(",")}`,
-  });
-  let tonic = pickTonic(rng, options().tonic);
-  let inKey = 0;
-  let state: MelodyState = initialMelody(newPrompt());
-  // The staff draws the melody as it's played back, the root shown (grey) from the start, spelled in its key
-  const drawer = createPerformanceDrawer(store, views, () => buildKey(state.prompt.keyValue), () => ({
-    notes: state.prompt.notes.slice(0, Math.max(1, state.index)).map((n, i) => ({ midi: n.note, dim: i >= state.index })),
-    slots: state.prompt.notes.length,
-  }));
-  let nextTimer: ReturnType<typeof setTimeout> | undefined, replayTimer: ReturnType<typeof setTimeout> | undefined;
-  let shownAt = Date.now();
-  let running = !views.tones.blocked();
-  /** Opened before any click or key press, so the browser hasn't let audio start: wait, and begin once it can,
-   *  rather than queue the melody to burst out on the first click */
-  let awaitingSound = !running;
+  let keys = keyRotation(pickTonic(rng, options().tonic));
 
   /** The next melody: in the same key, or a new one (when the tonic is random and this key has had its turn) */
   function newPrompt(previous?: MelodyPrompt): MelodyPrompt {
-    if (previous && options().tonic === "random" && inKey >= PROMPTS_PER_KEY) {
-      tonic = pickTonic(rng, "random", tonic);
-      inKey = 0;
-    }
-    inKey++;
+    keys = rotateKey(keys, options().tonic, (choice, before) => pickTonic(rng, choice, before));
     const o = options();
-    return makeMelodyPrompt(rng, tonic, o.degrees, o.melodyLength, previous);
+    return makeMelodyPrompt(rng, keys.key, o.degrees, o.melodyLength, previous);
   }
 
-  /** Plays the root and then the melody (a little gap after the root), cutting off anything still sounding */
-  function sound() {
-    if (!running) return;
-    views.tones.stopNotes();
-    state.prompt.notes.forEach((n, i) =>
-      views.tones.play(n.note, i === 0 ? 0 : ROOT_GAP_S + (i - 1) * NOTE_GAP_S, NOTE_RING_S));
-  }
-
-  function clearTimers() {
-    clearTimeout(nextTimer);
-    clearTimeout(replayTimer);
-  }
-
-  function render() {
-    const summary = rounds.summary();
-    views.roundViz.render({ outcomes: rounds.outcomes(), average: rounds.average() });
-    views.practice.render(summary ? roundSummaryDisplay(summary, "Melodies")
-      : { ...earMelodyDisplay(state, options().degrees, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
+  const drill = createEarDrill<MelodyPrompt, MelodyState, MelodyAction, EarOptions>(store, views, {
+    drill: "melody",
+    options: s => s.settings.ear,
+    setup: () => `length:${options().melodyLength};degrees:${options().degrees.join(",")}`,
+    initial: initialMelody(newPrompt()),
+    reduce: reduceMelody,
+    nextPrompt: newPrompt,
+    freshPrompt(o, before, previous) {
+      if (o.tonic !== before.tonic) keys = keyRotation(pickTonic(rng, o.tonic, keys.key));
+      keys = countInKey(keys);
+      return makeMelodyPrompt(rng, keys.key, o.degrees, o.melodyLength, previous);
+    },
+    nextPromptMs: NEXT_PROMPT_MS,
+    record: (s, answered, ms) => melodyDrillBody(s.prompt, options().degrees, answered, s.missed, ms),
+    // The root and then the melody (a little gap after the root), cutting off anything still sounding
+    sound(s) {
+      views.tones.stopNotes();
+      s.prompt.notes.forEach((n, i) =>
+        views.tones.play(n.note, i === 0 ? 0 : ROOT_GAP_S + (i - 1) * NOTE_GAP_S, NOTE_RING_S));
+    },
+    silence: () => views.tones.stopNotes(),
+    display: (s, blocked, running) => earMelodyDisplay(s, options().degrees, blocked, running),
+    summaryDisplay: summary => roundSummaryDisplay(summary, "Melodies"),
     // The drawer only redraws by itself on input; the melody and its key change here
-    drawer.schedule();
-  }
+    rendered: () => drawer.schedule(),
+  }, recorder, history);
 
-  function apply(action: MelodyAction) {
-    const prev = state;
-    state = reduceMelody(state, action);
-    if (state === prev) return;
-    // Played back, or skipped before the end
-    if (state.status === "correct" && prev.status !== "correct") {
-      recorder.record(melodyDrillBody(state.prompt, options().degrees, true, state.missed, Date.now() - shownAt));
-    } else if (action.type === "skip" && prev.status !== "correct") {
-      recorder.record(melodyDrillBody(prev.prompt, options().degrees, false, prev.missed, Date.now() - shownAt));
-    }
-    // The round's last melody: show how the round went until Next round; anything still sounding rings out
-    if (state.answered !== prev.answered && rounds.check(state, action.type === "skip")) {
-      clearTimers();
-      render();
-      return;
-    }
-    if (state.prompt !== prev.prompt) {
-      shownAt = Date.now();
-      sound();
-    }
-    render();
-    clearTimers();
-    // A miss: hear it all again (another miss meanwhile pushes it back)
-    if (state.status === "wrong") replayTimer = setTimeout(sound, REPLAY_AFTER_MISS_MS);
-    if (state.status === "correct") {
-      nextTimer = setTimeout(() => apply({ type: "next", prompt: newPrompt(state.prompt) }), NEXT_PROMPT_MS);
-    }
-  }
-
-  /** New options: a fresh melody (not a skip) */
-  function restart(o: EarOptions, before: EarOptions) {
-    clearTimers();
-    rounds.next(state);
-    if (o.tonic !== before.tonic) { tonic = pickTonic(rng, o.tonic, tonic); inKey = 0; }
-    inKey++;
-    state = { ...state, prompt: makeMelodyPrompt(rng, tonic, o.degrees, o.melodyLength, state.prompt),
-              index: 0, status: "waiting", played: null, missed: false };
-    shownAt = Date.now();
-    sound();
-    render();
-  }
-
-  const offInput = onPlayerInput(store, { noteOn: note => { if (running && !rounds.over()) apply({ type: "play", note }); } });
-
-  /** Next round: on to a new melody */
-  function nextRound() {
-    rounds.next(state);
-    running = true;
-    if (state.status === "correct") apply({ type: "next", prompt: newPrompt(state.prompt) });
-    else { shownAt = Date.now(); sound(); render(); }
-  }
-  const offSettings = store.subscribe((s, p) => { if (s.settings.ear !== p.settings.ear) restart(s.settings.ear, p.settings.ear); });
-  const offBlocked = views.tones.onBlockedChange(() => {
-    if (awaitingSound && !views.tones.blocked()) {
-      awaitingSound = false;
-      if (!running) {
-        running = true;
-        shownAt = Date.now();
-        sound();
-      }
-    }
-    render();
+  // The staff draws the melody as it's played back, the root shown (grey) from the start, spelled in its key
+  const drawer = createPerformanceDrawer(store, views, () => buildKey(drill.state().prompt.keyValue), () => {
+    const state = drill.state();
+    return {
+      notes: state.prompt.notes.slice(0, Math.max(1, state.index)).map((n, i) => ({ midi: n.note, dim: i >= state.index })),
+      slots: state.prompt.notes.length,
+    };
   });
-  sound();
-  render();
+  const offInput = onPlayerInput(store, { noteOn: note => drill.answer({ type: "play", note }) });
+  drill.start();
 
   return {
     stop() {
-      rounds.dispose();
       offInput();
-      offSettings();
-      offBlocked();
       drawer.stop();
-      clearTimers();
-      views.tones.stopNotes();
+      drill.stop();
     },
-    skip() {
-      awaitingSound = false;
-      if (rounds.over()) { if (rounds.summary()) nextRound(); else rounds.reveal(); return; }
-      running = true;   // skipping while stopped starts again, on the new melody
-      apply({ type: "skip", prompt: newPrompt(state.prompt) });
-    },
-    replay() {
-      if (running && !rounds.over()) sound();
-    },
-    toggleRunning() {
-      if (rounds.over()) return;
-      awaitingSound = false;
-      clearTimers();
-      running = !running;
-      if (!running) {
-        views.tones.stopNotes();
-        render();
-      } else if (state.status === "correct") {
-        apply({ type: "next", prompt: newPrompt(state.prompt) });
-      } else {
-        shownAt = Date.now();
-        sound();
-        render();
-      }
-    },
+    skip: drill.skip,
+    replay: drill.replay,
+    toggleRunning: drill.toggleRunning,
   };
 }

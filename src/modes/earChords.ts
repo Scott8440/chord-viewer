@@ -2,115 +2,67 @@
 // which kind it is from the types they've chosen, by clicking or with the number keys. A wrong answer plays the chord
 // again a second later; a right one names it on its box and moves on. The answers are a board of large boxes in the
 // staff's place (no staff: the chord isn't for reading). Played notes are ignored (answering by playing comes later).
-// Stop silences it; Start plays the chord again.
+// Stop silences it; Start plays the chord again. Rounds, replays and Stop/Start are the shared ear-drill runner's
+// (earDrill.ts); this sounds the chord and runs the answer board.
 import type { TonePlayer } from "../audio/tones";
 import {
   answerOrder, initialChordEar, makeChordEarPrompt, qualityLabel, reduceChordEar,
-  type ChordEarAction, type ChordEarOptions, type ChordEarState,
+  type ChordEarAction, type ChordEarOptions, type ChordEarPrompt, type ChordEarState,
 } from "../exercises/chordEar";
 import type { Rng } from "../exercises/notePractice";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { chordEarDrillBody } from "../progress/records";
 import type { AnswerBoard } from "../views/answerBoard";
 import type { ProgressStore } from "../progress/store";
-import { chordEarAnswers, chordEarDisplay, roundScore, roundSummaryDisplay, type PracticeView } from "../views/practice";
+import { chordEarAnswers, chordEarDisplay, roundSummaryDisplay, type PracticeView } from "../views/practice";
+import { createEarDrill } from "./earDrill";
 import type { AppStore, Mode } from "./performance";
 import type { RoundVizView } from "../views/roundViz";
-import { createRoundKeeper } from "./rounds";
 
 /** How long the chord rings; with Broken, the gap between its notes and the pause before them together */
 const CHORD_RING_S = 2.4, BROKEN_GAP_S = 0.45, BROKEN_PAUSE_S = 0.35;
 /** How long "✓ D♭ minor" stays up before the next chord */
 const NEXT_PROMPT_MS = 1500;
-/** After a wrong answer, the chord plays again this long after it */
-const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarChords(store: AppStore, views: {
   practice: PracticeView; tones: TonePlayer; answers: AnswerBoard; roundViz: RoundVizView;
 }, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.earChords;
-  // In rounds of ROUND_SIZE chords, compared at the end with earlier rounds played with the same options
-  const rounds = createRoundKeeper({
-    drill: "chordEar", recorder, history, changed: () => render(),
+
+  const drill = createEarDrill<ChordEarPrompt, ChordEarState, ChordEarAction, ChordEarOptions>(store, views, {
+    drill: "chordEar",
+    options: s => s.settings.earChords,
     setup: () => { const o = options(); return `types:${answerOrder(o.types).join(",")};inversions:${o.inversions};broken:${o.broken}`; },
-  });
-  let state: ChordEarState = initialChordEar(makeChordEarPrompt(rng, options()));
-  let nextTimer: ReturnType<typeof setTimeout> | undefined, replayTimer: ReturnType<typeof setTimeout> | undefined;
-  let shownAt = Date.now();
-  let running = !views.tones.blocked();
-  /** Opened before any click or key press: wait for audio, then begin, rather than burst out on the first click */
-  let awaitingSound = !running;
+    initial: initialChordEar(makeChordEarPrompt(rng, options())),
+    reduce: reduceChordEar,
+    nextPrompt: previous => makeChordEarPrompt(rng, options(), previous),
+    freshPrompt: (o, _before, previous) => makeChordEarPrompt(rng, o, previous),
+    nextPromptMs: NEXT_PROMPT_MS,
+    record: (s, answered, ms) =>
+      chordEarDrillBody(s.prompt, qualityLabel(s.prompt.type), options().types, answered, s.missed, ms, s.wrong),
+    // The chord (its notes one by one first, with Broken), cutting off anything still sounding
+    sound(s) {
+      views.tones.stopNotes();
+      const notes = s.prompt.notes, level = 1 / Math.sqrt(notes.length);
+      const together = options().broken ? notes.length * BROKEN_GAP_S + BROKEN_PAUSE_S : 0;
+      if (options().broken) notes.forEach((n, i) => views.tones.play(n, i * BROKEN_GAP_S, 1.2, 0.8));
+      for (const n of notes) views.tones.play(n, together, CHORD_RING_S, level);
+    },
+    // At a round's end the chord just named rings out rather than being cut off
+    silence: () => views.tones.stopNotes(),
+    display: (s, blocked, running) => chordEarDisplay(s, options().types, blocked, running),
+    // Between rounds the board holds just the way on: one large Next round, so the panel's button is hidden
+    summaryDisplay: summary => ({ ...roundSummaryDisplay(summary, "Chord qualities"), skipHidden: true }),
+    rendered(s, { summary, running, over }) {
+      if (summary) views.answers.renderNext("Next round");
+      else views.answers.render(chordEarAnswers(s, options().types, running), { enabled: running && !over });
+    },
+  }, recorder, history);
 
-  /** Plays the chord (its notes one by one first, with Broken), cutting off anything still sounding */
-  function sound() {
-    if (!running) return;
-    views.tones.stopNotes();
-    const notes = state.prompt.notes, level = 1 / Math.sqrt(notes.length);
-    const together = options().broken ? notes.length * BROKEN_GAP_S + BROKEN_PAUSE_S : 0;
-    if (options().broken) notes.forEach((n, i) => views.tones.play(n, i * BROKEN_GAP_S, 1.2, 0.8));
-    for (const n of notes) views.tones.play(n, together, CHORD_RING_S, level);
-  }
-
-  function clearTimers() {
-    clearTimeout(nextTimer);
-    clearTimeout(replayTimer);
-  }
-
-  function render() {
-    const summary = rounds.summary();
-    views.roundViz.render({ outcomes: rounds.outcomes(), average: rounds.average() });
-    if (summary) {
-      // Between rounds the board holds just the way on: one large Next round
-      views.practice.render({ ...roundSummaryDisplay(summary, "Chord qualities"), skipHidden: true });
-      views.answers.renderNext("Next round");
-      return;
-    }
-    views.practice.render({ ...chordEarDisplay(state, options().types, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
-    views.answers.render(chordEarAnswers(state, options().types, running), { enabled: running && !rounds.over() });
-  }
-
-  function apply(action: ChordEarAction) {
-    const prev = state;
-    state = reduceChordEar(state, action);
-    if (state === prev) return;
-    const types = options().types;
-    // Named, or skipped before being named
-    if (state.status === "correct" && prev.status !== "correct") {
-      recorder.record(chordEarDrillBody(state.prompt, qualityLabel(state.prompt.type), types, true, state.missed, Date.now() - shownAt, state.wrong));
-    } else if (action.type === "skip" && prev.status !== "correct") {
-      recorder.record(chordEarDrillBody(prev.prompt, qualityLabel(prev.prompt.type), types, false, prev.missed, Date.now() - shownAt, prev.wrong));
-    }
-    // The round's last chord: show how the round went until Next round. Nothing new plays (no replay, no next
-    // chord), but the chord just named rings out rather than being cut off
-    if (state.answered !== prev.answered && rounds.check(state, action.type === "skip")) {
-      clearTimers();
-      render();
-      return;
-    }
-    if (state.prompt !== prev.prompt) {
-      shownAt = Date.now();
-      sound();
-    }
-    render();
-    clearTimers();
-    if (state.status === "wrong") replayTimer = setTimeout(sound, REPLAY_AFTER_MISS_MS);
-    if (state.status === "correct") {
-      nextTimer = setTimeout(() => apply({ type: "next", prompt: makeChordEarPrompt(rng, options(), state.prompt) }), NEXT_PROMPT_MS);
-    }
-  }
-
-  const answer = (quality: string) => { if (running && !rounds.over()) apply({ type: "answer", quality }); };
+  const answer = (quality: string) => drill.answer({ type: "answer", quality });
   const offAnswer = views.answers.onAnswer(answer);
-  const offReplay = views.answers.onReplay(() => { if (running && !rounds.over()) sound(); });
-  const offNext = views.answers.onNext(() => { if (rounds.summary()) nextRound(); });
-
-  /** Next round: on to a new chord (the last round's last one was answered, or skipped onto a new one) */
-  function nextRound() {
-    rounds.next(state);
-    running = true;
-    if (state.status === "correct") apply({ type: "next", prompt: makeChordEarPrompt(rng, options(), state.prompt) });
-    else { shownAt = Date.now(); sound(); render(); }
-  }
+  const offReplay = views.answers.onReplay(drill.replay);
+  const offNext = views.answers.onNext(drill.nextRound);
 
   /** The number keys answer: 1 for the first button, and so on (not while typing in a field, nor with modifiers) */
   function onKey(e: KeyboardEvent) {
@@ -123,66 +75,18 @@ export function startEarChords(store: AppStore, views: {
     answer(order[n - 1]);
   }
   window.addEventListener("keydown", onKey);
+  drill.start();
 
-  /** New options: a fresh chord from them (not a skip) */
-  function restart(o: ChordEarOptions) {
-    clearTimers();
-    // Other options: a new round, compared with rounds played that way
-    rounds.next(state);
-    state = { ...state, prompt: makeChordEarPrompt(rng, o, state.prompt), status: "waiting", wrong: [], missed: false };
-    shownAt = Date.now();
-    sound();
-    render();
-  }
-
-  const offSettings = store.subscribe((s, p) => { if (s.settings.earChords !== p.settings.earChords) restart(s.settings.earChords); });
-  const offBlocked = views.tones.onBlockedChange(() => {
-    if (awaitingSound && !views.tones.blocked()) {
-      awaitingSound = false;
-      if (!running) {
-        running = true;
-        shownAt = Date.now();
-        sound();
-      }
-    }
-    render();
-  });
-  sound();
-  render();
-
+  // No replay here: the board's Replay is the only one
   return {
     stop() {
-      rounds.dispose();
       offAnswer();
       offReplay();
       offNext();
-      offSettings();
-      offBlocked();
       window.removeEventListener("keydown", onKey);
-      clearTimers();
-      views.tones.stopNotes();
+      drill.stop();
     },
-    skip() {
-      awaitingSound = false;
-      if (rounds.over()) { if (rounds.summary()) nextRound(); else rounds.reveal(); return; }
-      running = true;
-      apply({ type: "skip", prompt: makeChordEarPrompt(rng, options(), state.prompt) });
-    },
-    toggleRunning() {
-      if (rounds.over()) return;
-      awaitingSound = false;
-      clearTimers();
-      running = !running;
-      if (!running) {
-        views.tones.stopNotes();
-        render();
-      } else if (state.status === "correct") {
-        apply({ type: "next", prompt: makeChordEarPrompt(rng, options(), state.prompt) });
-      } else {
-        shownAt = Date.now();
-        sound();
-        render();
-      }
-    },
+    skip: drill.skip,
+    toggleRunning: drill.toggleRunning,
   };
 }

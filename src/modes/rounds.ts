@@ -20,7 +20,8 @@ export interface RoundKeeper {
   over(): boolean;
   /** Show the summary now, without waiting (Next pressed during the delay) */
   reveal(): void;
-  /** The mode stops: no summary appears after it */
+  /** The mode stops: no summary appears after it, and `changed` isn't called again (reading the earlier rounds can
+   *  finish later, and would otherwise redraw a mode that has gone) */
   dispose(): void;
   /** How each prompt of this round went so far, in order */
   outcomes(): readonly PromptOutcome[];
@@ -52,11 +53,13 @@ export function createRoundKeeper(o: {
   /** The summary is on screen (the last answer had its moment) */
   let shown = false;
   let revealTimer: ReturnType<typeof setTimeout> | undefined;
+  let disposed = false;
+  const changed = () => { if (!disposed) o.changed(); };
   function reveal() {
     clearTimeout(revealTimer);
     if (!summary || shown) return;
     shown = true;
-    o.changed();
+    changed();
   }
 
   /** Earlier rounds of this drill played this way, as shares right first time, oldest first */
@@ -76,7 +79,7 @@ export function createRoundKeeper(o: {
     void earlierShares(setup).then(shares => {
       if (setup !== o.setup()) return;
       average = compareRound(0, shares).average;
-      o.changed();
+      changed();
     });
   }
   loadAverage();
@@ -102,7 +105,7 @@ export function createRoundKeeper(o: {
         o.recorder.record(body);
         if (summary === done) {
           summary = { ...done, comparison: compareRound(done.firstTry / done.size, earlier) };
-          if (shown) o.changed();
+          if (shown) changed();
         }
       })();
       return true;
@@ -110,7 +113,10 @@ export function createRoundKeeper(o: {
     summary: () => shown ? summary : null,
     over: () => !!summary,
     reveal,
-    dispose: () => clearTimeout(revealTimer),
+    dispose() {
+      disposed = true;
+      clearTimeout(revealTimer);
+    },
     outcomes: () => outcomes,
     average: () => average,
     next(now) {

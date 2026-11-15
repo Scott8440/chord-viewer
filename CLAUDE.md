@@ -45,6 +45,12 @@ mode and views subscribe to the store.
   never the same twice; spelled from the key, else sharp or flat at random) and `reduceNotePractice` (judges each
   note-on in any octave; tracks wrong attempts, answered and right-first-time counts; skip counts as answered; no
   mode uses `makeNotePrompt` any more, since sight reading replaced note practice).
+  `judging.ts`: what every prompt-and-answer reducer shares (`Judged`: prompt, waiting/wrong/correct, missed,
+  answered, firstTry; `answeredRight`, `answeredWrong`, `movedOn` for next/skip), so note practice, melodies, chord
+  qualities, chord practice and sight reading each state only how they judge and what else they keep.
+  `keyRotation.ts`: the key option shared by ear training, chord practice and sight reading (`PROMPTS_PER_KEY`,
+  `pickKey`/`randomKey`, and the pure `KeyRotation` with `keyRotation`, `rotateKey`, `countInKey`); each drill's
+  picker (`pickTonic`, `pickChordKey`, `pickReadingKey`) only says which keys it allows.
   `sightReading.ts`: sight reading (see "Sight reading" below): `ReadingOptions`, `READING_RANGES`, `readingPool`,
   `makeReadingPrompt` (generated lines), `keyFifths`, `makeExcerptPrompt` (a song's passage in a key, as steps) and
   `excerptLevel`; `reduceReading` judges playing back, a note or chord at a time.
@@ -121,7 +127,9 @@ mode and views subscribe to the store.
   key; chord-name practice none (or its Key option's key); sight reading the line's key; Roman numeral and progression prompts the prompt's key; exercises the
   exercise's key), `onPlayerInput` (each note-on with its time, then each change of the held keys with the time of
   the event behind it), `timingGrid`/`onTimingGrid` (the grid timed exercises are judged on), `onIdle` (idle after a wait with no input and nothing sounding; active on any input) and
-  `heldNotes`.
+  `heldNotes`. `promptRecords.ts` (`createPromptRecords`): times each drill prompt from when it's shown and records
+  it once, when answered or skipped unanswered (all five drill modes). `earDrill.ts` (`createEarDrill`): the three
+  ear modes' shared runner (see "Ear training").
   **Page setup per mode** (`page.ts`): `PAGE_SETUP` says, as data, which right-hand panel a mode shows, whether the
   header Key picker is shown, and which page-wide behaviours it turns on, so a behaviour is written once and any mode
   can opt in. `metronome` (scales, diatonic chords, routines): `metronome.ts` runs the built-in clock while the
@@ -156,7 +164,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 415 tests (54 voicings) should pass
+npm test           # Vitest: 443 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -377,6 +385,11 @@ A set of prescriptive exercises played one after another, e.g. every major scale
   circle. A one-step run's result shows no tempo or evenness (`runText`).
 
 ## Ear training (mode "ear", `src/modes/earTraining.ts`)
+All three ear modes are configurations of one runner, `createEarDrill` (`src/modes/earDrill.ts`): it owns answering,
+recording, rounds, the replay after a miss, the next-prompt timer, Skip, Stop/Start, waiting for audio and new options;
+each mode gives it how to sound, make, judge and show its prompts, and hooks for its extras (scale degrees: the drone,
+its introduction, pings, degree keys and pausing while away; chord qualities: the answer board and number keys;
+melodies: the staff). `tests/earDrill.test.ts` runs the modes against fakes.
 First mode: scale degrees over a drone. A drone sounds the tonic (an octave below, plus the octave above it), the
 app plays one note over it (the tonic F♯3–F4, the note in either of the two octaves above it, `EAR_OCTAVES`; never
 the same note twice running, though a degree may repeat in the other octave, so two degrees don't just alternate),

@@ -10,7 +10,7 @@ Do the architecture refactor (below) before adding features.
 
 ## Working conventions
 - **Work on `main`.** Commit and push straight to `main`; don't create a branch per feature (the user's preference,
-  Nov 2026). Run the typecheck and tests before each push.
+  Nov 2026). Run the typecheck, tests and `npm run format:check` before each push.
 
 ## Current layout
 Vite + TypeScript, built to one self-contained offline file with `vite-plugin-singlefile`. The code is split into
@@ -188,7 +188,14 @@ npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
 npm test           # Vitest: 468 tests (54 voicings) should pass
 npm run typecheck
+npm run format     # Prettier, rewriting files; format:check only reports
 ```
+**Formatting:** Prettier 3 (`.prettierrc.json`: printWidth 120, arrowParens "avoid", otherwise defaults). It skips
+what `.prettierignore` lists: the generated `public/reading/` data, `tests/voicings.json` (one voicing per line) and
+Markdown. A pre-commit hook (simple-git-hooks, installed by `npm install`/`npm ci` through `prepare`) runs
+lint-staged, which formats the staged files and stages the result, so commits are always formatted; don't format
+by hand. The bulk reformat is listed in `.git-blame-ignore-revs`: `git config blame.ignoreRevsFile
+.git-blame-ignore-revs`. No ESLint yet: typescript-eslint doesn't support TypeScript 7.0's native compiler.
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
 `noteOn(n, source?, channel?)`, `noteOff(n, source?, channel?)`, `setPedal(source, down)`, `allOff(source?)` (no
 argument means panic) and `getState()`.

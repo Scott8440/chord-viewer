@@ -188,3 +188,83 @@ export function weakestPrompts(records: readonly ProgressRecord[], limit = 8, mi
              medianMs: answered.length ? median(answered) : 0 };
   }).filter(w => w.firstTry < 1).sort((a, b) => a.firstTry - b.firstTry || b.medianMs - a.medianMs).slice(0, limit);
 }
+
+export interface DrillOption { kind: DrillKind; prompts: number }
+
+/** The drills done, most prompts first */
+export function drillOptions(records: readonly ProgressRecord[]): DrillOption[] {
+  const m = new Map<DrillKind, number>();
+  for (const d of drills(records)) m.set(d.drill, (m.get(d.drill) ?? 0) + 1);
+  return [...m].map(([kind, prompts]) => ({ kind, prompts })).sort((a, b) => b.prompts - a.prompts);
+}
+
+export interface DrillDay {
+  day: string;
+  /** Midday of the day, for charting */
+  at: number;
+  /** Prompts that day */
+  n: number;
+  /** Share right first time (skips count against) */
+  firstTry: number;
+  /** Median time to answer, over the prompts answered (not skipped); null if all were skipped */
+  medianMs: number | null;
+}
+
+/** One drill, day by day: how often right first time, and how quickly answered */
+export function drillDays(records: readonly ProgressRecord[], kind: DrillKind): DrillDay[] {
+  const byDay = new Map<string, Drill[]>();
+  for (const d of drills(records)) if (d.drill === kind) byDay.set(dayOf(d.at), [...(byDay.get(dayOf(d.at)) ?? []), d]);
+  return [...byDay].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([day, ds]) => {
+    const answered = ds.filter(d => d.outcome !== "skipped").map(d => d.ms);
+    return { day, at: dayStart(day) + 12 * 3600_000, n: ds.length,
+             firstTry: ds.filter(d => d.outcome === "firstTry").length / ds.length,
+             medianMs: answered.length ? median(answered) : null };
+  });
+}
+
+export interface DrillPromptStats {
+  prompt: string;
+  asked: number;
+  firstTry: number;
+  skipped: number;
+  /** Median time to answer, over the times it was answered; null if always skipped */
+  medianMs: number | null;
+}
+
+/** One drill, prompt by prompt (a chord quality, a scale degree …): least often right first time first, then most asked */
+export function drillPromptStats(records: readonly ProgressRecord[], kind: DrillKind): DrillPromptStats[] {
+  const m = new Map<string, Drill[]>();
+  for (const d of drills(records)) if (d.drill === kind) m.set(d.prompt, [...(m.get(d.prompt) ?? []), d]);
+  return [...m].map(([prompt, ds]) => {
+    const answered = ds.filter(d => d.outcome !== "skipped").map(d => d.ms);
+    return { prompt, asked: ds.length, firstTry: ds.filter(d => d.outcome === "firstTry").length / ds.length,
+             skipped: ds.length - answered.length, medianMs: answered.length ? median(answered) : null };
+  }).sort((a, b) => a.firstTry - b.firstTry || b.asked - a.asked || a.prompt.localeCompare(b.prompt));
+}
+
+export interface ChordConfusion {
+  /** The chord type played (template id) and its label as asked */
+  type: string;
+  prompt: string;
+  /** Times played, counting only records that keep the guesses (older ones don't) */
+  asked: number;
+  /** What it was taken for, most often first: each wrong answer given, by type id */
+  mistakenFor: { type: string; n: number }[];
+}
+
+/** Chord qualities: what each was mistaken for, the qualities with the most wrong answers first (none: left out) */
+export function chordConfusions(records: readonly ProgressRecord[]): ChordConfusion[] {
+  const m = new Map<string, { prompt: string; asked: number; guesses: Map<string, number> }>();
+  for (const d of drills(records)) {
+    if (d.drill !== "chordEar" || typeof d.detail.guesses !== "string" || typeof d.detail.type !== "string") continue;
+    const e = m.get(d.detail.type) ?? { prompt: d.prompt, asked: 0, guesses: new Map<string, number>() };
+    e.asked++;
+    for (const g of d.detail.guesses.split(",").filter(Boolean)) e.guesses.set(g, (e.guesses.get(g) ?? 0) + 1);
+    m.set(d.detail.type, e);
+  }
+  const total = (c: ChordConfusion) => c.mistakenFor.reduce((n, x) => n + x.n, 0);
+  return [...m].map(([type, e]) => ({
+    type, prompt: e.prompt, asked: e.asked,
+    mistakenFor: [...e.guesses].map(([t, n]) => ({ type: t, n })).sort((a, b) => b.n - a.n || a.type.localeCompare(b.type)),
+  })).filter(c => c.mistakenFor.length).sort((a, b) => total(b) - total(a) || a.prompt.localeCompare(b.prompt));
+}

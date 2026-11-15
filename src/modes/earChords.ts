@@ -60,9 +60,9 @@ export function startEarChords(store: AppStore, views: {
     const types = options().types;
     // Named, or skipped before being named
     if (state.status === "correct" && prev.status !== "correct") {
-      recorder.record(chordEarDrillBody(state.prompt, qualityLabel(state.prompt.type), types, true, state.missed, Date.now() - shownAt));
+      recorder.record(chordEarDrillBody(state.prompt, qualityLabel(state.prompt.type), types, true, state.missed, Date.now() - shownAt, state.wrong));
     } else if (action.type === "skip" && prev.status !== "correct") {
-      recorder.record(chordEarDrillBody(prev.prompt, qualityLabel(prev.prompt.type), types, false, prev.missed, Date.now() - shownAt));
+      recorder.record(chordEarDrillBody(prev.prompt, qualityLabel(prev.prompt.type), types, false, prev.missed, Date.now() - shownAt, prev.wrong));
     }
     if (state.prompt !== prev.prompt) {
       shownAt = Date.now();

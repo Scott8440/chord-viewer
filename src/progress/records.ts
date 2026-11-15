@@ -207,12 +207,16 @@ export function melodyDrillBody(p: MelodyPrompt, degrees: readonly string[], ans
   };
 }
 
-/** Ear training's chord qualities: grouped by the quality ("Major", "Dominant seventh (7)") */
+/**
+ * Ear training's chord qualities: grouped by the quality ("Major", "Dominant seventh (7)"). `guesses` are the wrong
+ * answers given first, in order (type ids, comma-separated in `detail.guesses`; absent in records made before), so
+ * the Progress page can say what each quality gets mistaken for.
+ */
 export function chordEarDrillBody(p: ChordEarPrompt, label: string, types: readonly string[], answered: boolean,
-                                  missed: boolean, ms: number): DrillBody {
+                                  missed: boolean, ms: number, guesses: readonly string[] = []): DrillBody {
   return {
     kind: "drill", drill: "chordEar", prompt: label,
-    detail: { type: p.type, rootPc: p.rootPc, inversion: p.inversion, types: types.join(",") },
+    detail: { type: p.type, rootPc: p.rootPc, inversion: p.inversion, types: types.join(","), guesses: guesses.join(",") },
     outcome: outcomeOf(answered, missed), ms: Math.round(ms),
   };
 }

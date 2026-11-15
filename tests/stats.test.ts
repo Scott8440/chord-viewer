@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { RECORD_VERSION, type ProgressRecord } from "../src/progress/records";
 import {
-  dailyMedian, dayOf, dayStart, drillsPerDay, exerciseLabel, exerciseOptions, exerciseRuns, practicePerDay, routineOptions,
+  chordConfusions, dailyMedian, dayOf, dayStart, drillDays, drillOptions, drillPromptStats, drillsPerDay, exerciseLabel, exerciseOptions, exerciseRuns, practicePerDay, routineOptions,
   routineSessions, since, summary, weakestPrompts,
 } from "../src/progress/stats";
 import { niceTicks } from "../src/views/charts";
@@ -122,5 +122,49 @@ describe("chart axes", () => {
     expect(niceTicks(0, 1)).toEqual([0, 0.25, 0.5, 0.75, 1]);
     expect(niceTicks(0, 0)).toEqual([0, 0.25, 0.5, 0.75, 1]);
     expect(niceTicks(0, 43)).toEqual([0, 20, 40, 60]);
+  });
+});
+
+describe("one drill on its own", () => {
+  const ear = (when: number, type: string, label: string, outcome: string, ms: number, guesses?: string) =>
+    drill(when, outcome, { drill: "chordEar", prompt: label, ms, detail: { type, ...(guesses === undefined ? {} : { guesses }) } });
+
+  it("the drills done, most prompts first", () => {
+    const rs = [ear(1, "M", "Major", "firstTry", 1000), ear(2, "m", "Minor", "firstTry", 1000), drill(3, "firstTry")];
+    expect(drillOptions(rs)).toEqual([{ kind: "chordEar", prompts: 2 }, { kind: "chords", prompts: 1 }]);
+  });
+
+  it("day by day: share right first time and median time to answer (skips not timed)", () => {
+    const rs = [
+      ear(at("2026-03-01", 9), "M", "Major", "firstTry", 1000), ear(at("2026-03-01", 10), "m", "Minor", "corrected", 3000),
+      ear(at("2026-03-01", 11), "m", "Minor", "skipped", 99_000), ear(at("2026-03-02"), "M", "Major", "skipped", 5000),
+      drill(at("2026-03-01"), "firstTry"),   // another drill: not counted
+    ];
+    expect(drillDays(rs, "chordEar")).toEqual([
+      { day: "2026-03-01", at: at("2026-03-01", 12), n: 3, firstTry: 1 / 3, medianMs: 2000 },
+      { day: "2026-03-02", at: at("2026-03-02", 12), n: 1, firstTry: 0, medianMs: null },
+    ]);
+  });
+
+  it("prompt by prompt: least often right first time first", () => {
+    const rs = [ear(1, "M", "Major", "firstTry", 1000), ear(2, "M", "Major", "firstTry", 3000),
+                ear(3, "aug", "Augmented", "corrected", 4000), ear(4, "aug", "Augmented", "skipped", 9000)];
+    expect(drillPromptStats(rs, "chordEar")).toEqual([
+      { prompt: "Augmented", asked: 2, firstTry: 0, skipped: 1, medianMs: 4000 },
+      { prompt: "Major", asked: 2, firstTry: 1, skipped: 0, medianMs: 2000 },
+    ]);
+  });
+
+  it("chord qualities: what each is mistaken for, most mistaken first; older records without guesses left out", () => {
+    const rs = [
+      ear(1, "aug", "Augmented", "corrected", 1000, "M"), ear(2, "aug", "Augmented", "corrected", 1000, "M,7"),
+      ear(3, "aug", "Augmented", "firstTry", 1000, ""), ear(4, "m", "Minor", "corrected", 1000, "dim"),
+      ear(5, "M", "Major", "firstTry", 1000, ""),                // never mistaken: not listed
+      ear(6, "m", "Minor", "corrected", 1000),                   // recorded before guesses were kept
+    ];
+    expect(chordConfusions(rs)).toEqual([
+      { type: "aug", prompt: "Augmented", asked: 3, mistakenFor: [{ type: "M", n: 2 }, { type: "7", n: 1 }] },
+      { type: "m", prompt: "Minor", asked: 1, mistakenFor: [{ type: "dim", n: 1 }] },
+    ]);
   });
 });

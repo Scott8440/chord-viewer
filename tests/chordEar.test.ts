@@ -115,7 +115,11 @@ describe("options", () => {
 
   it("each chord is a drill record, grouped by quality", () => {
     const r = chordEarDrillBody({ rootPc: 2, root: "D", type: "m", inversion: 1, notes: [] }, "Minor", ["M", "m"], true, false, 2300.4);
-    expect(r).toEqual({ kind: "drill", drill: "chordEar", prompt: "Minor", detail: { type: "m", rootPc: 2, inversion: 1, types: "M,m" },
-                        outcome: "firstTry", ms: 2300 });
+    expect(r).toEqual({ kind: "drill", drill: "chordEar", prompt: "Minor",
+                        detail: { type: "m", rootPc: 2, inversion: 1, types: "M,m", guesses: "" }, outcome: "firstTry", ms: 2300 });
+    // The wrong answers given first, in order: what it was mistaken for
+    const missed = chordEarDrillBody({ rootPc: 0, root: "C", type: "aug", inversion: 0, notes: [] }, "Augmented", ["M", "m", "aug", "7"],
+                                     true, true, 5000, ["M", "7"]);
+    expect(missed).toMatchObject({ outcome: "corrected", detail: { guesses: "M,7" } });
   });
 });

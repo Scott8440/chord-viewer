@@ -4,7 +4,7 @@ import type { ProgressStore } from "../progress/store";
 import type { ProgressSelection, ProgressView } from "../views/progressView";
 import type { Mode } from "./performance";
 
-let selection: ProgressSelection = { range: "30", routine: null, exercise: null };
+let selection: ProgressSelection = { range: "30", routine: null, exercise: null, drill: null };
 
 /** A new range, routine or exercise to show (then `refresh` the mode) */
 export const selectProgress = (s: ProgressSelection) => { selection = s; };

@@ -1,10 +1,11 @@
-// The Progress view: a filter row (date range, routine, exercise), summary tiles, and chart cards worked out from the
+// The Progress view: a filter row (date range, routine, exercise, drill), summary tiles, and chart cards worked out from the
 // practice history (src/progress/stats.ts). Each chart has a table underneath for the exact values.
+import { qualityLabel } from "../exercises/chordEar";
 import { DIRECTION_NAMES, routineById } from "../exercises/routines";
-import type { ProgressRecord } from "../progress/records";
+import type { DrillKind, ProgressRecord } from "../progress/records";
 import {
-  DRILLS, dailyMedian, dayStart, dayOf, drillsPerDay, exerciseOptions, exerciseRuns, practicePerDay, routineOptions,
-  routineSessions, since, summary, weakestPrompts,
+  DRILLS, chordConfusions, dailyMedian, dayStart, dayOf, drillDays, drillOptions, drillPromptStats, drillsPerDay,
+  exerciseOptions, exerciseRuns, practicePerDay, routineOptions, routineSessions, since, summary, weakestPrompts,
 } from "../progress/stats";
 import { prettyAcc } from "../theory";
 import { mountChart, type ChartModel, type TimeRange } from "./charts";
@@ -19,6 +20,8 @@ export interface ProgressSelection {
   routine: string | null;
   /** Exercise id, or null for the most played */
   exercise: string | null;
+  /** Drill to look at on its own, or null for the most played */
+  drill: DrillKind | null;
 }
 
 export interface ProgressView {
@@ -78,6 +81,7 @@ export function createProgressView(el: HTMLElement, actions: {
 
       const routines = routineOptions(records), routine = routines.find(r => r.id === sel.routine) ?? routines[0];
       const exercises = exerciseOptions(records), exercise = exercises.find(x => x.exerciseId === sel.exercise) ?? exercises[0];
+      const drillsDone = drillOptions(records), drill = drillsDone.find(d => d.kind === sel.drill) ?? drillsDone[0];
 
       const charts: { id: string; model: ChartModel; label: string }[] = [];
       const card = (title: string, sub: string, body: string, wide = false) =>
@@ -133,8 +137,9 @@ export function createProgressView(el: HTMLElement, actions: {
       const drillSeries = DRILLS.map((k, i) => ({ name: DRILL_NAMES[k], color: SERIES[i], points: perDrill[k].map(d => ({ at: d.at, value: d.firstTry, note: `${d.n} prompt${d.n === 1 ? "" : "s"}` })) }))
         .filter(s => s.points.length);
       const weak = weakestPrompts(records);
-      const drillCard = card("Drills: right first time", "Skips count as not right first time", drillSeries.length
-        ? (drillSeries.length > 1 ? `<div class="pvLegend">${drillSeries.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>` : "") +
+      const drillCard = card("All drills: right first time", "Skips count as not right first time", drillSeries.length
+        // Always a legend, even for one line: the card's title doesn't say which drills it holds
+        ? `<div class="pvLegend">${drillSeries.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>` +
           chart("pvDrills", { kind: "line", range, format: pct, yInclude: [0, 1], series: drillSeries }, "Share of drill prompts right first time per day") +
           table(["Day", ...drillSeries.map(s => s.name)], [...new Set(drillSeries.flatMap(s => s.points.map(p => p.at)))].sort((a, b) => a - b)
             .map(at => [longDate(at), ...drillSeries.map(s => { const p = s.points.find(q => q.at === at); return p ? `${pct(p.value)} (${p.note})` : "–"; })])) +
@@ -142,6 +147,35 @@ export function createProgressView(el: HTMLElement, actions: {
             weak.map(w => `<tr><td>${esc(prettyAcc(w.prompt))}</td><td>${esc(DRILL_NAMES[w.drill])}</td><td>${w.asked}</td><td>${pct(w.firstTry)}</td><td>${(w.medianMs / 1000).toFixed(1)} s</td></tr>`).join("") +
             `</tbody></table>` : "")
         : empty("Answer some note, chord, progression or ear-training prompts to see them here."));
+
+      // One drill on its own: right first time and time to answer, day by day; each prompt; and, for chord qualities,
+      // what each is mistaken for
+      let drillDetailCard = "";
+      if (drill) {
+        const days = drillDays(records, drill.kind), prompts = drillPromptStats(records, drill.kind);
+        const color = SERIES[DRILLS.indexOf(drill.kind)] ?? SERIES[0];
+        const seconds = (ms: number | null) => ms == null ? "–" : `${(ms / 1000).toFixed(1)} s`;
+        let mixups = "";
+        if (drill.kind === "chordEar") {
+          const conf = chordConfusions(records);
+          mixups = `<h4>Mixed up with</h4>` + (conf.length
+            ? `<table><thead><tr><th>Chord played</th><th>Taken for</th><th>Times played</th></tr></thead><tbody>` +
+              conf.map(c => `<tr><td>${esc(prettyAcc(c.prompt))}</td><td>${c.mistakenFor.map(x => `${esc(prettyAcc(qualityLabel(x.type)))} ×${x.n}`).join(", ")}</td><td>${c.asked}</td></tr>`).join("") +
+              `</tbody></table>`
+            : `<div class="pvSub">No wrong answers recorded yet (wrong answers are kept from now on).</div>`);
+        }
+        drillDetailCard = card(DRILL_NAMES[drill.kind], `${drill.prompts} prompt${drill.prompts === 1 ? "" : "s"} · skips count as not right first time`,
+          `<div class="pvPair"><div>${chart("pvDrillFirst", { kind: "line", range, format: pct, yInclude: [0, 1],
+              series: [{ name: "Right first time", color, points: days.map(d => ({ at: d.at, value: d.firstTry, note: `${d.n} prompt${d.n === 1 ? "" : "s"}` })) }] },
+              "Share right first time per day", "Right first time")}</div>` +
+          `<div>${chart("pvDrillTime", { kind: "line", range, format: v => `${v.toFixed(1)} s`,
+              series: [{ name: "Time to answer", color, points: days.flatMap(d => d.medianMs == null ? [] : [{ at: d.at, value: d.medianMs / 1000, note: "median" }]) }] },
+              "Median time to answer per day", "Time to answer (median)")}</div></div>` +
+          table(["Day", "Prompts", "First try", "Time to answer"], days.map(d => [longDate(d.at), String(d.n), pct(d.firstTry), seconds(d.medianMs)])) +
+          `<h4>By prompt</h4><table><thead><tr><th>Prompt</th><th>Asked</th><th>First try</th><th>Typical time</th><th>Skipped</th></tr></thead><tbody>` +
+          prompts.map(p => `<tr><td>${esc(prettyAcc(p.prompt))}</td><td>${p.asked}</td><td>${pct(p.firstTry)}</td><td>${seconds(p.medianMs)}</td><td>${p.skipped || ""}</td></tr>`).join("") +
+          `</tbody></table>` + mixups);
+      }
 
       const tiles = [
         ["Days practised", String(sum.daysPractised)], ["Practice time", minutes(sum.practiceMs)],
@@ -155,10 +189,11 @@ export function createProgressView(el: HTMLElement, actions: {
           `<label class="pick">Range <select id="pvRange">${RANGES.map(r => option(r, r === "all" ? "All time" : `Last ${r} days`, r === sel.range)).join("")}</select></label>` +
           (routines.length ? `<label class="pick">Routine <select id="pvRoutine">${routines.map(r => option(r.id, r.name, r === routine)).join("")}</select></label>` : "") +
           (exercises.length ? `<label class="pick">Exercise <select id="pvExercise">${exercises.map(x => option(x.exerciseId, prettyAcc(x.label), x === exercise)).join("")}</select></label>` : "") +
+          (drillsDone.length ? `<label class="pick">Drill <select id="pvDrill">${drillsDone.map(d => option(d.kind, DRILL_NAMES[d.kind], d === drill)).join("")}</select></label>` : "") +
           `<span class="pvCount">${all.length} record${all.length === 1 ? "" : "s"}${saved ? "" : " · not saved in this browser"}</span>` +
         `</div>` +
         `<div class="pvTiles">${tiles}</div>` +
-        `<div class="pvGrid">${practice}${routineCard}${exerciseCard}${drillCard}</div>`;
+        `<div class="pvGrid">${practice}${routineCard}${exerciseCard}${drillCard}${drillDetailCard}</div>`;
 
       for (const c of charts) unmount.push(mountChart(el.querySelector<HTMLElement>(`#${c.id}`)!, c.model, c.label));
       const pick = (id: string, f: (v: string) => ProgressSelection) => {
@@ -169,6 +204,7 @@ export function createProgressView(el: HTMLElement, actions: {
       pick("pvRange", v => ({ ...sel, range: v as RangeChoice }));
       pick("pvRoutine", v => ({ ...sel, routine: v }));
       pick("pvExercise", v => ({ ...sel, exercise: v }));
+      pick("pvDrill", v => ({ ...sel, drill: v as DrillKind }));
     },
   };
 }

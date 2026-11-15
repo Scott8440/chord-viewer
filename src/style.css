@@ -192,14 +192,27 @@ main {
   font-size: clamp(34px, 4.6vw, 60px); display: flex; flex-wrap: wrap; align-items: flex-start; gap: .1em 0;
 }
 #practicePrompt.sequence { font-size: clamp(22px, 2.6vw, 30px); }
-/* Ear training's chord-quality answers: one button each, numbered for the number keys */
-#practicePrompt.answers { font-size: 15px; }
-#practicePrompt .answers { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
-#practicePrompt .answer { font-family: system-ui, sans-serif; font-size: 15px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 8px; }
-#practicePrompt .answer kbd { font-size: 11px; color: var(--muted); }
-#practicePrompt .answer.right { border-color: var(--ok); color: var(--ok); }
-#practicePrompt .answer.wrong { color: var(--muted); text-decoration: line-through; }
-#practicePrompt .answer:disabled { cursor: default; }
+/* Ear training's chord-quality answers: a board of large boxes in the staff's place, numbered for the number keys */
+#answerBoard {
+  width: 100%; align-self: stretch; display: grid; gap: 14px; padding: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-content: center;
+}
+#answerBoard .box {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  min-height: 120px; padding: 18px 14px; border-radius: 12px; border: 2px solid #d8d2c3; background: #fffdf8;
+  color: var(--ink); font: 600 clamp(18px, 2vw, 24px) system-ui, sans-serif; cursor: pointer;
+}
+#answerBoard .box:hover:not(:disabled) { border-color: #9a968c; background: #fff; }
+#answerBoard .box kbd {
+  position: absolute; top: 8px; left: 10px; font: 12px ui-monospace, Menlo, Consolas, monospace; color: #9a968c;
+  background: none; border: none;
+}
+#answerBoard .boxDetail { font-size: 14px; font-weight: 500; color: #6f6a60; }
+#answerBoard .box.right { border-color: #2e8b57; background: #e6f3ea; color: #1f6a40; }
+#answerBoard .box.right .boxDetail { color: #1f6a40; }
+#answerBoard .box.wrong { color: #b3ad9f; background: #f3efe6; }
+#answerBoard .box.wrong .boxLabel { text-decoration: line-through; }
+#answerBoard .box:disabled { cursor: default; }
 #practicePrompt .seqTitle { font-size: 1.6em; line-height: 1.1; margin-bottom: .35em; }
 /* Sight reading: a song's composer and source under its title */
 #practicePrompt .excerptBy { font-size: .6em; color: var(--muted); }

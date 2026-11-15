@@ -6,8 +6,9 @@ export interface PageSetup {
   /** The right-hand panel: the chord name or the practice card, beside the staff; or the progress charts, in place
    *  of both */
   panel: "chordName" | "practice" | "progress";
-  /** What the left-hand card shows: the staff, or ear training's scale-degree circle (no notes, only degrees) */
-  stage: "staff" | "degrees";
+  /** What the left-hand card shows: the staff, ear training's scale-degree circle (no notes, only degrees), or a
+   *  board of large answer boxes (chord qualities) */
+  stage: "staff" | "degrees" | "answers";
   /** The header Key picker (free play only: exercises name their key or have their own selector) */
   headerKey: boolean;
   /** Fade the chord name out after IDLE_MS without input (and nothing sounding) */
@@ -36,7 +37,7 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   routines: TIMED,
   ear: { ...PRACTICE, stage: "degrees" },
   earMelody: PRACTICE,
-  earChords: PRACTICE,
+  earChords: { ...PRACTICE, stage: "answers" },
 };
 
 /** What's on screen: a practice mode, or the Progress page (opened from the header, apart from the modes) */

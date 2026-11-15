@@ -11,6 +11,7 @@ import { chordSymbolHtml } from "../chordName";
 import { esc } from "../html";
 import { chordStepHtml, describeMiss, inversionName, romanHtml } from "./chords";
 import { stepHtml } from "./steps";
+import type { AnswerBox } from "../answerBoard";
 import type { PracticeDisplay } from "./view";
 
 const scoreText = (s: { answered: number; firstTry: number }) => s.answered ? `${s.firstTry} / ${s.answered} right first time` : "";
@@ -165,34 +166,44 @@ export function progressionDisplay(s: ProgressionState, style: PromptStyle): Pra
   };
 }
 
+/** The chord once named: "D♭ minor", "C dominant seventh, 1st inversion" */
+function chordEarName(s: ChordEarState): string {
+  const t = templateById(s.prompt.type);
+  return t ? `${prettyAcc(s.prompt.root)} ${t.name}` + (s.prompt.inversion ? `, ${inversionName(s.prompt.inversion)}` : "") : "";
+}
+
 /**
- * Ear training, chord qualities: one button per allowed type (numbered: the number keys answer too). A wrong answer's
- * button is struck through and can't be pressed again; once right, the chord is named ("D♭ minor, first inversion").
+ * Ear training, chord qualities, the answer board: one box per allowed type in the filter's order, numbered (the
+ * number keys answer too). A wrong answer's box is struck through and can't be pressed again; once right, its box
+ * names the chord.
  */
-export function chordEarDisplay(s: ChordEarState, types: readonly string[], soundBlocked: boolean, running: boolean): PracticeDisplay {
-  const order = answerOrder(types);
-  const buttons = order.map((type, i) => {
-    const state = s.status === "correct" && type === s.prompt.type ? " right" : s.wrong.includes(type) ? " wrong" : "";
-    const disabled = !running || s.status === "correct" || s.wrong.includes(type);
-    return `<button class="answer${state}" data-answer="${esc(type)}"${disabled ? " disabled" : ""}>` +
-      (i < 9 ? `<kbd>${i + 1}</kbd>` : "") + `${esc(qualityLabel(type))}</button>`;
+export function chordEarAnswers(s: ChordEarState, types: readonly string[], running: boolean): AnswerBox[] {
+  return answerOrder(types).map((type, i) => {
+    const right = s.status === "correct" && type === s.prompt.type, wrong = s.wrong.includes(type);
+    return {
+      id: type, label: qualityLabel(type), key: i < 9 ? i + 1 : undefined,
+      state: right ? "right" : wrong ? "wrong" : "", detail: right ? chordEarName(s) : undefined,
+      disabled: !running || s.status === "correct" || wrong,
+    };
   });
-  const promptHtml = `<div class="answers">${buttons.join("")}</div>`;
+}
+
+/** Ear training, chord qualities, the practice panel: the answers are on the board, so just the instruction,
+ *  feedback and score */
+export function chordEarDisplay(s: ChordEarState, types: readonly string[], soundBlocked: boolean, running: boolean): PracticeDisplay {
   if (!running) {
     return {
-      label: soundBlocked ? "Ready" : "Stopped", promptHtml, size: "answers",
+      label: soundBlocked ? "Ready" : "Stopped", promptHtml: "", size: "chord",
       sub: soundBlocked ? SOUND_WAITING : "Press Start to hear the chord again",
       status: "waiting", feedback: "", score: scoreText(s), stopLabel: "Start",
     };
   }
-  const t = templateById(s.prompt.type);
-  const named = t ? `${prettyAcc(s.prompt.root)} ${t.name}` + (s.prompt.inversion ? `, ${inversionName(s.prompt.inversion)}` : "") : "";
   let feedback = "";
-  if (s.status === "correct") feedback = `✓ ${named}`;
+  if (s.status === "correct") feedback = `✓ ${chordEarName(s)}`;
   else if (s.status === "wrong") feedback = `✗ Not ${qualityLabel(s.wrong[s.wrong.length - 1]).toLowerCase()}. Listen again`;
   return {
-    label: "Which kind of chord is it?", promptHtml, size: "answers",
-    sub: soundBlocked ? SOUND_WAITING : `Click the answer or press its number · ${order.length} kinds`,
+    label: "Which kind of chord is it?", promptHtml: "", size: "chord",
+    sub: soundBlocked ? SOUND_WAITING : `Choose on the left, or press its number · ${answerOrder(types).length} kinds`,
     status: s.status, feedback, score: scoreText(s), stopLabel: "Stop",
   };
 }

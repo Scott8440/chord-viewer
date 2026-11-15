@@ -1,6 +1,5 @@
 // Ear training, chord qualities: the app plays a chord and the player says which kind it is (major, minor, dominant
 // seventh …) from the types they've chosen. Pure data and functions; the mode (src/modes/earChords.ts) plays it.
-import { Note } from "tonal";
 import { chordSemitones, ROOT_MAJOR, ROOT_MINOR, templateById } from "../theory";
 import { CHORD_PRACTICE_GROUPS, CHORD_PRACTICE_TYPES } from "./chordPractice";
 import type { Rng } from "./notePractice";
@@ -38,15 +37,6 @@ export interface ChordEarPrompt {
   inversion: number;
   /** The notes played, MIDI, low to high */
   notes: number[];
-  /** Their names, spelled from the root (E♭ G B♭, not D♯ G A♯), for drawing the chord once it's named */
-  names: string[];
-}
-
-/** A chord's note names from its spelled root, in the same order as `voiceChord` gives the notes */
-export function chordNames(root: string, type: string, inversion: number): string[] {
-  const intervals = (templateById(type)?.tones ?? "").replace(/[()]/g, "").split(/\s+/).filter(Boolean);
-  const names = intervals.map(i => Note.pitchClass(Note.transpose(root, i)));
-  return [...names.slice(inversion), ...names.slice(0, inversion)];
 }
 
 /** The chord's notes: close position above the root, with the lowest `inversion` tones moved up an octave */
@@ -66,7 +56,7 @@ export function makeChordEarPrompt(rng: Rng, o: ChordEarOptions, previous?: Chor
     const notes = voiceChord(LOWEST_ROOT + rootPc, type, inversion);
     // Spelled as chord names usually are: minor-family chords on C♯ and G♯, others on D♭ and A♭
     const root = (templateById(type)?.minor ? ROOT_MINOR : ROOT_MAJOR)[rootPc];
-    return { rootPc, root, type, inversion, notes, names: chordNames(root, type, inversion) };
+    return { rootPc, root, type, inversion, notes };
   }
 }
 

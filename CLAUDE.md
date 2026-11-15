@@ -156,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 380 tests (54 voicings) should pass
+npm test           # Vitest: 379 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -395,16 +395,17 @@ degrees in `detail.melody`), charted as a 5th series. `tones.stopNotes()` cuts o
 (skip, replay, stop).
 
 **Chord qualities** (mode "earChords", `src/modes/earChords.ts`; pure parts in `src/exercises/chordEar.ts`): the app
-plays a chord and the player picks its kind from buttons, one per allowed type (in the filter's order, numbered: the
-number keys 1–9 answer too; `PracticeView.onAnswer` catches a prompt's `button[data-answer]`). Options (saved,
+plays a chord and the player picks its kind from a board of large boxes in the staff's place (`PAGE_SETUP.stage:
+"answers"`, `src/views/answerBoard.ts`; no staff, so nothing shifts when it's answered), one per allowed type (in the
+filter's order, numbered: the number keys 1–9 answer too; `chordEarAnswers` says what each box shows). Options (saved,
 `Settings.earChords`, `setEarChordOptions`): the chord types (the chord practice groups, `CHORD_PRACTICE_GROUPS`, in
 a filter of its own that keeps at least two: `createFilterView`'s `min`; default major and minor), Voicing (root
 position, or any inversion: the lowest tones moved up an octave, `voiceChord`) and Play (together, or broken low to
 high then together). Roots C3–B3, close position, never the same chord twice running; roots spelled as chord names
-usually are, the notes spelled from the root (`chordNames`); a test checks the recognizer names every generated
-chord as the type meant. A wrong answer strikes its button out and plays the chord again 1 s later; a right one
-names the chord ("✓ D♭ minor, 1st inversion") and draws it on the staff (nothing before that, so the staff doesn't
-give it away), then the next chord comes after 1.5 s. Replay, Stop/Start and Skip as in the other ear modes; played
+usually are; a test checks the recognizer names every generated
+chord as the type meant. A wrong answer strikes its box out and plays the chord again 1 s later; a right one turns
+its box green with the chord named on it ("D♭ minor, 1st inversion", also in the feedback), then the next chord
+comes after 1.5 s. Replay, Stop/Start and Skip as in the other ear modes; played
 notes are ignored (answering by playing it back is for later). Chord notes play at 1/√n of a single note's level
 (`tones.play`'s `level`). Recorded as `drill: "chordEar"`, prompt the quality's label ("Major", "Dominant seventh
 (7)"), charted as a 7th series (`--series-7`, #9085e9).

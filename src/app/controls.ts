@@ -139,6 +139,7 @@ export function showControls(state: AppState) {
   $("progressView").hidden = page.panel !== "progress";
   $("staff").hidden = page.stage !== "staff";
   $("degreeCircle").hidden = page.stage !== "degrees";
+  $("answerBoard").hidden = page.stage !== "answers";
   const ex = exercisesOf(s);
   // Chord names vs Roman numerals matters wherever chords are prompted
   $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));

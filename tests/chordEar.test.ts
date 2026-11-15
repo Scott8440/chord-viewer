@@ -1,13 +1,13 @@
 // Ear training, chord qualities: prompts, voicing, judging answers, options and the record.
 import { describe, expect, it } from "vitest";
 import {
-  answerOrder, chordNames, initialChordEar, makeChordEarPrompt, qualityLabel, reduceChordEar, sanitizeChordEarOptions, voiceChord,
+  answerOrder, initialChordEar, makeChordEarPrompt, qualityLabel, reduceChordEar, sanitizeChordEarOptions, voiceChord,
   type ChordEarOptions,
 } from "../src/exercises/chordEar";
 import { chordEarDrillBody } from "../src/progress/records";
 import { createAppState, reduceApp } from "../src/state/app";
 import { analyze, chordSemitones } from "../src/theory";
-import { chordEarDisplay } from "../src/views/practice";
+import { chordEarAnswers, chordEarDisplay } from "../src/views/practice";
 
 /** A repeatable sequence of "random" numbers */
 const seq = (...xs: number[]) => { let i = 0; return () => xs[i++ % xs.length]; };
@@ -24,14 +24,6 @@ describe("chord tones", () => {
     expect(voiceChord(48, "M", 0)).toEqual([48, 52, 55]);
     expect(voiceChord(48, "M", 1)).toEqual([52, 55, 60]);
     expect(voiceChord(48, "7", 3)).toEqual([58, 60, 64, 67]);
-  });
-});
-
-describe("spelling", () => {
-  it("names the chord's notes from its root, in the voiced order", () => {
-    expect(chordNames("Eb", "M", 0)).toEqual(["Eb", "G", "Bb"]);
-    expect(chordNames("C#", "m", 1)).toEqual(["E", "G#", "C#"]);
-    expect(chordNames("B", "dim7", 0)).toEqual(["B", "D", "F", "Ab"]);
   });
 });
 
@@ -63,7 +55,7 @@ describe("prompts", () => {
 });
 
 describe("answers", () => {
-  const p = { rootPc: 2, root: "D", type: "m", inversion: 0, notes: [50, 53, 57], names: ["D", "F", "A"] };
+  const p = { rootPc: 2, root: "D", type: "m", inversion: 0, notes: [50, 53, 57] };
 
   it("right first time, or after wrong answers (each wrong answer counted once)", () => {
     let s = initialChordEar(p);
@@ -83,16 +75,19 @@ describe("answers", () => {
     expect(s).toMatchObject({ answered: 1, firstTry: 0, status: "waiting", wrong: [] });
   });
 
-  it("buttons in the filter's order, numbered, struck through when wrong; the chord named when right", () => {
+  it("boxes in the filter's order, numbered, struck through when wrong; the chord named on its box when right", () => {
     let s = reduceChordEar(initialChordEar(p), { type: "answer", quality: "7" });
-    let d = chordEarDisplay(s, ["7", "m", "M"], false, true);
-    expect([...d.promptHtml.matchAll(/data-answer="([^"]+)"/g)].map(m => m[1])).toEqual(["M", "m", "7"]);
-    expect(d.promptHtml).toContain('<button class="answer wrong" data-answer="7" disabled><kbd>3</kbd>');
-    expect(d.feedback).toBe("✗ Not dominant seventh (7). Listen again");
+    let boxes = chordEarAnswers(s, ["7", "m", "M"], true);
+    expect(boxes.map(b => [b.id, b.key, b.state, b.disabled])).toEqual([["M", 1, "", false], ["m", 2, "", false], ["7", 3, "wrong", true]]);
+    expect(boxes[2].label).toBe("Dominant seventh (7)");
+    expect(chordEarDisplay(s, ["7", "m", "M"], false, true)).toMatchObject({ promptHtml: "", feedback: "✗ Not dominant seventh (7). Listen again" });
     s = reduceChordEar(s, { type: "answer", quality: "m" });
-    d = chordEarDisplay(s, ["7", "m", "M"], false, true);
-    expect(d.feedback).toBe("✓ D minor");
-    expect(d.promptHtml).toContain('class="answer right" data-answer="m"');
+    boxes = chordEarAnswers(s, ["7", "m", "M"], true);
+    expect(boxes[1]).toMatchObject({ state: "right", detail: "D minor" });
+    expect(boxes.every(b => b.disabled)).toBe(true);
+    expect(chordEarDisplay(s, ["7", "m", "M"], false, true).feedback).toBe("✓ D minor");
+    // Stopped: nothing can be pressed
+    expect(chordEarAnswers(initialChordEar(p), ["M", "m"], false).every(b => b.disabled)).toBe(true);
   });
 
   it("labels and order", () => {
@@ -119,7 +114,7 @@ describe("options", () => {
   });
 
   it("each chord is a drill record, grouped by quality", () => {
-    const r = chordEarDrillBody({ rootPc: 2, root: "D", type: "m", inversion: 1, notes: [], names: [] }, "Minor", ["M", "m"], true, false, 2300.4);
+    const r = chordEarDrillBody({ rootPc: 2, root: "D", type: "m", inversion: 1, notes: [] }, "Minor", ["M", "m"], true, false, 2300.4);
     expect(r).toEqual({ kind: "drill", drill: "chordEar", prompt: "Minor", detail: { type: "m", rootPc: 2, inversion: 1, types: "M,m" },
                         outcome: "firstTry", ms: 2300 });
   });

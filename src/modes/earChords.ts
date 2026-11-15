@@ -1,7 +1,8 @@
 // Ear training, chord qualities: the app plays a chord (optionally its notes one by one first) and the player picks
 // which kind it is from the types they've chosen, by clicking or with the number keys. A wrong answer plays the chord
-// again a second later; a right one names it, draws it on the staff, and moves on. Played notes are ignored (answering
-// by playing comes later). Stop silences it; Start plays the chord again.
+// again a second later; a right one names it on its box and moves on. The answers are a board of large boxes in the
+// staff's place (no staff: the chord isn't for reading). Played notes are ignored (answering by playing comes later).
+// Stop silences it; Start plays the chord again.
 import type { TonePlayer } from "../audio/tones";
 import {
   answerOrder, initialChordEar, makeChordEarPrompt, qualityLabel, reduceChordEar,
@@ -10,9 +11,9 @@ import {
 import type { Rng } from "../exercises/notePractice";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { chordEarDrillBody } from "../progress/records";
-import { chordEarDisplay, type PracticeView } from "../views/practice";
-import type { StaffView } from "../views/staff";
-import { createPerformanceDrawer, type AppStore, type Mode } from "./performance";
+import type { AnswerBoard } from "../views/answerBoard";
+import { chordEarAnswers, chordEarDisplay, type PracticeView } from "../views/practice";
+import type { AppStore, Mode } from "./performance";
 
 /** How long the chord rings; with Broken, the gap between its notes and the pause before them together */
 const CHORD_RING_S = 2.4, BROKEN_GAP_S = 0.45, BROKEN_PAUSE_S = 0.35;
@@ -22,13 +23,10 @@ const NEXT_PROMPT_MS = 1500;
 const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarChords(store: AppStore, views: {
-  staff: StaffView; practice: PracticeView; tones: TonePlayer;
+  practice: PracticeView; tones: TonePlayer; answers: AnswerBoard;
 }, recorder: Recorder = noRecorder, rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.earChords;
   let state: ChordEarState = initialChordEar(makeChordEarPrompt(rng, options()));
-  // Nothing on the staff gives the answer away: it shows the held keys, and the chord only once it's been named
-  const drawer = createPerformanceDrawer(store, views, () => null, () =>
-    state.status === "correct" ? { notes: [{ midi: state.prompt.notes, names: state.prompt.names, style: "done" }], slots: 1, duration: "w" } : null);
   let nextTimer: ReturnType<typeof setTimeout> | undefined, replayTimer: ReturnType<typeof setTimeout> | undefined;
   let shownAt = Date.now();
   let running = !views.tones.blocked();
@@ -52,7 +50,7 @@ export function startEarChords(store: AppStore, views: {
 
   function render() {
     views.practice.render(chordEarDisplay(state, options().types, views.tones.blocked(), running));
-    drawer.schedule();
+    views.answers.render(chordEarAnswers(state, options().types, running));
   }
 
   function apply(action: ChordEarAction) {
@@ -79,7 +77,7 @@ export function startEarChords(store: AppStore, views: {
   }
 
   const answer = (quality: string) => { if (running) apply({ type: "answer", quality }); };
-  const offAnswer = views.practice.onAnswer(answer);
+  const offAnswer = views.answers.onAnswer(answer);
 
   /** The number keys answer: 1 for the first button, and so on (not while typing in a field, nor with modifiers) */
   function onKey(e: KeyboardEvent) {
@@ -123,7 +121,6 @@ export function startEarChords(store: AppStore, views: {
       offSettings();
       offBlocked();
       window.removeEventListener("keydown", onKey);
-      drawer.stop();
       clearTimers();
       views.tones.stopNotes();
     },

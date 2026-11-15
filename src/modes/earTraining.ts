@@ -16,6 +16,7 @@ import type { DegreeCircleView } from "../views/degreeCircle";
 import type { ProgressStore } from "../progress/store";
 import { earDisplay, roundScore, roundSummaryDisplay, type PracticeView } from "../views/practice";
 import { onPlayerInput, type AppStore, type Mode } from "./performance";
+import type { RoundVizView } from "../views/roundViz";
 import { createRoundKeeper } from "./rounds";
 
 /** How long "✓" stays up before the next note */
@@ -33,7 +34,7 @@ const AWAY_FADE_S = 3;
 const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarTraining(store: AppStore, views: {
-  practice: PracticeView; tones: TonePlayer; degrees: DegreeCircleView;
+  practice: PracticeView; tones: TonePlayer; degrees: DegreeCircleView; roundViz: RoundVizView;
 }, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.ear;
   // In rounds of ROUND_SIZE notes, compared at the end with earlier rounds with the same degrees on offer
@@ -152,6 +153,7 @@ export function startEarTraining(store: AppStore, views: {
 
   function render() {
     const summary = rounds.summary();
+    views.roundViz.render({ outcomes: rounds.outcomes(), average: rounds.average() });
     views.practice.render(summary ? roundSummaryDisplay(summary, "Scale degrees")
       : { ...earDisplay(state, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
     views.degrees.render(options().degrees);
@@ -169,7 +171,7 @@ export function startEarTraining(store: AppStore, views: {
       recorder.record(earDrillBody(prev.prompt, options().degrees, false, prev.missed, Date.now() - shownAt));
     }
     // The round's last note: the drone stops, and the round's summary shows until Next round
-    if (state.answered !== prev.answered && rounds.check(state)) {
+    if (state.answered !== prev.answered && rounds.check(state, action.type === "skip")) {
       clearTimeout(nextTimer);
       clearTimeout(replayTimer);
       silence();

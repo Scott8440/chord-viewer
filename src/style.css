@@ -192,6 +192,24 @@ main {
   font-size: clamp(34px, 4.6vw, 60px); display: flex; flex-wrap: wrap; align-items: flex-start; gap: .1em 0;
 }
 #practicePrompt.sequence { font-size: clamp(22px, 2.6vw, 30px); }
+/* Ear training rounds: the score while playing (src/views/roundViz.ts) */
+#roundViz { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; margin: 14px 0 4px; }
+#roundViz .rvNote { font-size: 12px; color: var(--muted); flex-basis: 100%; }
+#roundViz .dot.firstTry { fill: var(--ok); }
+#roundViz .dot.corrected { fill: var(--accent); }
+#roundViz .dot.skipped { fill: var(--muted); opacity: .6; }
+#roundViz .dot.todo { fill: none; stroke: var(--line); stroke-width: 1.5; }
+#roundViz .dot.todo.next { stroke: var(--muted); }
+#roundViz .rvRing .track { fill: none; stroke: var(--line); stroke-width: 7; }
+#roundViz .rvRing .fill { fill: none; stroke: var(--ok); stroke-width: 7; stroke-linecap: round; }
+#roundViz .rvRing .avg, #roundViz .rvLine .avg { stroke: var(--text); stroke-width: 2; }
+#roundViz .rvLine .avg { stroke-dasharray: 4 4; stroke-width: 1.5; opacity: .7; }
+#roundViz .rvRing text { text-anchor: middle; fill: var(--text); font-family: system-ui, sans-serif; }
+#roundViz .rvRing .share { font-size: 17px; font-weight: 600; }
+#roundViz .rvRing .count { font-size: 10px; fill: var(--muted); }
+#roundViz .rvLine .base { stroke: var(--line); stroke-width: 1; }
+#roundViz .rvLine .run { fill: none; stroke: var(--ok); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+#roundViz .rvLine .end { fill: var(--ok); stroke: var(--panel); stroke-width: 2; }
 /* Ear training rounds: the summary at a round's end */
 #practicePrompt .roundSummary { font-family: system-ui, sans-serif; }
 #practicePrompt .roundShare { font-size: 64px; font-weight: 600; line-height: 1; }

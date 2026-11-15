@@ -35,6 +35,7 @@ import { createBeatView } from "./views/beat";
 import { createChordNameView } from "./views/chordName";
 import { createCircleView } from "./views/circleOfFifths";
 import { createAnswerBoard } from "./views/answerBoard";
+import { createRoundVizView } from "./views/roundViz";
 import { createDegreeCircle } from "./views/degreeCircle";
 import { createFilterView } from "./views/filter";
 import { createHeaderView } from "./views/header";
@@ -65,6 +66,8 @@ const staff = createStaffView($("staff"));
 const circle = createCircleView($("circle"));
 const degreeCircle = createDegreeCircle($("degreeCircle"));
 const answerBoard = createAnswerBoard($("answerBoard"));
+// TEMPORARY switcher between the round score views (see roundViz.ts)
+const roundViz = createRoundVizView($("roundViz"), $<HTMLSelectElement>("roundVizStyle"));
 const progressView = createProgressView($("progressView"), {
   change(selection) {
     selectProgress(selection);
@@ -125,6 +128,7 @@ const practiceViews = { staff, practice, circle };
  */
 function startMode(id: View): Mode {
   circle.render(null);
+  roundViz.render(null);   // the ear modes draw it
   const mode = startModeView(id);
   const offIdle = pageSetup(id).fadeChordWhenIdle
     ? onIdle(store, IDLE_MS, { idle: () => chordName.setIdle(true), active: () => chordName.setIdle(false) })
@@ -146,9 +150,9 @@ const startModeView = (id: View): Mode =>
   : id === "chords" ? startChordPractice(store, practiceViews, history.recorder)
   : id === "progressions" ? startProgressionPractice(store, practiceViews, history.recorder)
   : id === "routines" ? startRoutinePractice(store, practiceViews, history.recorder)
-  : id === "ear" ? startEarTraining(store, { practice, tones, degrees: degreeCircle }, history.recorder, history.store)
-  : id === "earMelody" ? startEarMelody(store, { ...practiceViews, tones }, history.recorder, history.store)
-  : id === "earChords" ? startEarChords(store, { practice, tones, answers: answerBoard }, history.recorder, history.store)
+  : id === "ear" ? startEarTraining(store, { practice, tones, degrees: degreeCircle, roundViz }, history.recorder, history.store)
+  : id === "earMelody" ? startEarMelody(store, { ...practiceViews, tones, roundViz }, history.recorder, history.store)
+  : id === "earChords" ? startEarChords(store, { practice, tones, answers: answerBoard, roundViz }, history.recorder, history.store)
   : id === "progress" ? startProgress({ progress: progressView }, history.store, history.saved)
   : startSequencePractice(store, practiceViews, id, history.recorder);
 

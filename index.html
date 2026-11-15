@@ -53,6 +53,7 @@
       <div id="practiceLabel"></div>
       <div id="practicePrompt"></div>
       <div id="practiceSub"></div>
+      <div id="roundViz" hidden></div>
       <div id="practiceFeedback"></div>
       <div id="practiceFooter"><span id="practiceScore"></span><button id="practiceReplay" hidden title="Play the note again">Replay</button><button id="practiceStop" hidden title="Stop or start the sound"></button><button id="practiceSkip" title="Skip this one">Skip</button></div>
       <div id="earOptions" hidden>
@@ -67,6 +68,13 @@
           <div id="earFilterBody"></div>
         </details>
       </div>
+      <!-- TEMPORARY: compare the round score views; remove with the one not chosen -->
+      <label class="pick" id="roundVizPick" hidden>Round view (debug)
+        <select id="roundVizStyle">
+          <option value="dots">Dots</option><option value="ring">Ring</option><option value="line">Line</option>
+          <option value="all">All three</option><option value="off">Off</option>
+        </select>
+      </label>
       <div id="earChordOptions" hidden>
         <label class="pick">Voicing
           <select id="earChordVoicing">

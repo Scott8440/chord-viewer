@@ -14,6 +14,7 @@ import type { ProgressStore } from "../progress/store";
 import { earMelodyDisplay, roundScore, roundSummaryDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, onPlayerInput, type AppStore, type Mode } from "./performance";
+import type { RoundVizView } from "../views/roundViz";
 import { createRoundKeeper } from "./rounds";
 
 /** Seconds from the root to the first note, and between notes; how long each note rings */
@@ -24,7 +25,7 @@ const NEXT_PROMPT_MS = 1500;
 const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarMelody(store: AppStore, views: {
-  staff: StaffView; practice: PracticeView; tones: TonePlayer;
+  staff: StaffView; practice: PracticeView; tones: TonePlayer; roundViz: RoundVizView;
 }, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.ear;
   // In rounds of ROUND_SIZE melodies, compared at the end with earlier rounds of the same length and degrees
@@ -73,6 +74,7 @@ export function startEarMelody(store: AppStore, views: {
 
   function render() {
     const summary = rounds.summary();
+    views.roundViz.render({ outcomes: rounds.outcomes(), average: rounds.average() });
     views.practice.render(summary ? roundSummaryDisplay(summary, "Melodies")
       : { ...earMelodyDisplay(state, options().degrees, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
     // The drawer only redraws by itself on input; the melody and its key change here
@@ -90,7 +92,7 @@ export function startEarMelody(store: AppStore, views: {
       recorder.record(melodyDrillBody(prev.prompt, options().degrees, false, prev.missed, Date.now() - shownAt));
     }
     // The round's last melody: stop, and show how the round went until Next round
-    if (state.answered !== prev.answered && rounds.check(state)) {
+    if (state.answered !== prev.answered && rounds.check(state, action.type === "skip")) {
       clearTimers();
       views.tones.stopNotes();
       render();

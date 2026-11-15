@@ -15,6 +15,7 @@ import type { AnswerBoard } from "../views/answerBoard";
 import type { ProgressStore } from "../progress/store";
 import { chordEarAnswers, chordEarDisplay, roundScore, roundSummaryDisplay, type PracticeView } from "../views/practice";
 import type { AppStore, Mode } from "./performance";
+import type { RoundVizView } from "../views/roundViz";
 import { createRoundKeeper } from "./rounds";
 
 /** How long the chord rings; with Broken, the gap between its notes and the pause before them together */
@@ -25,7 +26,7 @@ const NEXT_PROMPT_MS = 1500;
 const REPLAY_AFTER_MISS_MS = 1000;
 
 export function startEarChords(store: AppStore, views: {
-  practice: PracticeView; tones: TonePlayer; answers: AnswerBoard;
+  practice: PracticeView; tones: TonePlayer; answers: AnswerBoard; roundViz: RoundVizView;
 }, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
   const options = () => store.getState().settings.earChords;
   // In rounds of ROUND_SIZE chords, compared at the end with earlier rounds played with the same options
@@ -57,6 +58,7 @@ export function startEarChords(store: AppStore, views: {
 
   function render() {
     const summary = rounds.summary();
+    views.roundViz.render({ outcomes: rounds.outcomes(), average: rounds.average() });
     if (summary) {
       views.practice.render(roundSummaryDisplay(summary, "Chord qualities"));
       views.answers.render(chordEarAnswers(state, options().types, false), { enabled: false });
@@ -78,7 +80,7 @@ export function startEarChords(store: AppStore, views: {
       recorder.record(chordEarDrillBody(prev.prompt, qualityLabel(prev.prompt.type), types, false, prev.missed, Date.now() - shownAt, prev.wrong));
     }
     // The round's last chord: stop, and show how the round went until Next round
-    if (state.answered !== prev.answered && rounds.check(state)) {
+    if (state.answered !== prev.answered && rounds.check(state, action.type === "skip")) {
       clearTimers();
       views.tones.stopNotes();
       render();

@@ -43,3 +43,12 @@ export interface RoundSummary {
   /** Null until the earlier rounds have been read */
   comparison: RoundComparison | null;
 }
+
+/** How each prompt of a round went, in order */
+export type PromptOutcome = "firstTry" | "corrected" | "skipped";
+
+/** The share right first time after each prompt (for the running line), e.g. [1, 0.5, 0.67] */
+export const runningShares = (outcomes: readonly PromptOutcome[]): number[] => {
+  let right = 0;
+  return outcomes.map((o, i) => (right += o === "firstTry" ? 1 : 0) / (i + 1));
+};

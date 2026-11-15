@@ -156,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 394 tests (54 voicings) should pass
+npm test           # Vitest: 399 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -435,9 +435,18 @@ round" and starts the next (scale degrees introduce the key again). New options 
 round is a `round` record (drill, size, firstTry, setup, durationMs), read back from the history for the comparison
 before it's recorded; leaving the window between rounds doesn't start the next.
 
+**The round's score while playing** (`src/views/roundViz.ts`, in the practice panel above the feedback, all three ear
+modes; the `RoundKeeper` also keeps each prompt's outcome in order, `outcomes()`, and the earlier rounds' average,
+`average()`, read when a round starts): three views being compared with a **TEMPORARY** debug switcher ("Round view
+(debug)" in the panel, saved in localStorage `chordDisplay.debugRoundViz`; default All three): **Dots** (20, green
+right first time, amber right after a miss, grey skipped, hollow to come, the next outlined), **Ring** (filled with
+the share right first time so far, the share and "8 / 20" in the middle, a tick at the earlier average) and **Line**
+(the running share after each prompt, `runningShares`, against a dashed line at the average). Once one is chosen,
+remove the switcher and the others, and consider placing it on the left card (dots above the boxes or circle, the ring
+round Replay or the degree circle).
+
 **Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,
-intervals; chord qualities answered by playing the chord back, and weighting towards the qualities missed; a live
-view of the round's score while playing.
+intervals; chord qualities answered by playing the chord back, and weighting towards the qualities missed.
 
 ## Sight reading (mode "notes", `src/modes/sightReading.ts`)
 Replaced note practice. Two sources, chosen by **Level** (`ReadingOptions.level`, saved in `Settings.reading`):

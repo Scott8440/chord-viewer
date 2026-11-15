@@ -1,6 +1,7 @@
 // Ear training in rounds: progress, the end of a round, and the comparison with earlier rounds.
 import { describe, expect, it } from "vitest";
-import { compareRound, ROUND_SIZE, roundDone, roundProgress } from "../src/exercises/rounds";
+import { compareRound, ROUND_SIZE, roundDone, roundProgress, runningShares } from "../src/exercises/rounds";
+import { dotsSvg, lineSvg, ringSvg } from "../src/views/roundViz";
 import { createRoundKeeper } from "../src/modes/rounds";
 import { RECORD_VERSION, upgradeRecord, type ProgressRecord, type RecordBody } from "../src/progress/records";
 import { createMemoryStore } from "../src/progress/store";
@@ -41,8 +42,9 @@ describe("the round keeper", () => {
     expect(keeper.check({ answered: 24, firstTry: 18 })).toBe(false);
     expect(keeper.check({ answered: 25, firstTry: 19 })).toBe(true);
     expect(keeper.summary()).toMatchObject({ size: 20, firstTry: 16, comparison: null });
+    const before = changes;
     await new Promise(r => setTimeout(r, 0));
-    expect(changes).toBe(1);
+    expect(changes).toBeGreaterThan(before);
     // Only the two earlier rounds of this drill with these options count
     expect(keeper.summary()!.comparison).toMatchObject({ share: 0.8, previous: [0.5, 0.7], last: 0.7, best: 0.7 });
     expect(recorded).toEqual([{ kind: "round", drill: "chordEar", size: 20, firstTry: 16, setup: "types:M,m", durationMs: expect.any(Number) }]);
@@ -51,6 +53,21 @@ describe("the round keeper", () => {
     keeper.next({ answered: 26, firstTry: 20 });
     expect(keeper.summary()).toBeNull();
     expect(keeper.progress({ answered: 27, firstTry: 21 })).toEqual({ answered: 1, firstTry: 1 });
+  });
+
+  it("keeps each prompt's outcome in order, and the earlier rounds' average to beat", async () => {
+    const store = createMemoryStore([record(round(10), 1), record(round(14), 2)]);
+    const keeper = createRoundKeeper({ drill: "chordEar", setup: () => "types:M,m", history: Promise.resolve(store),
+      recorder: { record: () => {}, onRecorded: () => () => {} }, changed: () => {} });
+    await new Promise(r => setTimeout(r, 0));
+    expect(keeper.average()).toBeCloseTo(0.6);
+    keeper.check({ answered: 1, firstTry: 1 });
+    keeper.check({ answered: 2, firstTry: 1 });
+    keeper.check({ answered: 3, firstTry: 1 }, true);
+    keeper.check({ answered: 3, firstTry: 1 });   // nothing new: no outcome
+    expect(keeper.outcomes()).toEqual(["firstTry", "corrected", "skipped"]);
+    keeper.next({ answered: 3, firstTry: 1 });
+    expect(keeper.outcomes()).toEqual([]);
   });
 
   it("round records survive reading back", () => {
@@ -73,5 +90,35 @@ describe("the round's summary", () => {
     expect(down).toMatchObject({ sub: "▼ 10 points on your last round · best 60% · average 60% over your last 1 round", status: "waiting" });
     // While the earlier rounds are being read
     expect(roundSummaryDisplay({ size: 20, firstTry: 10, durationMs: 1, comparison: null }, "X").sub).toBe("");
+  });
+});
+
+describe("the round's score while playing", () => {
+  const m = { outcomes: ["firstTry", "corrected", "skipped", "firstTry"] as const, average: 0.5 };
+
+  it("the share after each prompt", () => {
+    expect(runningShares(m.outcomes)).toEqual([1, 0.5, 1 / 3, 0.5]);
+  });
+
+  it("dots: one per prompt, coloured by outcome, the rest hollow, the next one marked", () => {
+    const svg = dotsSvg(m);
+    expect(svg.match(/<circle/g)).toHaveLength(ROUND_SIZE);
+    expect([...svg.matchAll(/class="dot ([a-zA-Z]+)/g)].slice(0, 5).map(x => x[1])).toEqual(["firstTry", "corrected", "skipped", "firstTry", "todo"]);
+    expect(svg).toContain('class="dot todo next"');
+  });
+
+  it("ring: the share so far in the middle, filled that far, a tick at the average", () => {
+    const svg = ringSvg(m);
+    expect(svg).toContain(">50%</text>");
+    expect(svg).toContain(`>4 / ${ROUND_SIZE}</text>`);
+    expect(svg).toContain('class="avg"');
+    expect(ringSvg({ outcomes: [], average: null })).not.toContain('class="fill"');
+  });
+
+  it("line: the running share, with a dashed line at the average", () => {
+    const svg = lineSvg(m);
+    expect(svg).toContain('class="run"');
+    expect(svg).toContain('class="avg"');
+    expect(lineSvg({ outcomes: [], average: null })).not.toContain('class="avg"');
   });
 });

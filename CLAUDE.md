@@ -156,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 385 tests (54 voicings) should pass
+npm test           # Vitest: 389 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -419,7 +419,8 @@ notes are ignored (answering by playing it back is for later). Chord notes play 
 (`tones.play`'s `level`). Cutting notes off (replay, skip, stop) holds each note's volume where it has got to and
 fades from there (`holdAt`: `cancelAndHoldAtTime`); `cancelScheduledValues` alone would drop the decay in progress,
 jump back to the attack's peak and click. Recorded as `drill: "chordEar"`, prompt the quality's label ("Major", "Dominant seventh
-(7)"), charted as a 7th series (`--series-7`, #9085e9).
+(7)"), with the wrong answers given first in `detail.guesses` (type ids, comma-separated; from Nov 2026 on), charted
+as a 7th series (`--series-7`, #9085e9).
 
 **Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,
 intervals; chord qualities answered by playing the chord back, and weighting towards the qualities missed.
@@ -555,8 +556,12 @@ Everything practised is recorded, and the **Progress** page charts it.
   and how many clean, routines finished, drill prompts), and cards: practice time per day (columns); the routine's
   time to complete and mistakes per finished session; the exercise's mistakes and on-time share (metronome runs) or
   evenness, each run a faint dot with a line through the day's median; drills' share right first time per day (one
-  line per drill, legend) and the trickiest prompts (asked twice or more, least often right first time). Each chart
-  has a Table. Practice time = runs outside routines + routine sessions + drill prompts capped at a minute each.
+  line per drill, always with a legend) and the trickiest prompts (asked twice or more, least often right first time);
+  and **one drill on its own** (the Drill filter, defaulting to the drill with the most prompts: `drillOptions`):
+  right first time and median time to answer by day (`drillDays`; skips count against and aren't timed), each
+  prompt's asked / first try / typical time / skipped (`drillPromptStats`, least often right first time first), and
+  for chord qualities what each is mistaken for (`chordConfusions`, from `detail.guesses`; older records without it
+  are left out). Each chart has a Table. Practice time = runs outside routines + routine sessions + drill prompts capped at a minute each.
   Imports refresh it (`Mode.refresh`).
 - **Charts** (`src/views/charts.ts`): hand-written SVG (no library; the build stays one small offline file), redrawn
   to the container's width. Dataviz rules: 2px lines, ≥8px markers with a surface ring, hairline grid, columns ≤24px

@@ -16,33 +16,43 @@ export interface AnswerBox {
 }
 
 export interface AnswerBoard {
-  render(boxes: readonly AnswerBox[]): void;
+  /** The boxes; with `replay`, a wide Replay button above them (enabled or not) */
+  render(boxes: readonly AnswerBox[], replay?: { enabled: boolean }): void;
   /** Called with a box's id when it's pressed; returns a function that stops it */
   onAnswer(listener: (id: string) => void): () => void;
+  /** Called when the Replay button is pressed; returns a function that stops it */
+  onReplay(listener: () => void): () => void;
 }
 
 export function createAnswerBoard(el: HTMLElement): AnswerBoard {
-  const listeners = new Set<(id: string) => void>();
-  // The boxes are redrawn with each render, so one listener on the board catches them all
+  const listeners = new Set<(id: string) => void>(), replayListeners = new Set<() => void>();
+  // The buttons are redrawn with each render, so one listener on the board catches them all
   el.addEventListener("click", e => {
-    const box = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-answer]");
-    if (!box || box.disabled) return;
-    box.blur();   // so Space stays the pedal
-    for (const l of listeners) l(box.dataset.answer!);
+    const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
+    if (!button || button.disabled) return;
+    button.blur();   // so Space stays the pedal
+    if (button.dataset.answer) for (const l of listeners) l(button.dataset.answer);
+    else if (button.classList.contains("replay")) for (const l of replayListeners) l();
   });
   let shown = "";
   return {
-    render(boxes) {
-      const html = boxes.map(b =>
+    render(boxes, replay) {
+      const replayHtml = replay
+        ? `<button class="replay" title="Play it again"${replay.enabled ? "" : " disabled"}><span aria-hidden="true">▶</span> Replay</button>` : "";
+      const html = replayHtml + `<div class="boxes">` + boxes.map(b =>
         `<button class="box${b.state ? " " + b.state : ""}" data-answer="${esc(b.id)}"${b.disabled ? " disabled" : ""}>` +
         (b.key ? `<kbd>${b.key}</kbd>` : "") + `<span class="boxLabel">${esc(b.label)}</span>` +
-        `<span class="boxDetail">${b.detail ? esc(b.detail) : "&nbsp;"}</span></button>`).join("");
+        `<span class="boxDetail">${b.detail ? esc(b.detail) : "&nbsp;"}</span></button>`).join("") + `</div>`;
       // Redraw only on change, so a box isn't replaced under the pointer mid-click
       if (html !== shown) el.innerHTML = shown = html;
     },
     onAnswer(listener) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
+    },
+    onReplay(listener) {
+      replayListeners.add(listener);
+      return () => { replayListeners.delete(listener); };
     },
   };
 }

@@ -405,7 +405,8 @@ degrees in `detail.melody`), charted as a 5th series. `tones.stopNotes()` cuts o
 
 **Chord qualities** (mode "earChords", `src/modes/earChords.ts`; pure parts in `src/exercises/chordEar.ts`): the app
 plays a chord and the player picks its kind from a board of large boxes in the staff's place (`PAGE_SETUP.stage:
-"answers"`, `src/views/answerBoard.ts`; no staff, so nothing shifts when it's answered), one per allowed type (in the
+"answers"`, `src/views/answerBoard.ts`; no staff, so nothing shifts when it's answered; a wide Replay button above the boxes, as well as the panel's), one
+per allowed type (in the
 filter's order, numbered: the number keys 1–9 answer too; `chordEarAnswers` says what each box shows). Options (saved,
 `Settings.earChords`, `setEarChordOptions`): the chord types (the chord practice groups, `CHORD_PRACTICE_GROUPS`, in
 a filter of its own that keeps at least two: `createFilterView`'s `min`; default major and minor), Voicing (root

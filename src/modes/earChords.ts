@@ -50,7 +50,7 @@ export function startEarChords(store: AppStore, views: {
 
   function render() {
     views.practice.render(chordEarDisplay(state, options().types, views.tones.blocked(), running));
-    views.answers.render(chordEarAnswers(state, options().types, running));
+    views.answers.render(chordEarAnswers(state, options().types, running), { enabled: running });
   }
 
   function apply(action: ChordEarAction) {
@@ -78,6 +78,7 @@ export function startEarChords(store: AppStore, views: {
 
   const answer = (quality: string) => { if (running) apply({ type: "answer", quality }); };
   const offAnswer = views.answers.onAnswer(answer);
+  const offReplay = views.answers.onReplay(() => { if (running) sound(); });
 
   /** The number keys answer: 1 for the first button, and so on (not while typing in a field, nor with modifiers) */
   function onKey(e: KeyboardEvent) {
@@ -118,6 +119,7 @@ export function startEarChords(store: AppStore, views: {
   return {
     stop() {
       offAnswer();
+      offReplay();
       offSettings();
       offBlocked();
       window.removeEventListener("keydown", onKey);

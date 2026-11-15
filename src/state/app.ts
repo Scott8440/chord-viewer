@@ -1,6 +1,7 @@
 // Whole-app state: the performance, a history of recent input events, and user settings.
 import { DEFAULT_CHORD_TYPES, sanitizeChordKey, sanitizeChordTypes } from "../exercises/chordPractice";
 import { PROMPT_STYLES, type PromptStyle } from "../exercises/chordPrompt";
+import { sanitizeChordEarOptions, type ChordEarOptions } from "../exercises/chordEar";
 import { sanitizeEarOptions, type EarOptions } from "../exercises/earTraining";
 import { sanitizeReadingOptions, type ReadingOptions } from "../exercises/sightReading";
 import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/prescriptive";
@@ -12,7 +13,7 @@ import { initialPerformance, reducePerformance, type PerformanceState } from "./
 
 export const HISTORY_LIMIT = 512;
 
-export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "fiveFinger", "arpeggios", "brokenChords", "chromatic", "routines", "ear", "earMelody"] as const;
+export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "fiveFinger", "arpeggios", "brokenChords", "chromatic", "routines", "ear", "earMelody", "earChords"] as const;
 export type ModeId = typeof MODES[number];
 
 export interface Settings {
@@ -37,6 +38,8 @@ export interface Settings {
   readonly routine: RoutineOptions;
   /** Ear training (both modes): the tonic (or random), which scale degrees it asks for, and the melody length */
   readonly ear: EarOptions;
+  /** Ear training, chord qualities: which chord types it plays, inversions, and broken before together */
+  readonly earChords: ChordEarOptions;
   /** Sight reading (mode "notes"): how many notes, which staff, which key (or random) */
   readonly reading: ReadingOptions;
   /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
@@ -58,6 +61,7 @@ export interface SavedSettings {
   exercise?: unknown;
   routine?: unknown;
   ear?: unknown;
+  earChords?: unknown;
   reading?: unknown;
   latencyMs?: unknown;
   latencyCalibrated?: unknown;
@@ -94,6 +98,7 @@ export type AppAction =
   | { type: "setExerciseOptions"; options: Partial<ExerciseOptions> }
   | { type: "setRoutineOptions"; options: Partial<RoutineOptions> }
   | { type: "setEarOptions"; options: Partial<EarOptions> }
+  | { type: "setEarChordOptions"; options: Partial<ChordEarOptions> }
   | { type: "setReadingOptions"; options: Partial<ReadingOptions> }
   /** Calibrated or typed in: either way, the latency counts as dealt with */
   | { type: "setLatency"; ms: number }
@@ -126,6 +131,7 @@ export function createAppState(saved: SavedSettings = {}): AppState {
       exercise: sanitizeExerciseOptions(saved.exercise),
       routine: sanitizeRoutineOptions(saved.routine),
       ear: sanitizeEarOptions(saved.ear),
+      earChords: sanitizeChordEarOptions(saved.earChords),
       reading: sanitizeReadingOptions(saved.reading),
       latencyMs: sanitizeLatency(saved.latencyMs),
       // A latency saved before this flag existed was calibrated or typed in, unless it's the default 0
@@ -176,6 +182,12 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return ear.tonic === s.settings.ear.tonic && ear.degrees.join() === s.settings.ear.degrees.join() &&
         ear.melodyLength === s.settings.ear.melodyLength ? s
         : { ...s, settings: { ...s.settings, ear } };
+    }
+    case "setEarChordOptions": {
+      const earChords = sanitizeChordEarOptions({ ...s.settings.earChords, ...a.options });
+      const was = s.settings.earChords;
+      return earChords.types.join() === was.types.join() && earChords.inversions === was.inversions &&
+        earChords.broken === was.broken ? s : { ...s, settings: { ...s.settings, earChords } };
     }
     case "setReadingOptions": {
       const reading = sanitizeReadingOptions({ ...s.settings.reading, ...a.options });

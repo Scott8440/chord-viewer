@@ -28,7 +28,7 @@ export interface ProgressView {
 }
 
 /** Series colours: the reference palette's first five dark steps, in its fixed order */
-const SERIES = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)", "var(--series-5)", "var(--series-6)"];
+const SERIES = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)", "var(--series-5)", "var(--series-6)", "var(--series-7)"];
 const DAY = 86_400_000;
 
 const minutes = (ms: number) => {
@@ -45,7 +45,7 @@ function directionText(routine: string, direction: string): string {
 }
 const DRILL_NAMES = {
   notes: "Note names (old)", chords: "Chords", progressions: "Progressions", ear: "Ear: degrees", melody: "Ear: melodies",
-  reading: "Sight reading",
+  reading: "Sight reading", chordEar: "Ear: chord qualities",
 } as const;
 
 function table(head: string[], rows: string[][]): string {

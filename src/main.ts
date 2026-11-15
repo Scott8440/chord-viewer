@@ -15,6 +15,7 @@ import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
 import { createMidiSource } from "./input/midi";
 import { startChordPractice } from "./modes/chordPractice";
+import { startEarChords } from "./modes/earChords";
 import { startEarMelody } from "./modes/earMelody";
 import { startEarTraining } from "./modes/earTraining";
 import { startFreePlay } from "./modes/freePlay";
@@ -104,6 +105,12 @@ const earFilter = createFilterView({ summary: $("earFilterSummary"), body: $("ea
 earFilter.render(store.getState().settings.ear.degrees);
 $("earFilters").addEventListener("toggle", () => $("earFilterSummary").blur());
 store.subscribe((s, prev) => { if (s.settings.ear.degrees !== prev.settings.ear.degrees) earFilter.render(s.settings.ear.degrees); });
+// Ear training, chord qualities: which chord types it plays (the chord practice groups; at least two, so there's a choice)
+const earChordFilter = createFilterView({ summary: $("earChordFilterSummary"), body: $("earChordFilterBody") },
+  CHORD_PRACTICE_GROUPS, "Chord types", types => store.dispatch({ type: "setEarChordOptions", options: { types } }), 2);
+earChordFilter.render(store.getState().settings.earChords.types);
+$("earChordFilters").addEventListener("toggle", () => $("earChordFilterSummary").blur());
+store.subscribe((s, prev) => { if (s.settings.earChords.types !== prev.settings.earChords.types) earChordFilter.render(s.settings.earChords.types); });
 const tones = createTonePlayer();
 
 /* ---------------------------------------------------------------
@@ -139,6 +146,7 @@ const startModeView = (id: View): Mode =>
   : id === "routines" ? startRoutinePractice(store, practiceViews, history.recorder)
   : id === "ear" ? startEarTraining(store, { practice, tones, degrees: degreeCircle }, history.recorder)
   : id === "earMelody" ? startEarMelody(store, { ...practiceViews, tones }, history.recorder)
+  : id === "earChords" ? startEarChords(store, { ...practiceViews, tones }, history.recorder)
   : id === "progress" ? startProgress({ progress: progressView }, history.store, history.saved)
   : startSequencePractice(store, practiceViews, id, history.recorder);
 

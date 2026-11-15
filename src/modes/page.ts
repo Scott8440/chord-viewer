@@ -36,6 +36,7 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   routines: TIMED,
   ear: { ...PRACTICE, stage: "degrees" },
   earMelody: PRACTICE,
+  earChords: PRACTICE,
 };
 
 /** What's on screen: a practice mode, or the Progress page (opened from the header, apart from the modes) */

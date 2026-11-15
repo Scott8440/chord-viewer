@@ -2,6 +2,7 @@
 
 import type { ChordPracticeState } from "../../exercises/chordPractice";
 import type { PromptStyle } from "../../exercises/chordPrompt";
+import { answerOrder, qualityLabel, type ChordEarState } from "../../exercises/chordEar";
 import { degreeName, type EarState, type MelodyState } from "../../exercises/earTraining";
 import type { ProgressionState } from "../../exercises/progressions";
 import { noteName, READING_PARTS, READING_RANGES, type ReadingState } from "../../exercises/sightReading";
@@ -161,5 +162,37 @@ export function progressionDisplay(s: ProgressionState, style: PromptStyle): Pra
     sub: `${prettyAcc(s.prompt.name)} in ${prettyAcc(key.label)}`,
     status: s.status === "done" ? "correct" : s.status === "wrong" ? "wrong" : "waiting",
     feedback, score,
+  };
+}
+
+/**
+ * Ear training, chord qualities: one button per allowed type (numbered: the number keys answer too). A wrong answer's
+ * button is struck through and can't be pressed again; once right, the chord is named ("D♭ minor, first inversion").
+ */
+export function chordEarDisplay(s: ChordEarState, types: readonly string[], soundBlocked: boolean, running: boolean): PracticeDisplay {
+  const order = answerOrder(types);
+  const buttons = order.map((type, i) => {
+    const state = s.status === "correct" && type === s.prompt.type ? " right" : s.wrong.includes(type) ? " wrong" : "";
+    const disabled = !running || s.status === "correct" || s.wrong.includes(type);
+    return `<button class="answer${state}" data-answer="${esc(type)}"${disabled ? " disabled" : ""}>` +
+      (i < 9 ? `<kbd>${i + 1}</kbd>` : "") + `${esc(qualityLabel(type))}</button>`;
+  });
+  const promptHtml = `<div class="answers">${buttons.join("")}</div>`;
+  if (!running) {
+    return {
+      label: soundBlocked ? "Ready" : "Stopped", promptHtml, size: "answers",
+      sub: soundBlocked ? SOUND_WAITING : "Press Start to hear the chord again",
+      status: "waiting", feedback: "", score: scoreText(s), stopLabel: "Start",
+    };
+  }
+  const t = templateById(s.prompt.type);
+  const named = t ? `${prettyAcc(s.prompt.root)} ${t.name}` + (s.prompt.inversion ? `, ${inversionName(s.prompt.inversion)}` : "") : "";
+  let feedback = "";
+  if (s.status === "correct") feedback = `✓ ${named}`;
+  else if (s.status === "wrong") feedback = `✗ Not ${qualityLabel(s.wrong[s.wrong.length - 1]).toLowerCase()}. Listen again`;
+  return {
+    label: "Which kind of chord is it?", promptHtml, size: "answers",
+    sub: soundBlocked ? SOUND_WAITING : `Click the answer or press its number · ${order.length} kinds`,
+    status: s.status, feedback, score: scoreText(s), stopLabel: "Stop",
   };
 }

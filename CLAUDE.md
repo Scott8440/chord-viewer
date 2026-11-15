@@ -156,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 367 tests (54 voicings) should pass
+npm test           # Vitest: 380 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -394,8 +394,23 @@ scale degrees (its tonic picker reads "Key" here). Recorded as `drill: "melody"`
 degrees in `detail.melody`), charted as a 5th series. `tones.stopNotes()` cuts off a melody still playing
 (skip, replay, stop).
 
+**Chord qualities** (mode "earChords", `src/modes/earChords.ts`; pure parts in `src/exercises/chordEar.ts`): the app
+plays a chord and the player picks its kind from buttons, one per allowed type (in the filter's order, numbered: the
+number keys 1–9 answer too; `PracticeView.onAnswer` catches a prompt's `button[data-answer]`). Options (saved,
+`Settings.earChords`, `setEarChordOptions`): the chord types (the chord practice groups, `CHORD_PRACTICE_GROUPS`, in
+a filter of its own that keeps at least two: `createFilterView`'s `min`; default major and minor), Voicing (root
+position, or any inversion: the lowest tones moved up an octave, `voiceChord`) and Play (together, or broken low to
+high then together). Roots C3–B3, close position, never the same chord twice running; roots spelled as chord names
+usually are, the notes spelled from the root (`chordNames`); a test checks the recognizer names every generated
+chord as the type meant. A wrong answer strikes its button out and plays the chord again 1 s later; a right one
+names the chord ("✓ D♭ minor, 1st inversion") and draws it on the staff (nothing before that, so the staff doesn't
+give it away), then the next chord comes after 1.5 s. Replay, Stop/Start and Skip as in the other ear modes; played
+notes are ignored (answering by playing it back is for later). Chord notes play at 1/√n of a single note's level
+(`tones.play`'s `level`). Recorded as `drill: "chordEar"`, prompt the quality's label ("Major", "Dominant seventh
+(7)"), charted as a 7th series (`--series-7`, #9085e9).
+
 **Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,
-intervals and chord qualities.
+intervals; chord qualities answered by playing the chord back, and weighting towards the qualities missed.
 
 ## Sight reading (mode "notes", `src/modes/sightReading.ts`)
 Replaced note practice. Two sources, chosen by **Level** (`ReadingOptions.level`, saved in `Settings.reading`):

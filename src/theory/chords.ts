@@ -36,6 +36,11 @@ function compile(template: ChordTemplate): CompiledTemplate {
 const COMPILED = CHORD_TEMPLATES.map(compile);
 const COMPILED_BY_ID = new Map(COMPILED.map(c => [c.template.id, c]));
 
+/** A chord type's tones as semitones above the root, low to high as written, optional tones included */
+export function chordSemitones(id: string): number[] {
+  return (COMPILED_BY_ID.get(id)?.tones ?? []).map(t => Interval.semitones(t.interval) ?? 0);
+}
+
 export function templateById(id: string): ChordTemplate | undefined {
   return COMPILED_BY_ID.get(id)?.template;
 }

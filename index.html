@@ -26,6 +26,7 @@
       <option value="routines">Routines</option>
       <option value="ear">Ear training: scale degrees</option>
       <option value="earMelody">Ear training: melodies</option>
+      <option value="earChords">Ear training: chord qualities</option>
     </select>
   </label>
   <button id="progressBtn" title="Your practice history, as charts" aria-pressed="false">Progress</button>
@@ -64,6 +65,24 @@
         <details id="earFilters" open>
           <summary id="earFilterSummary"></summary>
           <div id="earFilterBody"></div>
+        </details>
+      </div>
+      <div id="earChordOptions" hidden>
+        <label class="pick">Voicing
+          <select id="earChordVoicing">
+            <option value="root">Root position</option>
+            <option value="inversions">Any inversion</option>
+          </select>
+        </label>
+        <label class="pick">Play
+          <select id="earChordPlay">
+            <option value="together">Together</option>
+            <option value="broken">Broken, then together</option>
+          </select>
+        </label>
+        <details id="earChordFilters" open>
+          <summary id="earChordFilterSummary"></summary>
+          <div id="earChordFilterBody"></div>
         </details>
       </div>
       <div id="readingOptions" hidden>

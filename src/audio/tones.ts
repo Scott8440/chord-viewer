@@ -6,8 +6,9 @@ export interface TonePlayer {
   /** Sound a drone on this note (and an octave above), fading over from any drone already playing; null fades it out.
    *  The old drone fades out over `fadeOut` seconds (default a short fade) */
   drone(midi: number | null, fadeOut?: number): void;
-  /** Play one note, `delay` seconds from now, ringing for about `ring` seconds */
-  play(midi: number, delay?: number, ring?: number): void;
+  /** Play one note, `delay` seconds from now, ringing for about `ring` seconds, at `level` (1 = a single note;
+   *  lower for the notes of a chord, so they don't sum to a distorted roar) */
+  play(midi: number, delay?: number, ring?: number, level?: number): void;
   /** Cut off every note playing or still to come (not the drone) */
   stopNotes(): void;
   /** Audio is waiting for a click or key press (browser autoplay rules) */
@@ -85,7 +86,7 @@ export function createTonePlayer(): TonePlayer {
       current?.stop(c.currentTime, fadeOut);
       current = midi == null ? null : startDrone(c, midi);
     },
-    play(midi, delay = 0, ring = NOTE_DECAY) {
+    play(midi, delay = 0, ring = NOTE_DECAY, volume = 1) {
       const c = context();
       const t = c.currentTime + delay;
       for (const [multiple, level] of NOTE_PARTIALS) {
@@ -93,7 +94,7 @@ export function createTonePlayer(): TonePlayer {
         o.frequency.value = freq(midi) * multiple;
         const decay = ring / multiple;
         g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(NOTE_GAIN * level, t + 0.008);
+        g.gain.linearRampToValueAtTime(NOTE_GAIN * level * volume, t + 0.008);
         g.gain.exponentialRampToValueAtTime(0.0005, t + decay);
         o.connect(g).connect(c.destination);
         o.start(t);

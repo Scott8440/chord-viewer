@@ -78,6 +78,10 @@ export function bindControls(store: AppStore) {
     $("earTonic").append(new Option(t === "random" ? `Random (new key every ${PROMPTS_PER_KEY})` : prettyAcc(t), t));
   }
   bindSelect($("earTonic"), s => s.ear.tonic, tonic => ({ type: "setEarOptions", options: { tonic } }));
+  bindSelect($("earChordVoicing"), s => s.earChords.inversions ? "inversions" : "root",
+    v => ({ type: "setEarChordOptions", options: { inversions: v === "inversions" } }));
+  bindSelect($("earChordPlay"), s => s.earChords.broken ? "broken" : "together",
+    v => ({ type: "setEarChordOptions", options: { broken: v === "broken" } }));
   for (const n of MELODY_LENGTHS) $("melodyLength").append(new Option(String(n), String(n)));
   bindSelect($("melodyLength"), s => String(s.ear.melodyLength),
     v => ({ type: "setEarOptions", options: { melodyLength: Number(v) } }));
@@ -152,7 +156,9 @@ export function showControls(state: AppState) {
   $("readingPartPick").hidden = s.reading.level === 0;
   // Both ear-training modes share their options; melodies have no drone, so the tonic is just the key
   const ear = id === "ear" || id === "earMelody";
-  $("earOptions").hidden = $("practiceReplay").hidden = !ear;
+  $("earOptions").hidden = !ear;
+  $("practiceReplay").hidden = !ear && id !== "earChords";
+  $("earChordOptions").hidden = id !== "earChords";
   $("melodyLengthPick").hidden = id !== "earMelody";
   $("earTonicLabel").textContent = id === "earMelody" ? "Key" : "Drone";
   const used = new Set<ExerciseOption>(ex.ids.flatMap(e => PRESCRIPTIVE[e].options));

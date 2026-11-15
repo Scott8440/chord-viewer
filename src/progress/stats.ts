@@ -155,7 +155,7 @@ export function dailyMedian<T extends { at: number }>(points: readonly T[], valu
 }
 
 /** In series order: a drill keeps its colour, so new ones go at the end */
-export const DRILLS: readonly DrillKind[] = ["notes", "chords", "progressions", "ear", "melody", "reading"];
+export const DRILLS: readonly DrillKind[] = ["notes", "chords", "progressions", "ear", "melody", "reading", "chordEar"];
 
 /** Per day and drill: the share of prompts right first time (skips count against), and how many there were */
 export function drillsPerDay(records: readonly ProgressRecord[]): Record<DrillKind, { day: string; at: number; firstTry: number; n: number }[]> {

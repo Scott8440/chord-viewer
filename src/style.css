@@ -95,7 +95,7 @@ button {
 button:hover { border-color: var(--muted); }
 
 /* Chart series (the reference palette's first five dark steps, in its fixed order) */
-:root { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; --series-6: #008300; }
+:root { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; }
 
 main {
   flex: 1; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
@@ -192,6 +192,14 @@ main {
   font-size: clamp(34px, 4.6vw, 60px); display: flex; flex-wrap: wrap; align-items: flex-start; gap: .1em 0;
 }
 #practicePrompt.sequence { font-size: clamp(22px, 2.6vw, 30px); }
+/* Ear training's chord-quality answers: one button each, numbered for the number keys */
+#practicePrompt.answers { font-size: 15px; }
+#practicePrompt .answers { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+#practicePrompt .answer { font-family: system-ui, sans-serif; font-size: 15px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 8px; }
+#practicePrompt .answer kbd { font-size: 11px; color: var(--muted); }
+#practicePrompt .answer.right { border-color: var(--ok); color: var(--ok); }
+#practicePrompt .answer.wrong { color: var(--muted); text-decoration: line-through; }
+#practicePrompt .answer:disabled { cursor: default; }
 #practicePrompt .seqTitle { font-size: 1.6em; line-height: 1.1; margin-bottom: .35em; }
 /* Sight reading: a song's composer and source under its title */
 #practicePrompt .excerptBy { font-size: .6em; color: var(--muted); }

@@ -3,6 +3,7 @@
 // Kept free of browser specifics so the same records can move to a server database later: random UUID ids (no
 // clashes between devices), UTC epoch-ms times, a schema version per record, and the device that made it.
 // Pure: the builders take everything they need, including the record's id, time and device (see recorder.ts).
+import type { ChordEarPrompt } from "../exercises/chordEar";
 import type { ChordPrompt } from "../exercises/chordPrompt";
 import type { EarPrompt, MelodyPrompt } from "../exercises/earTraining";
 import type { NotePrompt } from "../exercises/notePractice";
@@ -87,7 +88,7 @@ export interface RoutineBody {
 }
 
 /** "notes" is the old note practice (one note name, any octave), kept for its history; sight reading replaced it */
-export type DrillKind = "reading" | "notes" | "chords" | "progressions" | "ear" | "melody";
+export type DrillKind = "reading" | "notes" | "chords" | "progressions" | "ear" | "melody" | "chordEar";
 
 /** One prompt of a drill (note, chord, progression practice or ear training), answered or skipped. */
 export interface DrillBody {
@@ -202,6 +203,16 @@ export function melodyDrillBody(p: MelodyPrompt, degrees: readonly string[], ans
   return {
     kind: "drill", drill: "melody", prompt: `Root + ${length} notes`,
     detail: { key: p.keyValue, melody: p.notes.map(n => n.degree).join(" "), length, degrees: degrees.join(",") },
+    outcome: outcomeOf(answered, missed), ms: Math.round(ms),
+  };
+}
+
+/** Ear training's chord qualities: grouped by the quality ("Major", "Dominant seventh (7)") */
+export function chordEarDrillBody(p: ChordEarPrompt, label: string, types: readonly string[], answered: boolean,
+                                  missed: boolean, ms: number): DrillBody {
+  return {
+    kind: "drill", drill: "chordEar", prompt: label,
+    detail: { type: p.type, rootPc: p.rootPc, inversion: p.inversion, types: types.join(",") },
     outcome: outcomeOf(answered, missed), ms: Math.round(ms),
   };
 }

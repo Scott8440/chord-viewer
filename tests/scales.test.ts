@@ -151,7 +151,7 @@ describe("sequenceDisplay", () => {
 
 describe("exercise settings", () => {
   it("default to C major, natural minor, one octave, arpeggios from the root, triads in root position, metronome off", () => {
-    expect(createAppState().settings.exercise).toEqual({ key: "C:major", minorForm: "natural", octaves: 1, inversion: 0, sevenths: false,
+    expect(createAppState().settings.exercise).toEqual({ key: "C:major", progression: "circle-sharps", minorForm: "natural", octaves: 1, inversion: 0, sevenths: false,
       rootPosition: true, metronome: false, bpm: 80, subdivision: 1, strictness: "strict" });
   });
 

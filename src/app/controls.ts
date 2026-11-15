@@ -1,5 +1,6 @@
 // The settings controls: each shows a setting and dispatches changes to it, and `showControls` shows just the ones
 // the current mode (or page) uses.
+import { KEY_PROGRESSION_LABELS, KEY_PROGRESSIONS, type KeyProgression } from "../exercises/keyOrder";
 import { CHORD_KEYS } from "../exercises/chordPractice";
 import type { PromptStyle } from "../exercises/chordPrompt";
 import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTraining";
@@ -64,6 +65,8 @@ export function bindControls(store: AppStore) {
   bindSelect($("chordKey"), s => s.chordKey, value => ({ type: "setChordKey", value }));
   const setExercise = (options: Partial<ExerciseOptions>): AppAction => ({ type: "setExerciseOptions", options });
   bindSelect($("exKey"), s => s.exercise.key, key => setExercise({ key }));
+  for (const p of KEY_PROGRESSIONS) $("exProgression").append(new Option(KEY_PROGRESSION_LABELS[p], p));
+  bindSelect($("exProgression"), s => s.exercise.progression, v => setExercise({ progression: v as KeyProgression }));
   bindSelect($("exOctaves"), s => String(s.exercise.octaves), v => setExercise({ octaves: Number(v) as ScaleOctaves }));
   bindSelect($("exInversion"), s => String(s.exercise.inversion), v => setExercise({ inversion: Number(v) as ArpeggioInversion }));
   bindSelect($("exMinorForm"), s => s.exercise.minorForm, v => setExercise({ minorForm: v as MinorForm }));
@@ -163,7 +166,8 @@ export function showControls(state: AppState) {
   $("melodyLengthPick").hidden = id !== "earMelody";
   $("earTonicLabel").textContent = id === "earMelody" ? "Key" : "Drone";
   const used = new Set<ExerciseOption>(ex.ids.flatMap(e => PRESCRIPTIVE[e].options));
-  if (!ex.ownKey) used.delete("key");
+  // A routine sets each item's key and moves through them itself
+  if (!ex.ownKey) { used.delete("key"); used.delete("progression"); }
   $("exerciseOptions").hidden = !used.size;
   for (const el of document.querySelectorAll<HTMLElement>("#exerciseOptions [data-option]")) {
     const option = el.dataset.option as ExerciseOption;

@@ -156,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 379 tests (54 voicings) should pass
+npm test           # Vitest: 385 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -242,7 +242,16 @@ the exercise and runs it again and again; each run is measured.
   to the metronome). Playing the first step again starts the next run; Restart abandons one. The session keeps
   every run and shows the best (fewest mistakes, then most on time if timed, else most even). Results show tempo and
   evenness (or timing), not how long the run took.
-- **Options and registry:** the exercises share `ExerciseOptions` (key, minor form, octaves, arpeggio start
+- **Moving through keys** (the **Then** option, `ExerciseOptions.progression`, `src/exercises/keyOrder.ts`): each
+  exercise with a key (scales, diatonic chords, five-finger patterns, arpeggios, broken chords, chromatic scale) can
+  stay put ("Same key again", the old behaviour: play the first step to go again) or move on once a run is done:
+  round the circle of fifths sharps first (the default) or flats first, a semitone up or down, or to a random key
+  (never the same one); minor keys move through minor keys (`nextKey`, spelled as in the key lists). The mode sets
+  the next key as the exercise's Key (so the picker follows and it's saved) straight away; the last key's result
+  ("✓ C major: clean · …") shows until the next key's first note (`progressingDisplay`), the score counts keys played
+  this session, and Skip becomes "Next key". Hidden in routines, which set their own keys. A first step towards
+  folding single exercises and routines together, which may be revisited.
+- **Options and registry:** the exercises share `ExerciseOptions` (key, Then, minor form, octaves, arpeggio start
   (inversion), sevenths, root position, and the metronome: on/off, BPM, notes per beat, strictness), with one Key selector inside the exercise. `PRESCRIPTIVE` lists each exercise's builder and the options
   it uses; the UI shows just those. Adding an exercise is a builder, a registry entry, a mode id and a menu item.
 - **Scales (built):** any of the 24 keys, up and back down, 1 or 2 octaves; minor scales offer natural, harmonic

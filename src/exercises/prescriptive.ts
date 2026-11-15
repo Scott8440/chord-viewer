@@ -1,6 +1,7 @@
 // The prescriptive exercises and the options they share. Each exercise builds a SequenceExercise from the options;
 // the mode (src/modes/sequencePractice.ts) and the options UI are the same for all of them.
 import { buildKey, isKeyValue } from "../theory";
+import { KEY_PROGRESSIONS, type KeyProgression } from "./keyOrder";
 import { STRICTNESS, SUBDIVISIONS, type Strictness, type Subdivision } from "../timing/grid";
 import { diatonicChordsExercise, tonicTriadExercise } from "./diatonicChords";
 import { MINOR_FORMS, SCALE_OCTAVES, scaleExercise, type MinorForm, type ScaleOctaves } from "./scales";
@@ -13,6 +14,9 @@ import {
 export interface ExerciseOptions {
   /** Key value, e.g. "Eb:minor" */
   key: string;
+  /** Where to go once a run is done: the same key again, or on to the next (round the circle, chromatically, at
+   *  random), which then becomes `key` */
+  progression: KeyProgression;
   /** Scales: which minor scale in minor keys */
   minorForm: MinorForm;
   /** Scales, arpeggios, broken chords, chromatic: how many octaves */
@@ -38,7 +42,7 @@ export type ExerciseOption = keyof ExerciseOptions;
 export const BPM_RANGE = { min: 30, max: 240 } as const;
 
 export const DEFAULT_EXERCISE_OPTIONS: ExerciseOptions = {
-  key: "C:major", minorForm: "natural", octaves: 1, inversion: 0, sevenths: false, rootPosition: true,
+  key: "C:major", progression: "circle-sharps", minorForm: "natural", octaves: 1, inversion: 0, sevenths: false, rootPosition: true,
   metronome: false, bpm: 80, subdivision: 1, strictness: "strict",
 };
 
@@ -48,6 +52,7 @@ export function sanitizeExerciseOptions(raw: unknown): ExerciseOptions {
   const d = DEFAULT_EXERCISE_OPTIONS;
   return {
     key: typeof o.key === "string" && isKeyValue(o.key) ? o.key : d.key,
+    progression: (KEY_PROGRESSIONS as readonly unknown[]).includes(o.progression) ? o.progression as KeyProgression : d.progression,
     minorForm: (MINOR_FORMS as readonly unknown[]).includes(o.minorForm) ? o.minorForm as MinorForm : d.minorForm,
     octaves: (SCALE_OCTAVES as readonly unknown[]).includes(o.octaves) ? o.octaves as ScaleOctaves : d.octaves,
     inversion: (ARPEGGIO_INVERSIONS as readonly unknown[]).includes(o.inversion) ? o.inversion as ArpeggioInversion : d.inversion,
@@ -78,31 +83,31 @@ export const PRESCRIPTIVE = {
     short: "scale",
     chords: false,
     build: o => scaleExercise(buildKey(o.key)!, o.minorForm, o.octaves),
-    options: ["key", "octaves", "minorForm", "metronome"],
+    options: ["key", "progression", "octaves", "minorForm", "metronome"],
   },
   diatonic: {
     short: "chords",
     chords: true,
     build: o => diatonicChordsExercise(buildKey(o.key)!, { sevenths: o.sevenths, rootPosition: o.rootPosition }),
-    options: ["key", "sevenths", "rootPosition", "metronome"],
+    options: ["key", "progression", "sevenths", "rootPosition", "metronome"],
   },
   fiveFinger: {
     short: "five-finger",
     chords: false,
     build: o => fiveFingerExercise(buildKey(o.key)!),
-    options: ["key", "metronome"],
+    options: ["key", "progression", "metronome"],
   },
   arpeggios: {
     short: "arpeggio",
     chords: false,
     build: o => arpeggioExercise(buildKey(o.key)!, o.octaves, o.inversion),
-    options: ["key", "octaves", "inversion", "metronome"],
+    options: ["key", "progression", "octaves", "inversion", "metronome"],
   },
   brokenChords: {
     short: "broken chords",
     chords: false,
     build: o => brokenChordExercise(buildKey(o.key)!, o.octaves),
-    options: ["key", "octaves", "metronome"],
+    options: ["key", "progression", "octaves", "metronome"],
   },
   // Not a mode of its own: the item of triad routines, which set its key
   triad: {
@@ -115,7 +120,7 @@ export const PRESCRIPTIVE = {
     short: "chromatic",
     chords: false,
     build: o => chromaticExercise(buildKey(o.key)!, o.octaves),
-    options: ["key", "octaves", "metronome"],
+    options: ["key", "progression", "octaves", "metronome"],
   },
 } satisfies Record<string, PrescriptiveExercise>;
 

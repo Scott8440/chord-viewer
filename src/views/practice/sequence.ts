@@ -85,3 +85,21 @@ export function timingText(t: TimingSummary): string {
     (Math.abs(lean) >= 5 ? ` · ${lean < 0 ? "rushing" : "dragging"} ${Math.abs(lean)} ms` : "") +
     (t.slips ? ` · ${t.slips} slip${t.slips > 1 ? "s" : ""}` : "");
 }
+
+/**
+ * A sequence exercise moving through keys (its Then option): until the next key's first note, the feedback says how
+ * the last key went; the score counts the keys played this session; Skip moves on to the next key.
+ */
+export function progressingDisplay(d: PracticeDisplay, s: SequenceState, previous: { title: string; result: RunResult } | null,
+                                   played: number, clean: number): PracticeDisplay {
+  const out: PracticeDisplay = {
+    ...d, skipLabel: "Next key",
+    score: played ? `${played} key${played > 1 ? "s" : ""} played · ${clean} clean` : "",
+  };
+  if (previous && s.status === "ready" && !s.startHint) {
+    const title = prettyNames(previous.title), r = previous.result;
+    out.feedback = (r.mistakes ? `${title}: ${r.mistakes} mistake${r.mistakes > 1 ? "s" : ""}` : `✓ ${title}: clean`) + runText(r);
+    out.status = r.mistakes ? "waiting" : "correct";
+  }
+  return out;
+}

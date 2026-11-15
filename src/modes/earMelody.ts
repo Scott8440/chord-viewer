@@ -123,7 +123,7 @@ export function startEarMelody(store: AppStore, views: {
     render();
   }
 
-  const offInput = onPlayerInput(store, { noteOn: note => { if (running && !rounds.summary()) apply({ type: "play", note }); } });
+  const offInput = onPlayerInput(store, { noteOn: note => { if (running && !rounds.over()) apply({ type: "play", note }); } });
 
   /** Next round: on to a new melody */
   function nextRound() {
@@ -149,6 +149,7 @@ export function startEarMelody(store: AppStore, views: {
 
   return {
     stop() {
+      rounds.dispose();
       offInput();
       offSettings();
       offBlocked();
@@ -158,15 +159,15 @@ export function startEarMelody(store: AppStore, views: {
     },
     skip() {
       awaitingSound = false;
-      if (rounds.summary()) { nextRound(); return; }
+      if (rounds.over()) { if (rounds.summary()) nextRound(); else rounds.reveal(); return; }
       running = true;   // skipping while stopped starts again, on the new melody
       apply({ type: "skip", prompt: newPrompt(state.prompt) });
     },
     replay() {
-      if (running && !rounds.summary()) sound();
+      if (running && !rounds.over()) sound();
     },
     toggleRunning() {
-      if (rounds.summary()) return;
+      if (rounds.over()) return;
       awaitingSound = false;
       clearTimers();
       running = !running;

@@ -156,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 403 tests (54 voicings) should pass
+npm test           # Vitest: 404 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -440,8 +440,10 @@ score reads "Round: 7 / 20 · 5 right first time". At 20 nothing new plays (no r
 chord or note just answered; the drone fades over 2.5 s), answers and replays are ignored, and the panel shows the round: its share right first time, how many and how long, and how it compares with
 earlier rounds of the same drill played the same way (`setup`: the degrees on offer; the melody length and degrees;
 the chord types, voicing and play) — "▲ 10 points on your last round · best 85% · average 72% over your last 10
-rounds" (or "Your first round played this way …"), with small bars of the last ten and this one. Skip reads "Next
-round" and starts the next (scale degrees introduce the key again); in chord qualities the answer board instead holds
+rounds" (or "Your first round played this way …"), with small bars of the last ten and this one. The round's last answer stays on screen
+for `SUMMARY_DELAY_MS` (1 s) before the summary replaces it (`over()` blocks answers at once, `summary()` only
+returns once it's showing; at once when the round ended on a skip, or Next is pressed meanwhile: `reveal()`). Skip
+reads "Next round" and starts the next (scale degrees introduce the key again); in chord qualities the answer board instead holds
 one large Next round button in place of the boxes and Replay (`AnswerBoard.renderNext`, mapped as `skip`), and the
 panel's button is hidden (`PracticeDisplay.skipHidden`). New options start a new round. Each finished
 round is a `round` record (drill, size, firstTry, setup, durationMs), read back from the history for the comparison

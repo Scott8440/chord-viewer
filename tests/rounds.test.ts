@@ -1,8 +1,8 @@
 // Ear training in rounds: progress, the end of a round, and the comparison with earlier rounds.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { compareRound, ROUND_SIZE, roundDone, roundProgress, runningShares } from "../src/exercises/rounds";
 import { dotsSvg, lineSvg, ringSvg } from "../src/views/roundViz";
-import { createRoundKeeper } from "../src/modes/rounds";
+import { createRoundKeeper, SUMMARY_DELAY_MS } from "../src/modes/rounds";
 import { RECORD_VERSION, upgradeRecord, type ProgressRecord, type RecordBody } from "../src/progress/records";
 import { createMemoryStore } from "../src/progress/store";
 import { roundScore, roundSummaryDisplay } from "../src/views/practice";
@@ -41,6 +41,10 @@ describe("the round keeper", () => {
     keeper.next({ answered: 5, firstTry: 3 });
     expect(keeper.check({ answered: 24, firstTry: 18 })).toBe(false);
     expect(keeper.check({ answered: 25, firstTry: 19 })).toBe(true);
+    // Over at once (no more answers), the summary only after the last answer has had its moment
+    expect(keeper.over()).toBe(true);
+    expect(keeper.summary()).toBeNull();
+    keeper.reveal();
     expect(keeper.summary()).toMatchObject({ size: 20, firstTry: 16, comparison: null });
     const before = changes;
     await new Promise(r => setTimeout(r, 0));
@@ -52,6 +56,7 @@ describe("the round keeper", () => {
     expect(keeper.check({ answered: 26, firstTry: 20 })).toBe(true);
     keeper.next({ answered: 26, firstTry: 20 });
     expect(keeper.summary()).toBeNull();
+    expect(keeper.over()).toBe(false);
     expect(keeper.progress({ answered: 27, firstTry: 21 })).toEqual({ answered: 1, firstTry: 1 });
   });
 
@@ -68,6 +73,29 @@ describe("the round keeper", () => {
     expect(keeper.outcomes()).toEqual(["firstTry", "corrected", "skipped"]);
     keeper.next({ answered: 3, firstTry: 1 });
     expect(keeper.outcomes()).toEqual([]);
+  });
+
+  it("shows the summary SUMMARY_DELAY_MS after the last answer, at once after a skip, never after the mode stops", () => {
+    vi.useFakeTimers();
+    try {
+      const make = () => createRoundKeeper({ drill: "ear", setup: () => "", history: null,
+        recorder: { record: () => {}, onRecorded: () => () => {} }, changed: () => {} });
+      const answered = make();
+      answered.check({ answered: ROUND_SIZE, firstTry: 3 });
+      vi.advanceTimersByTime(SUMMARY_DELAY_MS - 1);
+      expect(answered.summary()).toBeNull();
+      vi.advanceTimersByTime(1);
+      expect(answered.summary()).not.toBeNull();
+      const skipped = make();
+      skipped.check({ answered: ROUND_SIZE, firstTry: 3 }, true);
+      vi.advanceTimersByTime(0);
+      expect(skipped.summary()).not.toBeNull();
+      const stopped = make();
+      stopped.check({ answered: ROUND_SIZE, firstTry: 3 });
+      stopped.dispose();
+      vi.advanceTimersByTime(SUMMARY_DELAY_MS);
+      expect(stopped.summary()).toBeNull();
+    } finally { vi.useRealTimers(); }
   });
 
   it("round records survive reading back", () => {

@@ -139,7 +139,7 @@ export function startEarTraining(store: AppStore, views: {
   let pausedAway = false;
   function away() {
     // Between rounds nothing is playing, and coming back mustn't start the next round by itself
-    if (!running || rounds.summary()) return;
+    if (!running || rounds.over()) return;
     pausedAway = true;
     pause(AWAY_FADE_S);
   }
@@ -209,7 +209,7 @@ export function startEarTraining(store: AppStore, views: {
     render();
   }
 
-  const offInput = onPlayerInput(store, { noteOn: note => { if (running && !rounds.summary()) apply({ type: "play", note }); } });
+  const offInput = onPlayerInput(store, { noteOn: note => { if (running && !rounds.over()) apply({ type: "play", note }); } });
 
   /** Next round: the drone and its introduction again, then a new note */
   function nextRound() {
@@ -241,6 +241,7 @@ export function startEarTraining(store: AppStore, views: {
 
   return {
     stop() {
+      rounds.dispose();
       window.removeEventListener("blur", away);
       window.removeEventListener("focus", back);
       document.removeEventListener("visibilitychange", onVisibility);
@@ -253,16 +254,16 @@ export function startEarTraining(store: AppStore, views: {
       silence();
     },
     skip() {
-      if (rounds.summary()) { awaitingSound = pausedAway = false; nextRound(); return; }
+      if (rounds.over()) { awaitingSound = pausedAway = false; if (rounds.summary()) nextRound(); else rounds.reveal(); return; }
       awaitingSound = pausedAway = false;
       running = true;   // skipping while stopped starts again, on the new note
       apply({ type: "skip", prompt: newPrompt(state.prompt) });
     },
     replay() {
-      if (running && !rounds.summary()) views.tones.play(state.prompt.note);
+      if (running && !rounds.over()) views.tones.play(state.prompt.note);
     },
     toggleRunning() {
-      if (rounds.summary()) return;
+      if (rounds.over()) return;
       awaitingSound = pausedAway = false;
       if (running && performance.now() - backAt < 600) return;
       if (running) pause();

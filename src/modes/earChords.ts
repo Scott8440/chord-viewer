@@ -66,7 +66,7 @@ export function startEarChords(store: AppStore, views: {
       return;
     }
     views.practice.render({ ...chordEarDisplay(state, options().types, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) });
-    views.answers.render(chordEarAnswers(state, options().types, running), { enabled: running });
+    views.answers.render(chordEarAnswers(state, options().types, running), { enabled: running && !rounds.over() });
   }
 
   function apply(action: ChordEarAction) {
@@ -99,9 +99,9 @@ export function startEarChords(store: AppStore, views: {
     }
   }
 
-  const answer = (quality: string) => { if (running && !rounds.summary()) apply({ type: "answer", quality }); };
+  const answer = (quality: string) => { if (running && !rounds.over()) apply({ type: "answer", quality }); };
   const offAnswer = views.answers.onAnswer(answer);
-  const offReplay = views.answers.onReplay(() => { if (running && !rounds.summary()) sound(); });
+  const offReplay = views.answers.onReplay(() => { if (running && !rounds.over()) sound(); });
   const offNext = views.answers.onNext(() => { if (rounds.summary()) nextRound(); });
 
   /** Next round: on to a new chord (the last round's last one was answered, or skipped onto a new one) */
@@ -152,6 +152,7 @@ export function startEarChords(store: AppStore, views: {
 
   return {
     stop() {
+      rounds.dispose();
       offAnswer();
       offReplay();
       offNext();
@@ -163,12 +164,12 @@ export function startEarChords(store: AppStore, views: {
     },
     skip() {
       awaitingSound = false;
-      if (rounds.summary()) { nextRound(); return; }
+      if (rounds.over()) { if (rounds.summary()) nextRound(); else rounds.reveal(); return; }
       running = true;
       apply({ type: "skip", prompt: makeChordEarPrompt(rng, options(), state.prompt) });
     },
     toggleRunning() {
-      if (rounds.summary()) return;
+      if (rounds.over()) return;
       awaitingSound = false;
       clearTimers();
       running = !running;

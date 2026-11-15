@@ -25,6 +25,16 @@ const DRONE_LOWPASS_HZ = 550, DRONE_DETUNE_CENTS = 1.5;
 
 const freq = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
+/**
+ * Stops a volume's scheduled changes at `t`, keeping the level it has reached. Not cancelScheduledValues: that
+ * throws away a ramp still in progress, so the level jumps back to where the ramp began (a note's attack peak) and
+ * clicks before any fade can start.
+ */
+function holdAt(param: AudioParam, t: number) {
+  if (typeof param.cancelAndHoldAtTime === "function") param.cancelAndHoldAtTime(t);
+  else { const v = param.value; param.cancelScheduledValues(t); param.setValueAtTime(v, t); }
+}
+
 const DRONE_GAIN = 0.07, DRONE_FADE_IN = 1.2, DRONE_FADE_OUT = 0.6;
 const NOTE_GAIN = 0.3, NOTE_DECAY = 3.2;
 /** Piano-ish: partials (multiple, level); higher ones die away faster */
@@ -72,8 +82,7 @@ export function createTonePlayer(): TonePlayer {
     for (const o of oscs) o.start(t);
     return {
       stop(at: number, fade: number) {
-        out.gain.cancelScheduledValues(at);
-        out.gain.setValueAtTime(out.gain.value, at);
+        holdAt(out.gain, at);
         out.gain.linearRampToValueAtTime(0, at + fade);
         for (const o of oscs) o.stop(at + fade + 0.05);
       },
@@ -108,8 +117,8 @@ export function createTonePlayer(): TonePlayer {
       if (!ctx) return;
       const t = ctx.currentTime;
       for (const n of notes) {
-        // A quick fade rather than a cut, so it doesn't click
-        n.gain.gain.cancelScheduledValues(t);
+        // A quick fade from wherever it has got to, rather than a cut, so it doesn't click
+        holdAt(n.gain.gain, t);
         n.gain.gain.setTargetAtTime(0, t, 0.015);
         try { n.osc.stop(t + 0.1); } catch {}
       }

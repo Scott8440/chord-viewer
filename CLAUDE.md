@@ -416,7 +416,9 @@ chord as the type meant. A wrong answer strikes its box out and plays the chord 
 its box green with the chord named on it ("D♭ minor, 1st inversion", also in the feedback), then the next chord
 comes after 1.5 s. Replay, Stop/Start and Skip as in the other ear modes; played
 notes are ignored (answering by playing it back is for later). Chord notes play at 1/√n of a single note's level
-(`tones.play`'s `level`). Recorded as `drill: "chordEar"`, prompt the quality's label ("Major", "Dominant seventh
+(`tones.play`'s `level`). Cutting notes off (replay, skip, stop) holds each note's volume where it has got to and
+fades from there (`holdAt`: `cancelAndHoldAtTime`); `cancelScheduledValues` alone would drop the decay in progress,
+jump back to the attack's peak and click. Recorded as `drill: "chordEar"`, prompt the quality's label ("Major", "Dominant seventh
 (7)"), charted as a 7th series (`--series-7`, #9085e9).
 
 **Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,

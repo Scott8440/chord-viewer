@@ -1,7 +1,7 @@
 // Moving an exercise on to another key once a run is done: round the circle of fifths, chromatically, at random, or
 // staying put. Minor keys move through the minor keys. Pure; keys are spelled as in the key lists.
 import { chromaOf, CIRCLE_OF_FIFTHS_MAJOR, CIRCLE_OF_FIFTHS_MINOR, KEY_MAJORS, KEY_MINORS } from "../theory";
-import type { Rng } from "./notePractice";
+import { pick, type Rng } from "./random";
 
 export const KEY_PROGRESSIONS = ["repeat", "circle-sharps", "circle-flats", "chromatic-up", "chromatic-down", "random"] as const;
 export type KeyProgression = typeof KEY_PROGRESSIONS[number];
@@ -34,7 +34,7 @@ export function nextKey(keyValue: string, progression: KeyProgression, rng: Rng 
     case "chromatic-down": next = step(chromatic, -1); break;
     case "random": {
       const others = chromatic.filter(t => chromaOf(t) !== pc);
-      next = others[Math.floor(rng() * others.length)];
+      next = pick(rng, others);
     }
   }
   return `${next}:${mode}`;

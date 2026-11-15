@@ -2,7 +2,7 @@
 import { Note } from "tonal";
 import { chromaOf, matchTemplate, type TemplateTone } from "../theory";
 import type { ChordPrompt } from "./chordPrompt";
-import type { Rng } from "./notePractice";
+import { randomInt, type Rng } from "./random";
 
 /** Chord tones that can be in the bass, in inversion order: root, 3rd (or sus tone), 5th, 7th or 6th. Not 9ths. */
 export function inversionTones(type: string): TemplateTone[] {
@@ -18,5 +18,5 @@ export function atInversion(prompt: ChordPrompt, number: number): ChordPrompt {
 
 /** Adds a random inversion (root position included) to a prompt. */
 export function withInversion(rng: Rng, prompt: ChordPrompt): ChordPrompt {
-  return atInversion(prompt, Math.floor(rng() * inversionTones(prompt.type).length));
+  return atInversion(prompt, randomInt(rng, inversionTones(prompt.type).length));
 }

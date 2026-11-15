@@ -1,7 +1,7 @@
 // Diatonic chords by Roman numeral: each key's triads and sevenths, and picking one to ask for.
 import { buildKey, chromaOf, KEY_MAJORS, KEY_MINORS, type KeyContext } from "../theory";
 import type { ChordPrompt } from "./chordPrompt";
-import type { Rng } from "./notePractice";
+import { pick, type Rng } from "./random";
 
 /**
  * Diatonic chords by scale degree (0 = tonic). Minor keys use harmonic minor for V, V7, vii° and vii°7,
@@ -52,13 +52,13 @@ export function makeDiatonicNamePrompt(rng: Rng, types: readonly string[], key: 
  */
 export function makeRomanPrompt(rng: Rng, types: readonly string[], key: KeyContext | null, previous?: ChordPrompt): ChordPrompt {
   for (let tries = 0; ; tries++) {
-    const keyValue = key ? key.tonic + ":" + key.mode : ALL_KEYS[Math.floor(rng() * ALL_KEYS.length)];
+    const keyValue = key ? key.tonic + ":" + key.mode : pick(rng, ALL_KEYS);
     const k = key ?? buildKey(keyValue)!;
     const all = diatonicChords(k);
     const allowed = all.filter(c => types.includes(c.type));
     const filterIgnored = allowed.length === 0;
     const pool = filterIgnored ? all.filter(c => TRIAD_TYPES.includes(c.type)) : allowed;
-    const c = pool[Math.floor(rng() * pool.length)];
+    const c = pick(rng, pool);
     const repeat = previous && previous.rootPc === c.rootPc && previous.type === c.type;
     // With a single possible chord a repeat is unavoidable
     if (!repeat || tries > 20) {

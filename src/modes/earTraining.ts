@@ -10,7 +10,8 @@ import {
   type EarState,
 } from "../exercises/earTraining";
 import { countInKey, keyRotation, rotateKey } from "../exercises/keyRotation";
-import { initialNotePractice, reduceNotePractice, type Rng } from "../exercises/notePractice";
+import { initialNotePractice, reduceNotePractice } from "../exercises/notePractice";
+import type { Rng } from "../exercises/random";
 import { createDegreeKeys } from "../input/degreeKeys";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { earDrillBody } from "../progress/records";

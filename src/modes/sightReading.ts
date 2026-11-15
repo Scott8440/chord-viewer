@@ -6,7 +6,7 @@
 import type { ExcerptLibrary } from "../app/excerpts";
 import type { Excerpt, ExcerptFile } from "../exercises/excerpts";
 import { countInKey, keyRotation, rotateKey } from "../exercises/keyRotation";
-import type { Rng } from "../exercises/notePractice";
+import { shuffled, type Rng } from "../exercises/random";
 import {
   CHORD_WINDOW_MS, excerptLevel, initialReading, makeExcerptPrompt, makeReadingPrompt, pickReadingKey, reduceReading,
   type ReadingAction, type ReadingOptions, type ReadingPrompt, type ReadingState,
@@ -22,15 +22,6 @@ import { createPromptRecords } from "./promptRecords";
 
 /** How long the finished passage stays up before the next */
 const NEXT_PROMPT_MS = 900;
-
-function shuffled<T>(rng: Rng, xs: readonly T[]): T[] {
-  const out = [...xs];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
 
 /** The passage as drawn: played notes green (a tied note all through, a chord's notes as they're struck), and the
  *  current step's other notes red after a wrong note */

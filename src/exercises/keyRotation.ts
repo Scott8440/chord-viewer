@@ -1,7 +1,7 @@
 // Which key prompts are in, for drills with a key option: a fixed key, or "random", which moves to a new key every
 // PROMPTS_PER_KEY prompts (so a key sinks in before the next). Shared by ear training, chord practice and sight
 // reading; each says which keys it allows and how its choice maps to a key. Pure.
-import type { Rng } from "./notePractice";
+import { pick, type Rng } from "./random";
 
 /** With a random key, a new key every this many prompts */
 export const PROMPTS_PER_KEY = 10;
@@ -9,7 +9,7 @@ export const PROMPTS_PER_KEY = 10;
 /** A random key from `keys`, never `previous` (so a new key is always a change) */
 export function randomKey(rng: Rng, keys: readonly string[], previous?: string | null): string {
   let k: string;
-  do k = keys[Math.floor(rng() * keys.length)]; while (k === previous);
+  do k = pick(rng, keys); while (k === previous);
   return k;
 }
 

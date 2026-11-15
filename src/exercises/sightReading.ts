@@ -10,7 +10,7 @@ import {
 } from "./excerpts";
 import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
 import { pickKey } from "./keyRotation";
-import type { Rng } from "./notePractice";
+import { pick, type Rng } from "./random";
 import { ALL_KEYS } from "./romanPrompts";
 
 export const READING_LENGTHS: readonly number[] = [1, 2, 3, 4, 5, 6, 8];
@@ -149,15 +149,14 @@ export function makeReadingPrompt(rng: Rng, keyValue: string, range: ReadingRang
                                   previous?: ReadingPrompt): ReadingPrompt {
   const key = buildKey(keyValue)!;
   const pool = readingPool(key, range);
-  const pick = <T>(xs: readonly T[]) => xs[Math.floor(rng() * xs.length)];
   for (let tries = 0; ; tries++) {
-    const notes: number[] = [pick(pool)];
+    const notes: number[] = [pick(rng, pool)];
     while (notes.length < length) {
       const last = notes[notes.length - 1];
       const near = pool.filter(n => n !== last && Math.abs(n - last) <= MAX_LEAP);
       // Steps (up to a 3rd) twice as likely as leaps
       const weighted = near.flatMap(n => Math.abs(n - last) <= 4 ? [n, n] : [n]);
-      notes.push(pick(weighted.length ? weighted : pool));
+      notes.push(pick(rng, weighted.length ? weighted : pool));
     }
     const same = previous && !previous.music && previous.keyValue === keyValue && previous.steps.length === notes.length &&
       previous.steps.every((s, i) => s[0].note === notes[i]);

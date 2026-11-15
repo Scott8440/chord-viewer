@@ -3,7 +3,7 @@
 import { chordSemitones, ROOT_MAJOR, ROOT_MINOR, templateById } from "../theory";
 import { CHORD_PRACTICE_GROUPS, CHORD_PRACTICE_TYPES } from "./chordPractice";
 import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
-import type { Rng } from "./notePractice";
+import { pick, randomInt, type Rng } from "./random";
 
 export interface ChordEarOptions {
   /** Chord template ids it may play (from the chord practice groups); at least two, so there is a choice */
@@ -50,10 +50,10 @@ export function voiceChord(rootMidi: number, type: string, inversion: number): n
 /** A chord to play: one of the allowed types on a random root, never the same chord (root and type) twice running. */
 export function makeChordEarPrompt(rng: Rng, o: ChordEarOptions, previous?: ChordEarPrompt): ChordEarPrompt {
   for (;;) {
-    const type = o.types[Math.floor(rng() * o.types.length)];
-    const rootPc = Math.floor(rng() * 12);
+    const type = pick(rng, o.types);
+    const rootPc = randomInt(rng, 12);
     if (previous && previous.type === type && previous.rootPc === rootPc) continue;
-    const inversion = o.inversions ? Math.floor(rng() * chordSemitones(type).length) : 0;
+    const inversion = o.inversions ? randomInt(rng, chordSemitones(type).length) : 0;
     const notes = voiceChord(LOWEST_ROOT + rootPc, type, inversion);
     // Spelled as chord names usually are: minor-family chords on C♯ and G♯, others on D♭ and A♭
     const root = (templateById(type)?.minor ? ROOT_MINOR : ROOT_MAJOR)[rootPc];

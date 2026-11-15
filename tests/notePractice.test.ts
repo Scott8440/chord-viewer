@@ -1,37 +1,9 @@
-// Note practice exercise: prompts and judging.
+// Judging a pitch class in any octave (used by ear training), and the mode setting.
 import { describe, expect, it } from "vitest";
-import { initialNotePractice, makeNotePrompt, reduceNotePractice, type NotePrompt } from "../src/exercises/notePractice";
+import { initialNotePractice, reduceNotePractice, type NotePrompt } from "../src/exercises/notePractice";
 import { createAppState, reduceApp } from "../src/state/app";
-import { buildKey } from "../src/theory";
 
-/** Deterministic rng that returns the given values in turn */
-const seq = (...values: number[]) => { let i = 0; return () => values[i++ % values.length]; };
 const fSharp: NotePrompt = { pc: 6, name: "F#" };
-
-describe("makeNotePrompt", () => {
-  it("picks a pitch class and spells black keys as a sharp or flat when there is no key", () => {
-    expect(makeNotePrompt(seq(6 / 12, 0.2), null)).toEqual({ pc: 6, name: "F#" });
-    expect(makeNotePrompt(seq(6 / 12, 0.8), null)).toEqual({ pc: 6, name: "Gb" });
-    expect(makeNotePrompt(seq(0, 0.8), null)).toEqual({ pc: 0, name: "C" });
-  });
-
-  it("spells from the key when one is set", () => {
-    expect(makeNotePrompt(seq(10 / 12), buildKey("F:major")).name).toBe("Bb");
-    expect(makeNotePrompt(seq(6 / 12), buildKey("D:major")).name).toBe("F#");
-  });
-
-  it("never repeats the previous note", () => {
-    const p = makeNotePrompt(seq(6 / 12, 6 / 12, 2 / 12, 0.5), null, fSharp);
-    expect(p.pc).toBe(2);
-  });
-
-  it("covers all 12 notes over time", () => {
-    const seen = new Set<number>();
-    let prompt: NotePrompt | undefined;
-    for (let i = 0; i < 500; i++) { prompt = makeNotePrompt(Math.random, null, prompt); seen.add(prompt.pc); }
-    expect(seen.size).toBe(12);
-  });
-});
 
 describe("reduceNotePractice", () => {
   it("accepts the right note in any octave, first try", () => {

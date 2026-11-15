@@ -3,7 +3,7 @@
 import type { ExcerptLibrary } from "../app/excerpts";
 import type { TonePlayer } from "../audio/tones";
 import type { ExcerptFile } from "../exercises/excerpts";
-import type { Rng } from "../exercises/notePractice";
+import type { Rng } from "../exercises/random";
 import type { Recorder } from "../progress/recorder";
 import type { ProgressStore } from "../progress/store";
 import type { AnswerBoard } from "../views/answerBoard";

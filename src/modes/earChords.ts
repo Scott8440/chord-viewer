@@ -9,7 +9,8 @@ import {
   answerOrder, initialChordEar, makeChordEarPrompt, qualityLabel, reduceChordEar,
   type ChordEarAction, type ChordEarOptions, type ChordEarPrompt, type ChordEarState,
 } from "../exercises/chordEar";
-import type { Rng } from "../exercises/notePractice";
+import type { Rng } from "../exercises/random";
+import { isTypingOrModified } from "../input/keys";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { chordEarDrillBody } from "../progress/records";
 import type { AnswerBoard } from "../views/answerBoard";
@@ -67,8 +68,7 @@ export function startEarChords({ store, views, recorder = noRecorder, history = 
 
   /** The number keys answer: 1 for the first button, and so on (not while typing in a field, nor with modifiers) */
   function onKey(e: KeyboardEvent) {
-    const target = e.target as HTMLElement;
-    if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || target.tagName === "INPUT" || target.tagName === "SELECT") return;
+    if (e.repeat || isTypingOrModified(e)) return;
     const n = Number(e.key);
     const order = answerOrder(options().types);
     if (!Number.isInteger(n) || n < 1 || n > Math.min(9, order.length)) return;

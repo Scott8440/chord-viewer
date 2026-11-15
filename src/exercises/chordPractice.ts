@@ -7,7 +7,7 @@ import { DEFAULT_CHORD_MATCH, isChord, type ChordMatchOptions } from "./chordMat
 import type { ChordPrompt } from "./chordPrompt";
 import { answeredRight, answeredWrong, movedOn, type Judged } from "./judging";
 import { pickKey } from "./keyRotation";
-import type { Rng } from "./notePractice";
+import { pick, randomInt, type Rng } from "./random";
 import { ALL_KEYS } from "./romanPrompts";
 
 /** Chord types offered in the filter, grouped as shown. Ids are chord template ids. */
@@ -53,8 +53,8 @@ export function sanitizeChordTypes(ids: readonly string[]): string[] {
 export function makeChordPrompt(rng: Rng, types: readonly string[], key: KeyContext | null, previous?: ChordPrompt): ChordPrompt {
   let rootPc: number, type: string;
   do {
-    rootPc = Math.floor(rng() * 12);
-    type = types[Math.floor(rng() * types.length)];
+    rootPc = randomInt(rng, 12);
+    type = pick(rng, types);
   } while (previous && rootPc === previous.rootPc && type === previous.type);
   const t = templateById(type);
   if (!t) throw new Error(`Unknown chord type: ${type}`);

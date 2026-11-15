@@ -4,7 +4,7 @@ import {
   initialProgression, makeProgressionPrompt, reduceProgression,
   type ProgressionAction, type ProgressionState,
 } from "../exercises/progressions";
-import type { Rng } from "../exercises/notePractice";
+import type { Rng } from "../exercises/random";
 import { buildKey } from "../theory";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { progressionDrillBody } from "../progress/records";

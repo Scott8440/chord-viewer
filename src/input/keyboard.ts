@@ -1,6 +1,7 @@
 // Computer keyboard input source (for testing without a controller).
 // A–K white keys, W/E/T/Y/U black keys, Z/X octave, Space pedal, Esc panic.
 import type { Emit } from "./events";
+import { isTypingOrModified } from "./keys";
 
 export const KEYBOARD_SOURCE = "kbd";
 
@@ -18,8 +19,7 @@ export function createKeyboardSource(emit: Emit, onOctave: (octave: number) => v
   const down = new Map<string, number>();  // key -> MIDI note it started
 
   window.addEventListener("keydown", (e) => {
-    const target = e.target as HTMLElement;
-    if (e.metaKey || e.ctrlKey || e.altKey || target.tagName === "INPUT" || target.tagName === "SELECT") return;
+    if (isTypingOrModified(e)) return;
     const k = e.key.toLowerCase();
     if (e.key === "Escape") { emit({ type: "panic", time: e.timeStamp }); down.clear(); return; }
     if (e.repeat) { if (k in KEYMAP || k === " ") e.preventDefault(); return; }

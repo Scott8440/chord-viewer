@@ -4,7 +4,7 @@ import { buildKey, chromaOf, KEY_MAJORS, KEY_MINORS, type KeyContext } from "../
 import { freshAttempt, trackAttempt, type ChordAttempt } from "./chordAttempt";
 import { isChord } from "./chordMatch";
 import type { ChordPrompt } from "./chordPrompt";
-import type { Rng } from "./notePractice";
+import { pick, type Rng } from "./random";
 
 export interface ProgressionStep {
   /** Roman numeral as the app writes it (romanFor), e.g. "ii7", "VII" */
@@ -109,7 +109,7 @@ export function makeProgressionPrompt(rng: Rng, key: KeyContext | null, previous
   for (let tries = 0; ; tries++) {
     const def = weightedPick(rng, candidates);
     const tonics = def.mode === "major" ? KEY_MAJORS : KEY_MINORS;
-    const k = key ?? buildKey(tonics[Math.floor(rng() * tonics.length)] + ":" + def.mode)!;
+    const k = key ?? buildKey(pick(rng, tonics) + ":" + def.mode)!;
     const keyValue = k.tonic + ":" + k.mode;
     if (!previous || previous.id !== def.id || previous.keyValue !== keyValue || tries > 20) {
       return { id: def.id, name: def.name, keyValue, chords: progressionChords(def, k) };

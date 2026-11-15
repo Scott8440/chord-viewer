@@ -8,7 +8,7 @@ import {
   type MelodyState,
 } from "../exercises/earTraining";
 import { countInKey, keyRotation, rotateKey } from "../exercises/keyRotation";
-import type { Rng } from "../exercises/notePractice";
+import type { Rng } from "../exercises/random";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { melodyDrillBody } from "../progress/records";
 import { buildKey } from "../theory";

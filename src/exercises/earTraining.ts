@@ -3,11 +3,12 @@
 // same pitch. Both
 // share the options: which degrees can come up (starting with just 1 and 5) and the tonic.
 // Pure data and functions; the mode in src/modes/earTraining.ts drives it and makes the sound. Answers are judged
-// like note practice (reduceNotePractice).
+// by reduceNotePractice (src/exercises/notePractice.ts).
 import { buildKey, chromaOf, KEY_MAJORS } from "../theory";
 import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
 import { pickKey, PROMPTS_PER_KEY } from "./keyRotation";
-import type { NotePracticeAction, NotePracticeState, NotePrompt, Rng } from "./notePractice";
+import type { NotePracticeAction, NotePracticeState, NotePrompt } from "./notePractice";
+import { pick, randomInt, type Rng } from "./random";
 
 export { PROMPTS_PER_KEY };
 
@@ -89,8 +90,8 @@ export function makeEarPrompt(rng: Rng, tonic: string, degrees: readonly string[
   const pool = EAR_DEGREES.filter(d => degrees.includes(d.id));
   let d: typeof pool[number], note: number;
   do {
-    d = pool[Math.floor(rng() * pool.length)];
-    note = tonicMidi(tonic) + d.semitones + 12 * Math.floor(rng() * EAR_OCTAVES);
+    d = pick(rng, pool);
+    note = tonicMidi(tonic) + d.semitones + 12 * randomInt(rng, EAR_OCTAVES);
   } while (previous && note === previous.note);
   return { keyValue: tonic + ":major", degree: d.id, note, pc: note % 12, name: buildKey(tonic + ":major")!.spell[note % 12] };
 }
@@ -125,14 +126,13 @@ export function makeMelodyPrompt(rng: Rng, tonic: string, degrees: readonly stri
   const root = tonicMidi(tonic);
   const pool = EAR_DEGREES.filter(d => degrees.includes(d.id)).map(d => ({ degree: d.id, note: root + d.semitones }));
   if (degrees.includes("1")) pool.push({ degree: "1", note: root + 12 });
-  const pick = <T>(xs: readonly T[]) => xs[Math.floor(rng() * xs.length)];
   const note = (degree: string, midi: number): MelodyNote => ({ degree, note: midi, pc: midi % 12, name: key.spell[midi % 12] });
   for (let tries = 0; ; tries++) {
     const notes: MelodyNote[] = [note("1", root)];
     for (let i = 0; i < length; i++) {
       const last = notes[notes.length - 1].note;
       const fresh = pool.filter(c => c.note !== last);
-      const c = pick(fresh.length ? fresh : pool);
+      const c = pick(rng, fresh.length ? fresh : pool);
       notes.push(note(c.degree, c.note));
     }
     const same = previous && previous.keyValue === tonic + ":major" &&

@@ -6,7 +6,6 @@
 import type { ChordEarPrompt } from "../exercises/chordEar";
 import type { ChordPrompt } from "../exercises/chordPrompt";
 import type { EarPrompt, MelodyPrompt } from "../exercises/earTraining";
-import type { NotePrompt } from "../exercises/notePractice";
 import type { ExerciseOptions, PrescriptiveId } from "../exercises/prescriptive";
 import type { ProgressionPrompt } from "../exercises/progressions";
 import { READING_PARTS, READING_RANGES, type ReadingPrompt } from "../exercises/sightReading";
@@ -87,7 +86,8 @@ export interface RoutineBody {
   tempo: TempoSettings | null;
 }
 
-/** "notes" is the old note practice (one note name, any octave), kept for its history; sight reading replaced it */
+/** "notes" is the old note practice (one note name, any octave), which sight reading replaced: nothing records it any
+ *  more, but it stays a kind so older history still loads and shows */
 export type DrillKind = "reading" | "notes" | "chords" | "progressions" | "ear" | "melody" | "chordEar";
 
 /** One prompt of a drill (note, chord, progression practice or ear training), answered or skipped. */
@@ -168,10 +168,6 @@ function chordLabel(c: ChordPrompt): string {
 
 const outcomeOf = (answered: boolean, missed: boolean): DrillBody["outcome"] =>
   !answered ? "skipped" : missed ? "corrected" : "firstTry";
-
-export function noteDrillBody(p: NotePrompt, answered: boolean, missed: boolean, ms: number): DrillBody {
-  return { kind: "drill", drill: "notes", prompt: p.name, detail: { pc: p.pc }, outcome: outcomeOf(answered, missed), ms: Math.round(ms) };
-}
 
 /** A line of sight reading, judged as a whole; grouped by level for songs ("Songs, level 2"), by length and staff
  *  for generated lines ("4 notes, treble"), since lines rarely repeat */

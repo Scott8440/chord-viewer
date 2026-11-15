@@ -6,7 +6,7 @@ import type { ChordPrompt } from "../exercises/chordPrompt";
 import { withInversion } from "../exercises/inversions";
 import { makeDiatonicNamePrompt, makeRomanPrompt } from "../exercises/romanPrompts";
 import { keyRotation, rotateKey } from "../exercises/keyRotation";
-import type { Rng } from "../exercises/notePractice";
+import type { Rng } from "../exercises/random";
 import { buildKey } from "../theory";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { chordDrillBody } from "../progress/records";

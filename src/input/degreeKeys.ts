@@ -1,6 +1,7 @@
 // Number keys as an input source, for answering by scale degree without a controller: 1–7 play that degree of the
 // current key. Only on while a mode that asks for degrees turns it on; the mode says which note each digit is.
 import type { Emit } from "./events";
+import { isTypingOrModified } from "./keys";
 
 export const DEGREE_KEYS_SOURCE = "deg";
 
@@ -10,8 +11,7 @@ export function createDegreeKeys(emit: Emit, noteOf: (digit: string) => number |
   const down = new Map<string, number>();  // digit -> MIDI note it started
 
   function keydown(e: KeyboardEvent) {
-    const target = e.target as HTMLElement;
-    if (e.metaKey || e.ctrlKey || e.altKey || target.tagName === "INPUT" || target.tagName === "SELECT") return;
+    if (isTypingOrModified(e)) return;
     if (!/^[1-7]$/.test(e.key)) return;
     e.preventDefault();
     if (e.repeat || down.has(e.key)) return;

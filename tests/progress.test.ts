@@ -7,8 +7,8 @@ import { scaleExercise } from "../src/exercises/scales";
 import { runResult } from "../src/exercises/sequence";
 import { createRecorder } from "../src/progress/recorder";
 import {
-  chordDrillBody, exportFile, noteDrillBody, parseExport, progressionDrillBody, RECORD_VERSION, routineBody, runBody,
-  upgradeRecord, type ProgressRecord,
+  chordDrillBody, exportFile, parseExport, progressionDrillBody, RECORD_VERSION, routineBody, runBody,
+  upgradeRecord, type DrillBody, type ProgressRecord,
 } from "../src/progress/records";
 import { createMemoryStore } from "../src/progress/store";
 import { buildKey } from "../src/theory";
@@ -74,13 +74,6 @@ describe("routine records", () => {
 });
 
 describe("drill records", () => {
-  it("notes: first try, corrected or skipped", () => {
-    const p = { pc: 6, name: "F#" };
-    expect(noteDrillBody(p, true, false, 812.4)).toEqual({ kind: "drill", drill: "notes", prompt: "F#", detail: { pc: 6 }, outcome: "firstTry", ms: 812 });
-    expect(noteDrillBody(p, true, true, 0).outcome).toBe("corrected");
-    expect(noteDrillBody(p, false, true, 0).outcome).toBe("skipped");
-  });
-
   it("chords: as asked, with what's needed to group them", () => {
     const named = chordDrillBody({ rootPc: 0, root: "C", type: "maj7", inversion: { number: 1, bass: "E", bassPc: 4 } }, true, false, 1500);
     expect(named).toMatchObject({ prompt: "Cmaj7/E", detail: { type: "maj7", rootPc: 0, style: "names", inversion: 1 } });
@@ -99,8 +92,12 @@ describe("drill records", () => {
 });
 const PROG_ID = "I-V-vi-IV";
 
+/** A drill record from the old note practice, as it was saved: nothing makes these now, but old history has them */
+const oldNoteDrill = (name: string, pc: number, outcome: DrillBody["outcome"] = "firstTry"): DrillBody =>
+  ({ kind: "drill", drill: "notes", prompt: name, detail: { pc }, outcome, ms: 100 });
+
 describe("reading records back", () => {
-  const good = { ...noteDrillBody({ pc: 0, name: "C" }, true, false, 100), ...meta("a") };
+  const good = { ...oldNoteDrill("C", 0), ...meta("a") };
 
   it("keeps valid records, drops malformed ones and ones from a newer version", () => {
     expect(upgradeRecord(good)).toEqual(good);
@@ -121,7 +118,7 @@ describe("reading records back", () => {
 });
 
 describe("store", () => {
-  const rec = (id: string, at: number) => ({ ...noteDrillBody({ pc: 0, name: "C" }, true, false, 100), ...meta(id, at) }) as ProgressRecord;
+  const rec = (id: string, at: number) => ({ ...oldNoteDrill("C", 0), ...meta(id, at) }) as ProgressRecord;
 
   it("keeps records oldest first", async () => {
     const s = createMemoryStore();
@@ -154,8 +151,8 @@ describe("recorder", () => {
     const recorder = createRecorder(Promise.resolve(store), "my-device", () => 1234, () => `id-${++n}`);
     const seen: string[] = [];
     recorder.onRecorded(r => seen.push(r.id));
-    recorder.record(noteDrillBody({ pc: 0, name: "C" }, true, false, 100));
-    recorder.record(noteDrillBody({ pc: 2, name: "D" }, false, false, 100));
+    recorder.record(oldNoteDrill("C", 0));
+    recorder.record(oldNoteDrill("D", 2, "skipped"));
     await new Promise(r => setTimeout(r, 0));
     const all = await store.all();
     expect(all.map(r => ({ id: r.id, v: r.v, at: r.at, device: r.device }))).toEqual([

@@ -1,9 +1,6 @@
-// Note practice: the app names a note, the player plays it in any octave.
-// Pure data and functions; the mode in src/modes/notePractice.ts drives it.
-import { FLAT, SHARP, type KeyContext } from "../theory";
+// Judging a "play this pitch class" prompt, in any octave: ear training by scale degree uses it. It began as note
+// practice (the app named a note), which sight reading replaced; only the judging is left. Pure.
 import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
-
-export type Rng = () => number;
 
 export interface NotePrompt {
   /** Pitch class to play (0 = C) */
@@ -12,18 +9,7 @@ export interface NotePrompt {
   name: string;
 }
 
-/**
- * Picks a note to ask for: any of the 12 pitch classes, never the same as the previous prompt.
- * Spelled from the key if one is set; otherwise black keys are a sharp or a flat at random.
- */
-export function makeNotePrompt(rng: Rng, key: KeyContext | null, previous?: NotePrompt): NotePrompt {
-  let pc: number;
-  do pc = Math.floor(rng() * 12); while (previous && pc === previous.pc);
-  const name = key ? key.spell[pc] : (rng() < 0.5 ? SHARP : FLAT)[pc];
-  return { pc, name };
-}
-
-/** Generic in the prompt, so other "play this pitch class" drills (ear training) judge the same way */
+/** Generic in the prompt, so a drill can ask with its own prompt type (ear training adds the degree and octave) */
 export interface NotePracticeState<P extends NotePrompt = NotePrompt> extends Judged<P> {
   /** Last note played for this prompt (MIDI number) */
   played: number | null;

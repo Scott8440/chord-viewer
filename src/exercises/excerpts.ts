@@ -88,9 +88,11 @@ export interface Excerpt {
   /** Key signature, in fifths: 2 is D major or B minor, −3 E♭ major or C minor */
   key: number;
   time: [number, number];
-  /** One staff for a melody; the right hand's and the left hand's for piano */
+  /** One staff for a melody or one hand; the right hand's and the left hand's for piano (as cut, and in a
+   *  both-hands file) */
   staves: ExcerptStaff[];
-  /** Measured for each part it can be read as (a melody: "voice"; piano: whichever hands have enough to play) */
+  /** Measured for each part it can be read as (a melody: "voice"; piano: whichever hands have enough to play). In
+   *  a part's file, only that part */
   parts: Partial<Record<ReadingPart, ExcerptFeatures>>;
   /** Not as written: "bass" is a song's melody in the right hand with a simple bass added in the left */
   arranged?: "bass";
@@ -103,12 +105,33 @@ export interface ExcerptSource {
   scoreId: string;
 }
 
+/** The file shape's version: 3 is one file per part, each excerpt holding only that part's staves and features */
+export const EXCERPT_FILE_VERSION = 3;
+
+/** One part's excerpts (reading/lieder-<part>.json): only what that part needs to be drawn and judged */
 export interface ExcerptFile {
-  version: 2;
+  version: typeof EXCERPT_FILE_VERSION;
+  part: ReadingPart;
   /** Shown with the excerpts */
   credit: string;
+  /** Only the songs this part's excerpts come from */
   sources: ExcerptSource[];
   excerpts: Excerpt[];
+}
+
+export const EXCERPT_PARTS: readonly ReadingPart[] = ["voice", "rh", "lh", "both"];
+
+/** Where a part's excerpts are served, next to the page */
+export const excerptFileName = (part: ReadingPart) => `lieder-${part}.json`;
+
+/** The file if it's a well-formed excerpt file for the part (this version, this part); else throws */
+export function checkExcerptFile(f: unknown, part: ReadingPart): ExcerptFile {
+  const file = f as Partial<ExcerptFile> | null;
+  if (!file || file.version !== EXCERPT_FILE_VERSION || file.part !== part || typeof file.credit !== "string" ||
+      !Array.isArray(file.sources) || !Array.isArray(file.excerpts)) {
+    throw new Error(`not a version ${EXCERPT_FILE_VERSION} excerpt file for ${part}`);
+  }
+  return file as ExcerptFile;
 }
 
 const BASE: Record<NoteValue, number> = { w: 1, h: 1 / 2, q: 1 / 4, "8": 1 / 8, "16": 1 / 16, "32": 1 / 32, "64": 1 / 64 };
@@ -160,9 +183,11 @@ export function ledgerLines(step: number, clef: Clef): number {
   return step < low ? Math.floor((low + 1 - step) / 2) : step > high ? Math.floor((step - high + 1) / 2) : 0;
 }
 
-/** The staves a part reads: a melody's one, or the piano's right hand, left hand or both */
+/** The staves a part reads: a melody's one, or the piano's right hand, left hand or both (an excerpt from a hand's
+ *  file has only that hand's staff) */
 export function partStaves(e: Excerpt, part: ReadingPart): ExcerptStaff[] {
-  return part === "rh" ? [e.staves[0]] : part === "lh" ? [e.staves[1]] : e.staves;
+  if (part === "voice" || part === "both" || e.staves.length === 1) return e.staves;
+  return part === "rh" ? [e.staves[0]] : [e.staves[1]];
 }
 
 const mapNotes = (staves: readonly ExcerptStaff[], f: (n: ExcerptNote) => ExcerptNote): ExcerptStaff[] =>

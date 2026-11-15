@@ -156,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 404 tests (54 voicings) should pass
+npm test           # Vitest: 415 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -469,10 +469,11 @@ Replaced note practice. Two sources, chosen by **Level** (`ReadingOptions.level`
   hand, or both hands on a grand staff. Rhythm as written, transposed into the Key (any of the 24, or Random: a new
   key every `PROMPTS_PER_KEY` = 10 passages; default C major; a passage moves by signature, so G major also reads as
   E minor, and the sub says "G major / E minor"). The Level list names the part's own levels (melody and piano
-  differ). Each part and level's excerpts are dealt in a shuffled order, all before any repeats. The files are
-  fetched the first time they're needed (`src/app/excerpts.ts`: `reading/lieder.json` for melodies,
-  `reading/lieder-piano.json` only when piano is chosen; the mode shows "Loading songs…", or "Couldn't load the
-  songs": choosing the level again retries). Drawn by `src/views/staffMusic.ts` on one staff, or a grand staff with
+  differ). Each part and level's excerpts are dealt in a shuffled order, all before any repeats. Each part's file is
+  fetched the first time that part is needed (`src/app/excerpts.ts`: `reading/lieder-<part>.json`, only the part
+  chosen; the mode shows "Loading songs…", or "Couldn't load the songs": choosing the level again retries; opened
+  as a local file, where the browser won't fetch, "Songs need the online version (GitHub Pages) or a local
+  server"). Drawn by `src/views/staffMusic.ts` on one staff, or a grand staff with
   a brace for both hands (clef, key and time signature, bars as written, chords, up to four voices a staff with stems
   up/down and rests raised/lowered, hidden space where a voice sits out, beams by the time signature's default groups
   within a voice, dots, ties, tuplet brackets, rests, accidentals per bar and staff via VexFlow's
@@ -509,10 +510,12 @@ notes**: excerpts keep every note value, dot, tie, rest, tuplet, chord and voice
   redistribution or teaching materials. Fetch the corpus (not committed, `corpus/` is git-ignored) with
   `git clone --depth 1 --filter=blob:none --sparse https://github.com/OpenScore/Lieder corpus/lieder`, then
   `git -C corpus/lieder sparse-checkout set --no-cone '/scores/**/*.mscx' '/LICENSE.txt'` (about 500 MB).
-- **Import:** `node scripts/corpus/import.ts` (Node 24 runs the TypeScript directly; about 20 s) writes
-  `public/reading/lieder.json` (melodies; 8 MB, 0.5 MB gzipped) and `public/reading/lieder-piano.json` (15.9 MB,
-  0.9 MB gzipped), both committed, and prints, per part, how the excerpts spread over the levels, which single limit
-  holds most back from levels 1–3, and the main measures. `scripts/corpus/xml.ts` is a small XML parser.
+- **Import:** `node scripts/corpus/import.ts` (Node 22.18+ or 24 runs the TypeScript directly; about 20 s) writes
+  one file per part through `splitByPart`/`writeParts` (`scripts/corpus/parts.ts`), all committed:
+  `public/reading/lieder-voice.json` (melodies; 8.7 MB, 0.50 MB gzipped), `lieder-rh.json` (8.6 MB, 0.47 MB),
+  `lieder-lh.json` (6.3 MB, 0.37 MB) and `lieder-both.json` (13.1 MB, 0.74 MB; the arranged pieces too). It
+  prints, per part, how the excerpts spread over the levels, which single limit holds most back from levels 1–3, and
+  the main measures. `scripts/corpus/xml.ts` is a small XML parser.
   `mscx.ts` reads the voice part's staff and the piano's two staves (each staff's clef from its `defaultClef` or the
   instrument's `<clef staff="n">`; a clef before a bar's first note is that bar's) of a MuseScore 2 or 3 score into bars of voices: version 3 `<voice>` wrappers,
   each with a position cursor (`<location>` jumps; a gap becomes hidden space, `hide`; running back over itself is
@@ -537,15 +540,22 @@ notes**: excerpts keep every note value, dot, tie, rest, tuplet, chord and voice
   length, more for a note sounding as the bass starts; leaning to I/vi at the start and end and to staying put), in
   the octave nearest the last, F2–G3. Kept only when it comes out at piano level 1 (508 now), with `arranged: "bass"`
   and id `<melody id>+bass`; the credit then reads "melody from OpenScore Lieder, bass added".
-  `scripts/corpus/import.ts` isn't typechecked (no Node types); the rest is, and tested in `tests/corpus.test.ts`.
-- **Format** (version 2, `src/exercises/excerpts.ts`, shared): an `Excerpt` is key (fifths), time, `staves` (one for
-  a melody; right and left hand for piano), each a clef and `voices[voice][bar]` of `ExcerptEvent`s
+  All of `scripts/corpus` is typechecked (the few Node APIs used are declared in `scripts/corpus/node.d.ts`; there's
+  no @types/node) and tested in `tests/corpus.test.ts` and `tests/excerptFiles.test.ts` (splitting; the committed
+  files' level counts; loading). `scripts/corpus/split.ts` was the one-off that split the version 2 files
+  (`lieder.json`, `lieder-piano.json`) into this layout without the corpus.
+- **Format** (version 3, `EXCERPT_FILE_VERSION`, `src/exercises/excerpts.ts`, shared): one `ExcerptFile` per part
+  (`version`, `part`, `credit`, only the `sources` its excerpts use, `excerpts`), read strictly (`checkExcerptFile`:
+  this version, this part). Each excerpt holds only its part: its staves (a melody's or one hand's one staff, or
+  both hands') and its features. An `Excerpt` is key (fifths), time, `staves` (one for a melody; right and left hand
+  for piano as cut), each a clef and `voices[voice][bar]` of `ExcerptEvent`s
   `{v: "w"|"h"|"q"|"8"|…, d?: dots, t?: [actual, normal], n?: [{p: MIDI, s: tpc spelling, tie?}] (absent: a rest),
   bar?: whole-bar rest, hide?: space}`, and `parts`: the `ExcerptFeatures` for each part it can be read as (`voice`,
   or `rh`, `lh`, `both`): strikes, bars, key accidentals, chromatic notes, range (the widest staff), ledger lines (the
   most any note needs, `ledgerLines`), widest leap and share of steps (each voice's top line in treble, bottom in
   bass), note values, shortest value, dotted, ties, tuplets, rests inside, syncopations, compound time, chord (most
-  notes struck at once in a hand), span (its widest) and voices (most in a staff). `partStaves` picks a part's staves.
+  notes struck at once in a hand), span (its widest) and voices (most in a staff). `partStaves` picks a part's staves
+  (a one-staff excerpt's is its staff).
 - **Steps and ties** (`excerptTimeline`, `excerptSteps`): a tied note lands on the same pitch starting as it ends, in
   its own voice or else another voice of the same staff (piano parts often tie from one voice into another); the
   steps are every untied note starting at each moment, and `stepOf` gives each event's step (a tied-over chord's is

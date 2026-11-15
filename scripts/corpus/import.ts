@@ -1,18 +1,17 @@
 // Builds the sight-reading excerpts from the OpenScore Lieder corpus (CC0) and prints how they spread across the
-// difficulty measures: the melodies (public/reading/lieder.json) and the piano parts (public/reading/lieder-piano.json,
-// a separate file since it's bigger and only needed when reading piano). Run from the project root, with the corpus
-// fetched into corpus/lieder (see CLAUDE.md):
+// difficulty measures: the melodies and the piano parts, written one file per reading part (public/reading/
+// lieder-voice.json, -rh, -lh and -both: the app fetches only the part chosen; see parts.ts). Run from the project
+// root, with the corpus fetched into corpus/lieder (see CLAUDE.md):
 //   node scripts/corpus/import.ts
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { gzipSync } from "node:zlib";
 import {
-  fitsLevel, levelsFor, readingLevel, type Excerpt, type ExcerptFeatures, type ExcerptFile, type ExcerptSource,
-  type ReadingPart,
+  fitsLevel, levelsFor, readingLevel, type Excerpt, type ExcerptFeatures, type ExcerptSource, type ReadingPart,
 } from "../../src/exercises/excerpts.ts";
 import { bassFor } from "./arrange.ts";
 import { asMelody, cutExcerpts, cutPianoExcerpts, measure } from "./excerpts.ts";
 import { readMscx } from "./mscx.ts";
+import { splitByPart, writeParts } from "./parts.ts";
 
 const ROOT = "corpus/lieder/scores";
 const CREDIT = "Excerpts from the OpenScore Lieder Corpus (CC0), https://github.com/OpenScore/Lieder";
@@ -86,16 +85,9 @@ for (const path of scores(ROOT)) {
   }));
 }
 
-mkdirSync("public/reading", { recursive: true });
-function write(out: string, c: ReturnType<typeof collection>) {
-  const file: ExcerptFile = { version: 2, credit: CREDIT, sources: c.sources, excerpts: c.excerpts };
-  const json = JSON.stringify(file);
-  writeFileSync(out, json);
-  console.log(`${out}: ${c.excerpts.length} excerpts from ${c.sources.length} songs, after ${c.duplicates} duplicates ` +
-    `(${(json.length / 1024 / 1024).toFixed(1)} MB, ${(gzipSync(json).length / 1024 / 1024).toFixed(1)} MB gzipped)`);
-}
-write("public/reading/lieder.json", melodies);
-write("public/reading/lieder-piano.json", piano);
+console.log(`Melodies: ${melodies.excerpts.length} excerpts from ${melodies.sources.length} songs, after ` +
+  `${melodies.duplicates} duplicates; piano: ${piano.excerpts.length} from ${piano.sources.length}, after ${piano.duplicates}`);
+writeParts("public/reading", splitByPart(CREDIT, [melodies, piano]));
 
 /* ------------------------------------------------------------------ report */
 console.log(`Skipped: ${[...skipped].map(([k, n]) => `${n} ${k}`).join(", ")}`);

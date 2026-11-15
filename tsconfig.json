@@ -12,7 +12,6 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "tests", "scripts", "vite.config.ts"],
-  // The importer's runner uses Node's file APIs, which have no types here (no @types/node); the parts it runs are checked
-  "exclude": ["scripts/corpus/import.ts"]
+  // The corpus scripts' few Node APIs are declared in scripts/corpus/node.d.ts (no @types/node)
+  "include": ["src", "tests", "scripts", "vite.config.ts"]
 }

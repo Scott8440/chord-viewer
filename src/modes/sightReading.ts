@@ -2,7 +2,7 @@
 // or both; at the chosen level, rhythm as written, transposed into the key) or a generated line of quarter notes,
 // played back left to right at the exact pitch, a note or a chord at a time. A wrong note holds the step (drawn red)
 // until the right one; the next passage comes after the last. With a random key, a new key every PROMPTS_PER_KEY
-// passages. The songs are fetched the first time a level asks for them (the piano parts only when piano is chosen).
+// passages. The songs are fetched the first time a level asks for them (only the part chosen).
 import type { ExcerptLibrary } from "../app/excerpts";
 import { PROMPTS_PER_KEY } from "../exercises/earTraining";
 import type { Excerpt, ExcerptFile } from "../exercises/excerpts";
@@ -44,7 +44,8 @@ export function musicOf(s: ReadingState): StaffMusic {
   return { staves: m.staves, time: m.time, styles };
 }
 
-const libraryOf = (o: ReadingOptions): ExcerptLibrary => o.part === "voice" ? "melody" : "piano";
+/** Each part has its own file of excerpts */
+const libraryOf = (o: ReadingOptions): ExcerptLibrary => o.part;
 
 export function startSightReading(store: AppStore, views: {
   staff: StaffView; practice: PracticeView;

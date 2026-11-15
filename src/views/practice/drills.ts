@@ -59,8 +59,16 @@ export function sightReadingDisplay(s: ReadingState): PracticeDisplay {
   };
 }
 
-/** Sight reading while the songs load, or when they couldn't */
-export function readingLoadingDisplay(failed: boolean): PracticeDisplay {
+/** Sight reading while the songs load, or when they couldn't (opened as a local file, the browser won't fetch them) */
+export function readingLoadingDisplay(failed: boolean,
+                                      fromFile = typeof location !== "undefined" && location.protocol === "file:"): PracticeDisplay {
+  if (failed && fromFile) {
+    return {
+      label: "Songs need the online version (GitHub Pages) or a local server", promptHtml: "", size: "note",
+      sub: "Opened as a file, the page can't load them; choose Generated notes to read here", status: "waiting",
+      feedback: "", score: "",
+    };
+  }
   return {
     label: failed ? "Couldn't load the songs" : "Loading songs…", promptHtml: "", size: "note",
     sub: failed ? "Check the connection and choose the level again, or choose Generated notes" : "",

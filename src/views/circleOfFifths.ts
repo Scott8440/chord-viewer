@@ -80,7 +80,7 @@ export function circleSvg(model: CircleModel): string {
       const [lx, ly] = point((r1 + r2) / 2, pos);
       // The name sits a little above the middle when a numeral goes under it
       const nameY = numeral ? ly - 3 : ly + 1;
-      parts.push(`<g class="${classes}"><path d="${segment(pos, r1, r2)}"/>` +
+      parts.push(`<g class="${esc(classes)}"><path d="${segment(pos, r1, r2)}"/>` +
         `<text class="name" x="${lx.toFixed(1)}" y="${nameY.toFixed(1)}">${esc(label)}</text>` +
         (numeral ? `<text class="num" x="${lx.toFixed(1)}" y="${(ly + 7).toFixed(1)}">${esc(numeral)}</text>` : "") + "</g>");
     });
@@ -91,12 +91,12 @@ export function circleSvg(model: CircleModel): string {
   if (model.center) {
     const arrow = model.center.arrow ?? "";
     center = `<text class="c1" x="0" y="-2">${esc(model.center.text)}</text>` +
-             (arrow ? `<text class="c2" x="0" y="12">${arrow}</text>` : "");
+             (arrow ? `<text class="c2" x="0" y="12">${esc(arrow)}</text>` : "");
   } else if (focus) {
     const [tonic, mode] = focus.split(":");
     const sig = keySignature(buildKey(focus)!);
     center = `<text class="c1" x="0" y="-2">${esc(prettyAcc(tonic) + (mode === "minor" ? "m" : ""))}</text>` +
-             `<text class="c2" x="0" y="11">${sig.count ? sig.count + prettyAcc(sig.accidental) : "no ♯/♭"}</text>`;
+             `<text class="c2" x="0" y="11">${esc(sig.count ? sig.count + prettyAcc(sig.accidental) : "no ♯/♭")}</text>`;
   }
   return `<svg class="cof" viewBox="-100 -100 200 200" role="img" aria-label="Circle of fifths">${parts.join("")}${center}</svg>`;
 }

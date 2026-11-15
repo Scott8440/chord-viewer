@@ -89,11 +89,11 @@ export function lineChartSvg(m: LineChartModel, width: number): { svg: string; a
   const f = frame(m.range, values, width, m.yInclude);
   let body = axes(f, m.range, width, m.format);
   for (const s of m.series) {
-    body += (s.dots ?? []).map(p => `<circle class="dot" cx="${f.x(p.at).toFixed(1)}" cy="${f.y(p.value).toFixed(1)}" r="3.5" fill="${s.color}"/>`).join("");
+    body += (s.dots ?? []).map(p => `<circle class="dot" cx="${f.x(p.at).toFixed(1)}" cy="${f.y(p.value).toFixed(1)}" r="3.5" fill="${esc(s.color)}"/>`).join("");
     if (s.points.length > 1) {
-      body += `<polyline class="line" stroke="${s.color}" points="${s.points.map(p => `${f.x(p.at).toFixed(1)},${f.y(p.value).toFixed(1)}`).join(" ")}"/>`;
+      body += `<polyline class="line" stroke="${esc(s.color)}" points="${s.points.map(p => `${f.x(p.at).toFixed(1)},${f.y(p.value).toFixed(1)}`).join(" ")}"/>`;
     }
-    body += s.points.map(p => `<circle class="marker" cx="${f.x(p.at).toFixed(1)}" cy="${f.y(p.value).toFixed(1)}" r="4" fill="${s.color}"/>`).join("");
+    body += s.points.map(p => `<circle class="marker" cx="${f.x(p.at).toFixed(1)}" cy="${f.y(p.value).toFixed(1)}" r="4" fill="${esc(s.color)}"/>`).join("");
   }
   // Hover: one anchor per day that has a point in any series, listing every series there
   const days = [...new Set(m.series.flatMap(s => s.points.map(p => p.at)))].sort((a, b) => a - b);
@@ -116,7 +116,7 @@ export function columnChartSvg(m: ColumnChartModel, width: number): { svg: strin
     // 4px rounded data end, square at the baseline
     const path = `M${x.toFixed(1)},${base}V${(top + r).toFixed(1)}Q${x.toFixed(1)},${top.toFixed(1)} ${(x + r).toFixed(1)},${top.toFixed(1)}` +
       `H${(x + bw - r).toFixed(1)}Q${(x + bw).toFixed(1)},${top.toFixed(1)} ${(x + bw).toFixed(1)},${(top + r).toFixed(1)}V${base}Z`;
-    return `<path class="bar" data-i="${i}" d="${path}" fill="${m.color}"/>`;
+    return `<path class="bar" data-i="${i}" d="${path}" fill="${esc(m.color)}"/>`;
   }).join("");
   const anchors = m.days.map((d, i) => ({ x: f.x(d.at), title: shortDate(d.at), rows: [{ name: m.name, color: m.color, value: m.format(d.value) }], mark: i }));
   return { svg: `<svg class="chart" viewBox="0 0 ${width} ${H}" width="${width}" height="${H}" role="img">${axes(f, m.range, width, m.format)}${bars}</svg>`, anchors };

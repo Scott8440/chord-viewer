@@ -139,7 +139,7 @@ export function createProgressView(el: HTMLElement, actions: {
       const weak = weakestPrompts(records);
       const drillCard = card("All drills: right first time", "Skips count as not right first time", drillSeries.length
         // Always a legend, even for one line: the card's title doesn't say which drills it holds
-        ? `<div class="pvLegend">${drillSeries.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>` +
+        ? `<div class="pvLegend">${drillSeries.map(s => `<span><i style="background:${esc(s.color)}"></i>${esc(s.name)}</span>`).join("")}</div>` +
           chart("pvDrills", { kind: "line", range, format: pct, yInclude: [0, 1], series: drillSeries }, "Share of drill prompts right first time per day") +
           table(["Day", ...drillSeries.map(s => s.name)], [...new Set(drillSeries.flatMap(s => s.points.map(p => p.at)))].sort((a, b) => a - b)
             .map(at => [longDate(at), ...drillSeries.map(s => { const p = s.points.find(q => q.at === at); return p ? `${pct(p.value)} (${p.note})` : "–"; })])) +

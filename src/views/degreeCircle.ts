@@ -4,6 +4,7 @@
 // between their neighbours (♭3 between 2 and 3), with their name shown briefly. It never shows note names: only degrees.
 import { degreeName, EAR_DEGREES } from "../exercises/earTraining";
 import { prettyAcc } from "../theory";
+import { esc } from "./html";
 
 export type PingKind = "hear" | "correct" | "wrong";
 
@@ -35,7 +36,7 @@ export function degreeCircleSvg(offered: readonly string[]): string {
     const on = offered.includes(d.id);
     return `<g class="node${on ? " on" : ""}" data-semitones="${d.semitones}">` +
       `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${NODE_R}"/>` +
-      `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}">${d.label}</text></g>`;
+      `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}">${esc(d.label)}</text></g>`;
   }).join("");
   return `<svg class="degrees" viewBox="0 0 ${SIZE} ${SIZE}" role="img" aria-label="Scale degrees">` +
     `<circle class="ring" cx="${C}" cy="${C}" r="${RADIUS}"/>${nodes}<g class="pings"></g></svg>`;
@@ -74,7 +75,7 @@ export function createDegreeCircle(el: HTMLElement): DegreeCircleView {
         const g = document.createElementNS(SVG_NS, "g");
         g.setAttribute("class", `node passing ${kind}`);
         g.innerHTML = `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${NODE_R * 0.8}"/>` +
-          `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}">${prettyAcc(degreeName(pc))}</text>`;
+          `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}">${esc(prettyAcc(degreeName(pc)))}</text>`;
         g.addEventListener("animationend", () => g.remove());
         pings.append(g);
       }

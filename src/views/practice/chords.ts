@@ -31,7 +31,7 @@ export function romanHtml(numeral: string, inversion?: number): string {
   const raised = quality + (figures.length === 1 ? figures[0] : "");
   let html = esc(base);
   if (raised) html += `<span class="ext">${esc(raised)}</span>`;
-  if (figures.length === 2) html += `<span class="fig"><span>${figures[0]}</span><span>${figures[1]}</span></span>`;
+  if (figures.length === 2) html += `<span class="fig"><span>${esc(figures[0])}</span><span>${esc(figures[1])}</span></span>`;
   return html;
 }
 

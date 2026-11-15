@@ -24,6 +24,8 @@ mode and views subscribe to the store.
   - `midi.ts`: `parseMidiMessage` (pure: raw bytes to event) and `createMidiSource` (access, per-input on/off,
     hot-plug, status).
   - `keyboard.ts`: computer-keyboard source (source `"kbd"`, channel 0).
+  - `keys.ts`: `isTypingOrModified`, the check every computer-key handler starts with (a key going into a field, or
+    held with Cmd/Ctrl/Alt, isn't for the app); each handler decides about key repeats itself.
 - `src/state/`: state, no DOM.
   - `performance.ts`: pure reducer for held notes (per `source:channel`), pedal-sustained notes and pedals, plus
     `soundingNotes` and `pedalOnlyNotes`. Returns the same object when nothing changed.
@@ -43,17 +45,20 @@ mode and views subscribe to the store.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed. A subscriber
     that unsubscribes during a dispatch is not called for the rest of it (the old mode on a mode switch).
 - `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
-  `spelling.ts` (note names, `spellNote`, `prettyAcc`), `key.ts` (`buildKey`, `KeyContext`, the circle of fifths
+  `spelling.ts` (note names, `spellNote`, `prettyAcc`), `key.ts` (`buildKey`, `requireKey` for a key that must be
+  there, `KeyContext`, the circle of fifths
   `CIRCLE_OF_FIFTHS_MAJOR`/`_MINOR` and `circlePosition`, `keySignature` counted from the key's scale so F♯ major
   is 6♯ and its relative E♭ minor 6♭), `chordTemplates.ts`
-  (chord types and scoring weights: data only), `chords.ts` (`matchTemplate`, `chordReadings`, `analyze`),
+  (chord types and scoring weights: data only), `chords.ts` (`matchTemplate`, `chordReadings`, `analyze`,
+  `templateById` and `requireTemplate`),
   `roman.ts` (`romanFor`), re-exported from `index.ts`.
-- `src/exercises/`: exercises as pure data and functions. `notePractice.ts`: `makeNotePrompt` (random pitch class,
-  never the same twice; spelled from the key, else sharp or flat at random) and `reduceNotePractice` (judges each
-  note-on in any octave; tracks wrong attempts, answered and right-first-time counts; skip counts as answered; no
-  mode uses `makeNotePrompt` any more, since sight reading replaced note practice).
+- `src/exercises/`: exercises as pure data and functions. `random.ts`: `Rng` (injected everywhere, so tests pass a
+  seeded one), `randomInt`, `pick` and `shuffled`, each with a fixed number of rng calls. `notePractice.ts`:
+  `reduceNotePractice` (judges each note-on in any octave; tracks wrong attempts, answered and right-first-time
+  counts; skip counts as answered), all that's left of note practice, which sight reading replaced; ear training
+  by degree uses it.
   `judging.ts`: what every prompt-and-answer reducer shares (`Judged`: prompt, waiting/wrong/correct, missed,
-  answered, firstTry; `answeredRight`, `answeredWrong`, `movedOn` for next/skip), so note practice, melodies, chord
+  answered, firstTry; `answeredRight`, `answeredWrong`, `movedOn` for next/skip), so degrees, melodies, chord
   qualities, chord practice and sight reading each state only how they judge and what else they keep.
   `keyRotation.ts`: the key option shared by ear training, chord practice and sight reading (`PROMPTS_PER_KEY`,
   `pickKey`/`randomKey`, and the pure `KeyRotation` with `keyRotation`, `rotateKey`, `countInKey`); each drill's
@@ -99,7 +104,7 @@ mode and views subscribe to the store.
   (`fiveFingerExercise`, `arpeggioExercise`, `brokenChordExercise`, `chromaticExercise`); `prescriptive.ts` is the registry (`PRESCRIPTIVE`: how each
   exercise builds its sequence from the shared `ExerciseOptions`, which options it uses, a short name and whether it
   has chord steps). `routines.ts`: routines (see "Routines" below): `circleOfFifths(direction)`, `eachKey`, the
-  curated `ROUTINES`, the runner `reduceRoutine` (wraps `reduceSequence`), `routineSummary`, and `keyProgress`
+  curated `ROUTINES` (`routineById`, `requireRoutine`), the runner `reduceRoutine` (wraps `reduceSequence`), `routineSummary`, and `keyProgress`
   (state per key, shared by the routine row and the circle).
 - `src/timing/`: pure. `transport.ts` (`Transport`, `beatAt`, `timeOfBeat`, `retempo`), `grid.ts` (judging a
   step against the metronome: `judgeTime`, `timingVerdict`, `timingSummary`) and `calibration.ts` (tap-along latency). See "Metronome" below.
@@ -111,7 +116,8 @@ mode and views subscribe to the store.
   note isn't a gesture), `click.ts` (the metronome click: Web Audio look-ahead scheduler that follows the transport),
   `tones.ts` (ear training: a synthesised drone and piano-ish note, no samples; `blocked()` while audio waits for a
   gesture).
-- `src/views/`: DOM rendering only: `beat.ts` (the beat light), `staff.ts` (VexFlow; also `staffCorner`), `staffCorner.ts`
+- `src/views/`: DOM rendering only: `dom.ts` (`required(root, selector)`: an element a view needs, or a clear
+  error), `beat.ts` (the beat light), `staff.ts` (VexFlow; also `staffCorner`), `staffCorner.ts`
   (`fitToStaffCorner`), `charts.ts` (line and column time charts: pure SVG builders + `mountChart` with the hover
   layer), `progressView.ts` (the Progress view), `chordName.ts` (also `chordSymbolHtml`),
   `practice/` (the practice panel, one file per job: `view.ts` renders a `PracticeDisplay`; `drills.ts`,
@@ -144,7 +150,8 @@ mode and views subscribe to the store.
   fades to "Play something" over 2 s (it owns how that looks); any input brings the chord straight back.
   **Exercises never use the header key**, and the header Key picker is hidden outside free play: a key is either
   part of the prompt ("V7 in G major") or chosen inside the exercise (the scale selector).
-  `freePlay.ts` adds the chord name with the 40 ms debounce. `sightReading.ts` (mode id "notes") feeds each new
+  `freePlay.ts` adds the chord name with the 40 ms debounce. `sightReading.ts` (mode id "reading"; it was "notes",
+  and a saved "notes" loads as "reading") feeds each new
   note-on to `reduceMelody` and moves to the next line 900 ms after its last note. `chordPractice.ts`
   feeds the held keys to its reducer (900 ms before the next prompt) and asks again if the filter rules out the
   current chord. `progressionPractice.ts` feeds the held keys to the progression reducer and starts a new
@@ -163,7 +170,7 @@ mode and views subscribe to the store.
   only when the settings changed, not on every note; `showControls` shows the
   controls the mode uses: exercise options are tagged `data-option` and shown when the exercise lists them),
   `history.ts` (opens practice history and runs the footer's count, Export and Import), `calibration.ts` (the
-  calibration dialog, from the button or by itself) and `dom.ts` (`$`, and `onPress` for buttons that blur when
+  calibration dialog, from the button or by itself) and `dom.ts` (`$`, which throws for a missing id, and `onPress` for buttons that blur when
   clicked). Main starts each view through `MODE_REGISTRY` (`src/modes/registry.ts`: view id → start function, a
   `Record<View, …>`, so a mode left out doesn't compile); every start function takes one object (`ModeDeps`: store,
   all the views, recorder, history store, `saved`, excerpt loader, optional rng) and uses the parts it needs.
@@ -171,8 +178,9 @@ mode and views subscribe to the store.
 - `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
   `chords.test.ts` covers template matching, cost explanations and transposition consistency;
   `performance.test.ts`, `midi.test.ts` and `app.test.ts` cover the reducers and MIDI parsing; `settings.test.ts`
-  the settings table against a fake localStorage (round trip, formats, legacy values, saving only what changed, setters
-  that change nothing) and the mode registry.
+  the settings table against a fake localStorage (round trip, formats, legacy values such as the old "notes" mode id,
+  saving only what changed, setters that change nothing) and the mode registry; `sequencePractice.test.ts` the
+  exercise mode moving on a key after a run, and not after it has stopped.
 
 ```
 npm install
@@ -211,7 +219,7 @@ page on GitHub Pages). Still no server of our own and no telemetry.
   presses the control (`click()`, so a disabled one does nothing) and neither its note-on nor note-off reaches the
   performance (main's `input` asks the mapper first). Mapped controls show their key in a corner badge
   (`data-midi-label`, kept up to date by a MutationObserver since controls are redrawn). Saved in localStorage
-  `chordDisplay.midiMap`. Any control can be made mappable by giving it `data-midi-map` (and `data-midi-name`).
+  `chordDisplay.midiMap` (mappings saved under sight reading's old mode id, "notes", load as "reading"). Any control can be made mappable by giving it `data-midi-map` (and `data-midi-name`).
 - **Staff layout is fixed:** room is always reserved for the full A0–C8 range so the staff never moves. Both chords
   share one VexFlow `TickContext` pinned at a fixed x, so noteheads never shift sideways and accidentals extend
   left. Treble/bass split is at middle C (≥ 60 goes on the treble staff). A row of notes (`StaffRow`: exercises,
@@ -279,7 +287,8 @@ the exercise and runs it again and again; each run is measured.
   stay put ("Same key again", the old behaviour: play the first step to go again) or move on once a run is done:
   round the circle of fifths sharps first (the default) or flats first, a semitone up or down, or to a random key
   (never the same one); minor keys move through minor keys (`nextKey`, spelled as in the key lists). The mode sets
-  the next key as the exercise's Key (so the picker follows and it's saved) straight away; the last key's result
+  the next key as the exercise's Key (so the picker follows and it's saved) straight away (in a microtask, after
+  the run's action; skipped if the mode has stopped by then); the last key's result
   ("✓ C major: clean · …") shows until the next key's first note (`progressingDisplay`), the score counts keys played
   this session, and Skip becomes "Next key". Hidden in routines, which set their own keys. A first step towards
   folding single exercises and routines together, which may be revisited.
@@ -491,7 +500,7 @@ round Replay or the degree circle).
 **Next:** minor and chromatic degrees, a drone on/off and volume, resolving the note to the tonic after answering,
 intervals; chord qualities answered by playing the chord back, and weighting towards the qualities missed.
 
-## Sight reading (mode "notes", `src/modes/sightReading.ts`)
+## Sight reading (mode "reading", `src/modes/sightReading.ts`)
 Replaced note practice. Two sources, chosen by **Level** (`ReadingOptions.level`, saved in `Settings.reading`):
 - **Songs, levels 1–5 (default 1):** a passage from a song (see "Sight-reading excerpts"). **Read**
   (`ReadingOptions.part`, `READING_PARTS`): Melody (the voice part, default), or the piano part's right hand, left
@@ -528,7 +537,7 @@ together". No timing yet. The held keys aren't
 drawn (they'd cover the notes to read). Recorded as `drill: "reading"`, prompt "Songs, level 2" (melody), "Piano,
 right hand, level 2" … (detail: key, part, level, excerpt id, notes, chords as "C4+E4") or "4 notes, treble",
 charted as a 6th series (`--series-6`, the palette's green); old note-practice records (`"notes"`) still chart, as
-"Note names (old)".
+"Note names (old)": nothing records that kind any more, but it stays in `DrillKind` so old history loads.
 **Next:** judging rhythm against the metronome; more easy piano (see the level counts below).
 
 ## Sight-reading excerpts (`src/exercises/excerpts.ts`, `scripts/corpus`)

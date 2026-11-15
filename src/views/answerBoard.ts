@@ -38,9 +38,9 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
   return {
     render(boxes, replay) {
       const replayHtml = replay
-        ? `<button class="replay" title="Play it again"${replay.enabled ? "" : " disabled"}><span aria-hidden="true">▶</span> Replay</button>` : "";
+        ? `<button class="replay" title="Play it again" data-midi-map="replay" data-midi-name="Replay"${replay.enabled ? "" : " disabled"}><span aria-hidden="true">▶</span> Replay</button>` : "";
       const html = replayHtml + `<div class="boxes">` + boxes.map(b =>
-        `<button class="box${b.state ? " " + b.state : ""}" data-answer="${esc(b.id)}"${b.disabled ? " disabled" : ""}>` +
+        `<button class="box${b.state ? " " + b.state : ""}" data-answer="${esc(b.id)}" data-midi-map="answer:${esc(b.id)}" data-midi-name="${esc(b.label)}"${b.disabled ? " disabled" : ""}>` +
         (b.key ? `<kbd>${b.key}</kbd>` : "") + `<span class="boxLabel">${esc(b.label)}</span>` +
         `<span class="boxDetail">${b.detail ? esc(b.detail) : "&nbsp;"}</span></button>`).join("") + `</div>`;
       // Redraw only on change, so a box isn't replaced under the pointer mid-click

@@ -192,6 +192,18 @@ main {
   font-size: clamp(34px, 4.6vw, 60px); display: flex; flex-wrap: wrap; align-items: flex-start; gap: .1em 0;
 }
 #practicePrompt.sequence { font-size: clamp(22px, 2.6vw, 30px); }
+/* MIDI mapping (src/app/midiMap.ts): the footer button, mappable controls outlined while mapping, the one waiting
+   for a key, and each mapped control's key in a corner badge */
+#midiMapBtn.on { background: var(--accent); border-color: var(--accent); color: #14161a; }
+#midiMapHint { margin-left: 8px; color: var(--accent); }
+[data-midi-map] { position: relative; }
+body.midiMapping [data-midi-map] { outline: 2px dashed var(--accent); outline-offset: 3px; cursor: crosshair; }
+body.midiMapping [data-midi-map].midiWaiting { outline-style: solid; outline-width: 3px; animation: midiWait 1s ease-in-out infinite; }
+@keyframes midiWait { 50% { outline-color: transparent; } }
+[data-midi-label]::after {
+  content: attr(data-midi-label); position: absolute; top: -9px; right: -9px; padding: 1px 6px; border-radius: 999px;
+  background: var(--accent); color: #14161a; font: 600 11px system-ui, sans-serif; text-decoration: none; pointer-events: none;
+}
 /* Ear training rounds: the score while playing (src/views/roundViz.ts) */
 #roundViz { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; margin: 14px 0 4px; }
 #roundViz .rvNote { font-size: 12px; color: var(--muted); flex-basis: 100%; }

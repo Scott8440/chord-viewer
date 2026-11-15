@@ -156,7 +156,7 @@ mode and views subscribe to the store.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 399 tests (54 voicings) should pass
+npm test           # Vitest: 403 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,
@@ -180,6 +180,16 @@ page on GitHub Pages). Still no server of our own and no telemetry.
 - **Debounce:** the staff redraws on every animation frame. The chord name waits about 40 ms of stillness so rolled
   chords don't flicker.
 - **Computer keyboard input** for testing: A–K plus W/E/T/Y/U, Z/X for octave, Space for pedal.
+- **MIDI mapping** (`src/input/midiMap.ts` pure, `src/app/midiMap.ts` on the page): the footer's **MIDI map** button
+  turns mapping on and outlines every control with `data-midi-map` (the chord-quality answer boxes `answer:<type>`,
+  Replay `replay` on the board and in the panel, `stop`, `skip`); clicking one picks it (instead of pressing it), and
+  the next key pressed is mapped to it (Delete clears it, Esc cancels, Esc again or the button ends mapping). A key
+  maps to one control, a control has one key. Mappings are per mode (`MidiMap`: mode → control → note), so a key is
+  only taken in the mode it was mapped in, and only while its control is on screen (`offsetParent`); there the key
+  presses the control (`click()`, so a disabled one does nothing) and neither its note-on nor note-off reaches the
+  performance (main's `input` asks the mapper first). Mapped controls show their key in a corner badge
+  (`data-midi-label`, kept up to date by a MutationObserver since controls are redrawn). Saved in localStorage
+  `chordDisplay.midiMap`. Any control can be made mappable by giving it `data-midi-map` (and `data-midi-name`).
 - **Staff layout is fixed:** room is always reserved for the full A0–C8 range so the staff never moves. Both chords
   share one VexFlow `TickContext` pinned at a fixed x, so noteheads never shift sideways and accidentals extend
   left. Treble/bass split is at middle C (≥ 60 goes on the treble staff). A row of notes (`StaffRow`: exercises,

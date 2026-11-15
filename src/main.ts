@@ -6,6 +6,7 @@ import { bindControls, showControls } from "./app/controls";
 import { loadExcerpts } from "./app/excerpts";
 import { $ } from "./app/dom";
 import { openHistory } from "./app/history";
+import { createMidiMapper } from "./app/midiMap";
 import { deviceId, loadSettings, saveSettingsOnChange } from "./app/storage";
 import { createClickPlayer } from "./audio/click";
 import { createTonePlayer } from "./audio/tones";
@@ -49,7 +50,12 @@ import { fitToStaffCorner } from "./views/staffCorner";
    --------------------------------------------------------------- */
 const store = createStore(reduceApp, createAppState(loadSettings($<HTMLInputElement>("optPedal").checked)));
 saveSettingsOnChange(store);
-const input = (event: InputEvent) => store.dispatch({ type: "input", event });
+// MIDI mapping: a mapped key presses its control (in the mode it was mapped in) instead of being played
+const midiMapper = createMidiMapper({
+  button: $<HTMLButtonElement>("midiMapBtn"), hint: $("midiMapHint"),
+  scope: () => store.getState().page === "progress" ? null : store.getState().settings.mode,
+});
+const input = (event: InputEvent) => { if (!midiMapper.handle(event)) store.dispatch({ type: "input", event }); };
 bindControls(store);
 const history = openHistory(deviceId(), () => mode.refresh?.());
 

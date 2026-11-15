@@ -55,7 +55,7 @@
       <div id="practiceSub"></div>
       <div id="roundViz" hidden></div>
       <div id="practiceFeedback"></div>
-      <div id="practiceFooter"><span id="practiceScore"></span><button id="practiceReplay" hidden title="Play the note again">Replay</button><button id="practiceStop" hidden title="Stop or start the sound"></button><button id="practiceSkip" title="Skip this one">Skip</button></div>
+      <div id="practiceFooter"><span id="practiceScore"></span><button id="practiceReplay" hidden title="Play the note again" data-midi-map="replay" data-midi-name="Replay">Replay</button><button id="practiceStop" hidden title="Stop or start the sound" data-midi-map="stop" data-midi-name="Stop / Start"></button><button id="practiceSkip" title="Skip this one" data-midi-map="skip" data-midi-name="Skip / Next">Skip</button></div>
       <div id="earOptions" hidden>
         <label class="pick"><span id="earTonicLabel">Drone</span>
           <select id="earTonic"></select>
@@ -201,6 +201,8 @@
   <label class="opt"><input type="checkbox" id="optPedal" checked> Pedal-held notes count toward chord</label>
   <span>Computer keys: <kbd>A</kbd>–<kbd>K</kbd> white, <kbd>W</kbd><kbd>E</kbd><kbd>T</kbd><kbd>Y</kbd><kbd>U</kbd> black, <kbd>Z</kbd>/<kbd>X</kbd> octave, <kbd>Space</kbd> pedal, <kbd>Esc</kbd> clear</span>
   <span id="kbdOct"></span>
+  <span id="midiMap"><button id="midiMapBtn" title="Map keys on your keyboard to buttons on the page" aria-pressed="false">MIDI map</button>
+    <span id="midiMapHint"></span></span>
   <span id="history" title="Your practice history, kept in this browser">History: <span id="historyCount">…</span>
     · <button class="link" id="historyExport">Export</button> · <button class="link" id="historyImport">Import</button>
     <input type="file" id="historyFile" accept=".json,application/json" hidden>

@@ -4,6 +4,7 @@
 // mode it was mapped in. Mapped controls show their key in a corner badge. Saved in localStorage.
 import type { InputEvent } from "../input/events";
 import { assignNote, clearTarget, midiNoteName, noteFor, sanitizeMidiMap, targetFor, type MidiMap } from "../input/midiMap";
+import { loadJson, saveItem } from "./safeStorage";
 
 const STORAGE = "chordDisplay.midiMap";
 
@@ -19,9 +20,8 @@ export function createMidiMapper(o: {
   /** The mode mappings are kept for, or null when there's nothing to map (the Progress page) */
   scope(): string | null;
 }): MidiMapper {
-  let map: MidiMap = {};
-  try { map = sanitizeMidiMap(JSON.parse(localStorage.getItem(STORAGE) ?? "{}")); } catch {}
-  const save = () => { try { localStorage.setItem(STORAGE, JSON.stringify(map)); } catch {} };
+  let map: MidiMap = sanitizeMidiMap(loadJson(STORAGE));
+  const save = () => saveItem(STORAGE, JSON.stringify(map));
 
   let mapping = false;
   /** The control waiting for a key */

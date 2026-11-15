@@ -106,7 +106,9 @@ describe("chord qualities", () => {
   function start(blocked = false) {
     const t = setup(blocked);
     const answers = fakeBoard();
-    const mode = startEarChords(t.store, { practice: t.practice, tones: t.tones, answers, roundViz: t.roundViz }, t.recorder, null, seeded());
+    const mode = startEarChords({
+      store: t.store, views: { practice: t.practice, tones: t.tones, answers, roundViz: t.roundViz }, recorder: t.recorder, rng: seeded(),
+    });
     /** Major and minor triads in root position (the default options): the 3rd gives it away */
     const right = () => { const n = lastSounded(t.tones); return n[1] - n[0] === 4 ? "M" : "m"; };
     const wrong = () => right() === "M" ? "m" : "M";
@@ -255,7 +257,9 @@ describe("scale degrees", () => {
     if (o.tonic) t.store.dispatch({ type: "setEarOptions", options: { tonic: o.tonic } });
     const pings: string[] = [];
     const degrees = { render: () => {}, ping: (semitones: number, kind: string) => { pings.push(`${semitones} ${kind}`); } };
-    const mode = startEarTraining(t.store, { practice: t.practice, tones: t.tones, degrees, roundViz: t.roundViz }, t.recorder, null, seeded(7));
+    const mode = startEarTraining({
+      store: t.store, views: { practice: t.practice, tones: t.tones, degrees, roundViz: t.roundViz }, recorder: t.recorder, rng: seeded(7),
+    });
     /** The note to find: the last one played */
     const target = () => { const n = lastSounded(t.tones); return n[n.length - 1]; };
     return { ...t, pings, mode, target };
@@ -380,8 +384,9 @@ describe("melodies", () => {
     const t = setup();
     t.store.dispatch({ type: "setEarOptions", options: { tonic: "C" } });
     const staff = { render: vi.fn() };
-    const mode: Mode = startEarMelody(t.store, { staff, practice: t.practice, tones: t.tones, roundViz: t.roundViz } as never,
-      t.recorder, null, seeded(3));
+    const mode: Mode = startEarMelody({
+      store: t.store, views: { staff, practice: t.practice, tones: t.tones, roundViz: t.roundViz } as never, recorder: t.recorder, rng: seeded(3),
+    });
     return { ...t, staff, mode };
   }
 

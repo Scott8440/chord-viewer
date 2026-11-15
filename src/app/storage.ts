@@ -1,67 +1,59 @@
-// Settings saved between sessions in localStorage: loaded into the initial state, and saved on every change.
-// Every read and write tolerates storage being unavailable (private windows, blocked site data).
-import type { SavedSettings, Settings } from "../state/app";
+// Settings saved between sessions in localStorage: loaded into the initial state, and each saved when it changes.
+// Where and how each is kept is in the settings table (`SETTINGS`, src/state/settings.ts).
 import type { AppStore } from "../modes/performance";
 import { uuid } from "../progress/recorder";
+import { SETTING_NAMES, SETTINGS, type SavedSettings, type SettingName, type SettingSpec, type Settings } from "../state/settings";
+import { loadItem, loadJson, saveItem } from "./safeStorage";
 
-const STORAGE = {
-  key: "chordDisplay.key", mode: "chordDisplay.mode", chordTypes: "chordDisplay.chordTypes",
-  promptStyle: "chordDisplay.promptStyle", inversions: "chordDisplay.inversions", chordKey: "chordDisplay.chordKey", exercise: "chordDisplay.exercise",
-  routine: "chordDisplay.routine", ear: "chordDisplay.ear", earChords: "chordDisplay.earChords", reading: "chordDisplay.reading",latency: "chordDisplay.latency", latencyCalibrated: "chordDisplay.latencyCalibrated",
-  /** This browser's random id for practice history records */
-  device: "chordDisplay.device",
-  /** Scale options saved by an earlier version ({key, minorForm, octaves}), read if there are no exercise options */
-  legacyScale: "chordDisplay.scale",
-};
-const load = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
-const loadJson = (k: string): unknown => { try { return JSON.parse(load(k) ?? "null"); } catch { return null; } };
-const save = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
+/** This browser's random id for practice history records */
+const DEVICE = "chordDisplay.device";
+
+type Stored = NonNullable<SettingSpec<unknown>["storage"]>;
+const storageOf = (name: SettingName): Stored | undefined => SETTINGS[name].storage;
+
+function loadValue(key: string, format: Stored["format"]): unknown {
+  switch (format) {
+    case "string": return loadItem(key);
+    case "json": return loadJson(key);
+    case "flag": return loadItem(key) === "1";
+  }
+}
+
+function saveValue({ key, format }: Stored, value: unknown) {
+  saveItem(key, format === "json" ? JSON.stringify(value) : format === "flag" ? (value ? "1" : "0") : String(value));
+}
 
 /** The saved settings, for `createAppState` to validate. The pedal option isn't saved: it comes from the page. */
 export function loadSettings(includeSustained: boolean): SavedSettings {
-  return {
-    keyValue: load(STORAGE.key),
-    includeSustained,
-    mode: load(STORAGE.mode),
-    chordTypes: loadJson(STORAGE.chordTypes),
-    promptStyle: load(STORAGE.promptStyle),
-    inversions: load(STORAGE.inversions) === "1",
-    chordKey: load(STORAGE.chordKey),
-    exercise: loadJson(STORAGE.exercise) ?? loadJson(STORAGE.legacyScale),
-    routine: loadJson(STORAGE.routine),
-    ear: loadJson(STORAGE.ear),
-    earChords: loadJson(STORAGE.earChords),
-    reading: loadJson(STORAGE.reading),
-    latencyMs: loadJson(STORAGE.latency),
-    latencyCalibrated: loadJson(STORAGE.latencyCalibrated),
-  };
+  const saved: SavedSettings = { includeSustained };
+  for (const name of SETTING_NAMES) {
+    const storage = storageOf(name);
+    if (!storage) continue;
+    let value = loadValue(storage.key, storage.format);
+    for (const key of storage.legacy ?? []) value ??= loadValue(key, storage.format);
+    saved[name] = value;
+  }
+  return saved;
 }
 
-function saveSettings(t: Settings) {
-  save(STORAGE.key, t.keyValue);
-  save(STORAGE.mode, t.mode);
-  save(STORAGE.chordTypes, JSON.stringify(t.chordTypes));
-  save(STORAGE.promptStyle, t.promptStyle);
-  save(STORAGE.inversions, t.inversions ? "1" : "0");
-  save(STORAGE.chordKey, t.chordKey);
-  save(STORAGE.exercise, JSON.stringify(t.exercise));
-  save(STORAGE.routine, JSON.stringify(t.routine));
-  save(STORAGE.ear, JSON.stringify(t.ear));
-  save(STORAGE.earChords, JSON.stringify(t.earChords));
-  save(STORAGE.reading, JSON.stringify(t.reading));
-  save(STORAGE.latency, JSON.stringify(t.latencyMs));
-  save(STORAGE.latencyCalibrated, JSON.stringify(t.latencyCalibrated));
+/** Writes the settings that differ between `prev` and `next`, and only those. */
+export function saveChangedSettings(next: Settings, prev: Settings) {
+  for (const name of SETTING_NAMES) {
+    const storage = storageOf(name);
+    // The reducer keeps an unchanged setting's value as it was, so a new value is a changed one
+    if (storage && next[name] !== prev[name]) saveValue(storage, next[name]);
+  }
 }
 
-/** Saves the settings whenever they change. */
+/** Saves each setting whenever it changes. */
 export const saveSettingsOnChange = (store: AppStore) =>
-  store.subscribe((s, prev) => { if (s.settings !== prev.settings) saveSettings(s.settings); });
+  store.subscribe((s, prev) => { if (s.settings !== prev.settings) saveChangedSettings(s.settings, prev.settings); });
 
 /** This browser's id, stamped on every history record so histories from several devices can be merged later */
 export function deviceId(): string {
-  const saved = load(STORAGE.device);
+  const saved = loadItem(DEVICE);
   if (saved) return saved;
   const id = uuid();
-  save(STORAGE.device, id);
+  saveItem(DEVICE, id);
   return id;
 }

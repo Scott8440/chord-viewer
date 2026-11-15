@@ -48,11 +48,13 @@ export function musicOf(s: ReadingState): StaffMusic {
 /** Each part has its own file of excerpts */
 const libraryOf = (o: ReadingOptions): ExcerptLibrary => o.part;
 
-export function startSightReading(store: AppStore, views: {
-  staff: StaffView; practice: PracticeView;
-}, recorder: Recorder = noRecorder,
-   library: (which: ExcerptLibrary) => Promise<ExcerptFile> = () => Promise.reject(new Error("no excerpts")),
-   rng: Rng = Math.random): Mode {
+export function startSightReading({
+  store, views, recorder = noRecorder, excerpts: library = () => Promise.reject(new Error("no excerpts")), rng = Math.random,
+}: {
+  store: AppStore; views: { staff: StaffView; practice: PracticeView }; recorder?: Recorder;
+  /** Fetches a part's file of excerpts */
+  excerpts?: (which: ExcerptLibrary) => Promise<ExcerptFile>; rng?: Rng;
+}): Mode {
   const options = () => store.getState().settings.reading;
   let keys = keyRotation(pickReadingKey(rng, options().key));
   const files = new Map<ExcerptLibrary, ExcerptFile>();

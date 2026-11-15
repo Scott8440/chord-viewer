@@ -15,9 +15,9 @@ import { createPerformanceDrawer, heldNotes, onPlayerInput, type AppStore, type 
 /** How long "✓ Progression complete" stays up before the next progression */
 const NEXT_PROGRESSION_MS = 1200;
 
-export function startProgressionPractice(store: AppStore, views: {
-  staff: StaffView; practice: PracticeView;
-}, recorder: Recorder = noRecorder, rng: Rng = Math.random): Mode {
+export function startProgressionPractice({ store, views, recorder = noRecorder, rng = Math.random }: {
+  store: AppStore; views: { staff: StaffView; practice: PracticeView }; recorder?: Recorder; rng?: Rng;
+}): Mode {
   // Exercises don't use the header key: each progression names its own (random) key
   const newPrompt = (previous?: ProgressionState["prompt"]) => makeProgressionPrompt(rng, null, previous);
   let state: ProgressionState = initialProgression(newPrompt(), heldNotes(store.getState()));

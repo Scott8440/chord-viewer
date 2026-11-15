@@ -4,30 +4,20 @@ import "./style.css";
 import { setUpCalibration } from "./app/calibration";
 import { bindControls, showControls } from "./app/controls";
 import { loadExcerpts } from "./app/excerpts";
-import { $ } from "./app/dom";
+import { $, onPress } from "./app/dom";
 import { openHistory } from "./app/history";
 import { createMidiMapper } from "./app/midiMap";
 import { deviceId, loadSettings, saveSettingsOnChange } from "./app/storage";
 import { createClickPlayer } from "./audio/click";
 import { createTonePlayer } from "./audio/tones";
-import { CHORD_PRACTICE_GROUPS } from "./exercises/chordPractice";
-import { EAR_DEGREES } from "./exercises/earTraining";
 import type { InputEvent } from "./input/events";
 import { createKeyboardSource } from "./input/keyboard";
 import { createMidiSource } from "./input/midi";
-import { startChordPractice } from "./modes/chordPractice";
-import { startEarChords } from "./modes/earChords";
-import { startEarMelody } from "./modes/earMelody";
-import { startEarTraining } from "./modes/earTraining";
-import { startFreePlay } from "./modes/freePlay";
 import { startMetronome } from "./modes/metronome";
-import { startSightReading } from "./modes/sightReading";
 import { IDLE_MS, pageSetup, viewOf, type View } from "./modes/page";
 import { onIdle, type Mode } from "./modes/performance";
-import { selectProgress, startProgress } from "./modes/progress";
-import { startProgressionPractice } from "./modes/progressionPractice";
-import { startRoutinePractice } from "./modes/routinePractice";
-import { startSequencePractice } from "./modes/sequencePractice";
+import { selectProgress } from "./modes/progress";
+import { MODE_REGISTRY, type ModeDeps } from "./modes/registry";
 import { createAppState, reduceApp } from "./state/app";
 import { pedalDown } from "./state/performance";
 import { createStore } from "./state/store";
@@ -38,7 +28,6 @@ import { createCircleView } from "./views/circleOfFifths";
 import { createAnswerBoard } from "./views/answerBoard";
 import { createRoundVizView } from "./views/roundViz";
 import { createDegreeCircle } from "./views/degreeCircle";
-import { createFilterView } from "./views/filter";
 import { createHeaderView } from "./views/header";
 import { createPracticeView } from "./views/practice";
 import { createProgressView } from "./views/progressView";
@@ -46,7 +35,7 @@ import { createStaffView } from "./views/staff";
 import { fitToStaffCorner } from "./views/staffCorner";
 
 /* ---------------------------------------------------------------
-   State: saved settings in, every change saved
+   State: saved settings in, each change saved
    --------------------------------------------------------------- */
 const store = createStore(reduceApp, createAppState(loadSettings($<HTMLInputElement>("optPedal").checked)));
 saveSettingsOnChange(store);
@@ -104,30 +93,16 @@ const practice = createPracticeView({
   label: $("practiceLabel"), prompt: $("practicePrompt"), sub: $("practiceSub"), feedback: $("practiceFeedback"), score: $("practiceScore"),
   skip: $("practiceSkip"), stop: $("practiceStop"),
 });
-const chordFilter = createFilterView({ summary: $("chordFilterSummary"), body: $("chordFilterBody") }, CHORD_PRACTICE_GROUPS, "Chord types",
-  types => store.dispatch({ type: "setChordTypes", types }));
-chordFilter.render(store.getState().settings.chordTypes);
-$("chordFilters").addEventListener("toggle", () => $("chordFilterSummary").blur());   // so Space stays the pedal
-store.subscribe((s, prev) => { if (s.settings.chordTypes !== prev.settings.chordTypes) chordFilter.render(s.settings.chordTypes); });
-// Ear training: which scale degrees it asks for (start with 1 and 5, add more as they get easy)
-const earFilter = createFilterView({ summary: $("earFilterSummary"), body: $("earFilterBody") },
-  [{ label: "Scale degrees", types: EAR_DEGREES }], "Degrees",
-  degrees => store.dispatch({ type: "setEarOptions", options: { degrees } }));
-earFilter.render(store.getState().settings.ear.degrees);
-$("earFilters").addEventListener("toggle", () => $("earFilterSummary").blur());
-store.subscribe((s, prev) => { if (s.settings.ear.degrees !== prev.settings.ear.degrees) earFilter.render(s.settings.ear.degrees); });
-// Ear training, chord qualities: which chord types it plays (the chord practice groups; at least two, so there's a choice)
-const earChordFilter = createFilterView({ summary: $("earChordFilterSummary"), body: $("earChordFilterBody") },
-  CHORD_PRACTICE_GROUPS, "Chord types", types => store.dispatch({ type: "setEarChordOptions", options: { types } }), 2);
-earChordFilter.render(store.getState().settings.earChords.types);
-$("earChordFilters").addEventListener("toggle", () => $("earChordFilterSummary").blur());
-store.subscribe((s, prev) => { if (s.settings.earChords.types !== prev.settings.earChords.types) earChordFilter.render(s.settings.earChords.types); });
 const tones = createTonePlayer();
 
 /* ---------------------------------------------------------------
    Modes: exactly one runs at a time and owns the right-hand card
    --------------------------------------------------------------- */
-const practiceViews = { staff, practice, circle };
+const modeDeps: ModeDeps = {
+  store,
+  views: { staff, practice, circle, chordName, tones, degrees: degreeCircle, answers: answerBoard, roundViz, progress: progressView },
+  recorder: history.recorder, history: history.store, saved: history.saved, excerpts: loadExcerpts,
+};
 /**
  * Starts a mode and the page behaviours its `PAGE_SETUP` turns on. The circle of fifths starts hidden; modes where
  * it is relevant draw it.
@@ -135,7 +110,7 @@ const practiceViews = { staff, practice, circle };
 function startMode(id: View): Mode {
   circle.render(null);
   roundViz.render(null);   // the ear modes draw it
-  const mode = startModeView(id);
+  const mode = MODE_REGISTRY[id](modeDeps);
   const offIdle = pageSetup(id).fadeChordWhenIdle
     ? onIdle(store, IDLE_MS, { idle: () => chordName.setIdle(true), active: () => chordName.setIdle(false) })
     : null;
@@ -150,18 +125,6 @@ function startMode(id: View): Mode {
     },
   };
 }
-const startModeView = (id: View): Mode =>
-  id === "free" ? startFreePlay(store, { staff, chordName, circle })
-  : id === "notes" ? startSightReading(store, practiceViews, history.recorder, loadExcerpts)
-  : id === "chords" ? startChordPractice(store, practiceViews, history.recorder)
-  : id === "progressions" ? startProgressionPractice(store, practiceViews, history.recorder)
-  : id === "routines" ? startRoutinePractice(store, practiceViews, history.recorder)
-  : id === "ear" ? startEarTraining(store, { practice, tones, degrees: degreeCircle, roundViz }, history.recorder, history.store)
-  : id === "earMelody" ? startEarMelody(store, { ...practiceViews, tones, roundViz }, history.recorder, history.store)
-  : id === "earChords" ? startEarChords(store, { practice, tones, answers: answerBoard, roundViz }, history.recorder, history.store)
-  : id === "progress" ? startProgress({ progress: progressView }, history.store, history.saved)
-  : startSequencePractice(store, practiceViews, id, history.recorder);
-
 let mode = startMode(viewOf(store.getState()));
 showControls(store.getState());
 store.subscribe((s, prev) => {
@@ -173,10 +136,8 @@ store.subscribe((s, prev) => {
   }
 });
 // Progress: a page of its own, opened and closed from the header (choosing a mode also goes back to practising)
-$("progressBtn").onclick = () => {
-  $("progressBtn").blur();
-  store.dispatch({ type: "setPage", page: store.getState().page === "progress" ? "practice" : "progress" });
-};
+onPress("progressBtn", () =>
+  store.dispatch({ type: "setPage", page: store.getState().page === "progress" ? "practice" : "progress" }));
 
 /* ---------------------------------------------------------------
    Input sources and buttons
@@ -189,22 +150,10 @@ function panic() {
   keyboard.reset();
 }
 
-$("practiceSkip").onclick = () => {
-  $("practiceSkip").blur();   // so Space (pedal) doesn't press it again
-  mode.skip?.();
-};
-$("practiceReplay").onclick = () => {
-  $("practiceReplay").blur();
-  mode.replay?.();
-};
-$("practiceStop").onclick = () => {
-  $("practiceStop").blur();
-  mode.toggleRunning?.();
-};
-$("routineRestart").onclick = () => {
-  $("routineRestart").blur();
-  mode.restart?.();
-};
+onPress("practiceSkip", () => mode.skip?.());
+onPress("practiceReplay", () => mode.replay?.());
+onPress("practiceStop", () => mode.toggleRunning?.());
+onPress("routineRestart", () => mode.restart?.());
 $("panic").onclick = panic;
 $("retry").onclick = () => { $("retry").hidden = true; header.showMidiStatus({ kind: "requesting" }); midi.start(); };
 

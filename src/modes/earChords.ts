@@ -24,9 +24,10 @@ const CHORD_RING_S = 2.4, BROKEN_GAP_S = 0.45, BROKEN_PAUSE_S = 0.35;
 /** How long "✓ D♭ minor" stays up before the next chord */
 const NEXT_PROMPT_MS = 1500;
 
-export function startEarChords(store: AppStore, views: {
-  practice: PracticeView; tones: TonePlayer; answers: AnswerBoard; roundViz: RoundVizView;
-}, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
+export function startEarChords({ store, views, recorder = noRecorder, history = null, rng = Math.random }: {
+  store: AppStore; views: { practice: PracticeView; tones: TonePlayer; answers: AnswerBoard; roundViz: RoundVizView };
+  recorder?: Recorder; history?: Promise<ProgressStore> | null; rng?: Rng;
+}): Mode {
   const options = () => store.getState().settings.earChords;
 
   const drill = createEarDrill<ChordEarPrompt, ChordEarState, ChordEarAction, ChordEarOptions>(store, views, {

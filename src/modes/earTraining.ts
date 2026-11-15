@@ -35,9 +35,10 @@ const ROUND_END_FADE_S = 2.5;
 /** Leaving the window (another app or tab) fades the drone out over this long */
 const AWAY_FADE_S = 3;
 
-export function startEarTraining(store: AppStore, views: {
-  practice: PracticeView; tones: TonePlayer; degrees: DegreeCircleView; roundViz: RoundVizView;
-}, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
+export function startEarTraining({ store, views, recorder = noRecorder, history = null, rng = Math.random }: {
+  store: AppStore; views: { practice: PracticeView; tones: TonePlayer; degrees: DegreeCircleView; roundViz: RoundVizView };
+  recorder?: Recorder; history?: Promise<ProgressStore> | null; rng?: Rng;
+}): Mode {
   const options = () => store.getState().settings.ear;
   let keys = keyRotation(pickTonic(rng, options().tonic));
   const tonic = () => keys.key;

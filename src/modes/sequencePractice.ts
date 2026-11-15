@@ -14,9 +14,11 @@ import { exerciseRow } from "../views/exerciseRow";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, heldNotes, onPlayerInput, onTimingGrid, timingGrid, type AppStore, type Mode } from "./performance";
 
-export function startSequencePractice(store: AppStore, views: {
-  staff: StaffView; practice: PracticeView; circle: CircleView;
-}, id: PrescriptiveId, recorder: Recorder = noRecorder): Mode {
+export function startSequencePractice({ store, views, id, recorder = noRecorder }: {
+  store: AppStore; views: { staff: StaffView; practice: PracticeView; circle: CircleView };
+  /** Which exercise it runs */
+  id: PrescriptiveId; recorder?: Recorder;
+}): Mode {
   const build = () => PRESCRIPTIVE[id].build(store.getState().settings.exercise);
   let state: SequenceState = initialSequence(build(), heldNotes(store.getState()), timingGrid(store.getState()));
   // The staff shows the notes to play, a page at a time, in the exercise's key (exercises never use the header key)

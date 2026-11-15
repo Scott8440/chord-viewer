@@ -24,9 +24,10 @@ const ROOT_GAP_S = 1.1, NOTE_GAP_S = 0.65, NOTE_RING_S = 1.4;
 /** How long "✓" stays up before the next melody */
 const NEXT_PROMPT_MS = 1500;
 
-export function startEarMelody(store: AppStore, views: {
-  staff: StaffView; practice: PracticeView; tones: TonePlayer; roundViz: RoundVizView;
-}, recorder: Recorder = noRecorder, history: Promise<ProgressStore> | null = null, rng: Rng = Math.random): Mode {
+export function startEarMelody({ store, views, recorder = noRecorder, history = null, rng = Math.random }: {
+  store: AppStore; views: { staff: StaffView; practice: PracticeView; tones: TonePlayer; roundViz: RoundVizView };
+  recorder?: Recorder; history?: Promise<ProgressStore> | null; rng?: Rng;
+}): Mode {
   const options = () => store.getState().settings.ear;
   let keys = keyRotation(pickTonic(rng, options().tonic));
 

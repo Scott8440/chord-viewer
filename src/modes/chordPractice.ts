@@ -24,9 +24,9 @@ const promptKey = (p: ChordPrompt) => {
   return value ? buildKey(value) : null;
 };
 
-export function startChordPractice(store: AppStore, views: {
-  staff: StaffView; practice: PracticeView;
-}, recorder: Recorder = noRecorder, rng: Rng = Math.random): Mode {
+export function startChordPractice({ store, views, recorder = noRecorder, rng = Math.random }: {
+  store: AppStore; views: { staff: StaffView; practice: PracticeView }; recorder?: Recorder; rng?: Rng;
+}): Mode {
   const settings = () => store.getState().settings;
   // Exercises don't use the header key; chord practice has its own (see CHORD_KEYS). With none, Roman numeral
   // prompts pick a key each time and chord names any chord. With one, the key's diatonic chords, either way.

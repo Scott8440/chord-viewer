@@ -32,7 +32,14 @@ mode and views subscribe to the store.
     practice; `exercise`, the `ExerciseOptions` shared by the prescriptive exercises; `routine`, which routine
     and which way round the circle of fifths; `latencyMs`; and `latencyCalibrated`) + `transport` (where the beats are, while a clock
     runs; see "Metronome") + `page` ("practice" or "progress"; not saved). `createAppState(saved)`
-    takes saved settings and validates each one; `reduceApp` over `AppAction`s.
+    takes saved settings and validates each one; `reduceApp` over `AppAction`s. Every setter returns the same state
+    when the value is what's already set (`withSettings`, compared with `sameSetting`), so nothing downstream reacts.
+  - `settings.ts`: `Settings` and **the settings table** `SETTINGS`: one entry per setting with its `sanitize`
+    (which also gives its default, for a missing or invalid value) and, if it's kept in localStorage, `storage`: the
+    key, the format (`"string"` as is, `"json"`, or `"flag"` "1"/"0") and any `legacy` keys an earlier version used
+    (exercise options fall back to `chordDisplay.scale`). `latencyCalibrated`'s sanitizer sees all saved settings, so a
+    latency saved before the flag existed still counts. `sameSetting` is the shallow equality (arrays by their items,
+    option objects field by field). **Adding a setting:** a field in `Settings`, an entry in `SETTINGS`, an action.
   - `store.ts`: minimal store; subscribers get `(state, prev)` only when the state object changed. A subscriber
     that unsubscribes during a dispatch is not called for the rest of it (the old mode on a mode switch).
 - `src/theory/`: theory engine, pure functions with no DOM and no globals. The key is always passed in explicitly.
@@ -149,22 +156,29 @@ mode and views subscribe to the store.
   routine or direction changes, applies other exercise settings from the item in progress on; Skip skips an item
   (and starts again at the end), Restart routine starts over.
 - `src/main.ts`: wiring only: creates the store, views, modes and input sources and connects them. The larger
-  pieces of wiring live in `src/app/`: `storage.ts` (settings loaded into `createAppState` and saved on every
-  change, in localStorage; the device id), `controls.ts` (binds each control to its setting with
-  `bindSelect`/`bindCheckbox`/`bindNumber`, which blur so the computer keys keep working; `showControls` shows the
+  pieces of wiring live in `src/app/`: `storage.ts` (settings loaded into `createAppState` and saved, each only
+  when it changes, as the settings table says; the device id), `safeStorage.ts` (localStorage reads and writes that
+  never throw, shared with the MIDI map), `controls.ts` (binds each control to its setting with
+  `bindSelect`/`bindCheckbox`/`bindNumber`/`bindFilter`, which blur so the computer keys keep working, and look again
+  only when the settings changed, not on every note; `showControls` shows the
   controls the mode uses: exercise options are tagged `data-option` and shown when the exercise lists them),
   `history.ts` (opens practice history and runs the footer's count, Export and Import), `calibration.ts` (the
-  calibration dialog, from the button or by itself) and `dom.ts` (`$`).
+  calibration dialog, from the button or by itself) and `dom.ts` (`$`, and `onPress` for buttons that blur when
+  clicked). Main starts each view through `MODE_REGISTRY` (`src/modes/registry.ts`: view id → start function, a
+  `Record<View, …>`, so a mode left out doesn't compile); every start function takes one object (`ModeDeps`: store,
+  all the views, recorder, history store, `saved`, excerpt loader, optional rng) and uses the parts it needs.
 - `vite.config.ts`: single-file build. A small plugin renames the output to `dist/chord-display.html`.
 - `tests/`: Vitest, no browser. `voicings.test.ts` runs `voicings.json` against the theory engine;
   `chords.test.ts` covers template matching, cost explanations and transposition consistency;
-  `performance.test.ts`, `midi.test.ts` and `app.test.ts` cover the reducers and MIDI parsing.
+  `performance.test.ts`, `midi.test.ts` and `app.test.ts` cover the reducers and MIDI parsing; `settings.test.ts`
+  the settings table against a fake localStorage (round trip, formats, legacy values, saving only what changed, setters
+  that change nothing) and the mode registry.
 
 ```
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 443 tests (54 voicings) should pass
+npm test           # Vitest: 468 tests (54 voicings) should pass
 npm run typecheck
 ```
 In the browser console, `__chord` is exposed for testing: `analyze([60,64,67])`, `setKey("C:major")`,

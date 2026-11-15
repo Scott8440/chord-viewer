@@ -1,75 +1,22 @@
-// Whole-app state: the performance, a history of recent input events, and user settings.
-import { DEFAULT_CHORD_TYPES, sanitizeChordKey, sanitizeChordTypes } from "../exercises/chordPractice";
-import { PROMPT_STYLES, type PromptStyle } from "../exercises/chordPrompt";
-import { sanitizeChordEarOptions, type ChordEarOptions } from "../exercises/chordEar";
-import { sanitizeEarOptions, type EarOptions } from "../exercises/earTraining";
-import { sanitizeReadingOptions, type ReadingOptions } from "../exercises/sightReading";
-import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/prescriptive";
-import { sanitizeRoutineOptions, type RoutineOptions } from "../exercises/routines";
+// Whole-app state: the performance, a history of recent input events, and user settings (see settings.ts).
+import type { PromptStyle } from "../exercises/chordPrompt";
+import type { ChordEarOptions } from "../exercises/chordEar";
+import type { EarOptions } from "../exercises/earTraining";
+import type { ReadingOptions } from "../exercises/sightReading";
+import type { ExerciseOptions } from "../exercises/prescriptive";
+import type { RoutineOptions } from "../exercises/routines";
 import type { InputEvent } from "../input/events";
-import { buildKey, isKeyValue, type KeyContext } from "../theory";
+import { buildKey } from "../theory";
 import type { Transport } from "../timing/transport";
 import { initialPerformance, reducePerformance, type PerformanceState } from "./performance";
+import {
+  SETTINGS, sameSetting, sanitizeLatency, sanitizeSettings, type ModeId, type SavedSettings, type Settings,
+  type SettingSpec,
+} from "./settings";
+
+export { LATENCY_RANGE, MODES, type ModeId, type SavedSettings, type Settings } from "./settings";
 
 export const HISTORY_LIMIT = 512;
-
-export const MODES = ["free", "notes", "chords", "progressions", "scales", "diatonic", "fiveFinger", "arpeggios", "brokenChords", "chromatic", "routines", "ear", "earMelody", "earChords"] as const;
-export type ModeId = typeof MODES[number];
-
-export interface Settings {
-  /** Header key selector value, e.g. "C:major", or "" for none. Free play only; exercises never use it. */
-  readonly keyValue: string;
-  readonly key: KeyContext | null;
-  /** Whether pedal-held notes count toward the chord */
-  readonly includeSustained: boolean;
-  /** Active mode: free play or an exercise */
-  readonly mode: ModeId;
-  /** Chord template ids that chord practice may ask for */
-  readonly chordTypes: readonly string[];
-  /** Chord and progression practice (and chord steps in exercises): chord names or Roman numerals */
-  readonly promptStyle: PromptStyle;
-  /** Chord practice asks for a specific inversion */
-  readonly inversions: boolean;
-  /** Chord practice's key: "none", "random" or a key value (see CHORD_KEYS) */
-  readonly chordKey: string;
-  /** Options shared by the prescriptive exercises (scales, diatonic chords), also the base for routine items */
-  readonly exercise: ExerciseOptions;
-  /** Which routine, and which way round the circle of fifths */
-  readonly routine: RoutineOptions;
-  /** Ear training (both modes): the tonic (or random), which scale degrees it asks for, and the melody length */
-  readonly ear: EarOptions;
-  /** Ear training, chord qualities: which chord types it plays, inversions, and broken before together */
-  readonly earChords: ChordEarOptions;
-  /** Sight reading (mode "notes"): how many notes, which staff, which key (or random) */
-  readonly reading: ReadingOptions;
-  /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
-  readonly latencyMs: number;
-  /** The latency has been dealt with: calibrated, set by hand, or calibration declined. Until it is, starting the
-   *  metronome opens the calibration. */
-  readonly latencyCalibrated: boolean;
-}
-
-/** Settings as saved between sessions; anything missing or invalid falls back to its default. */
-export interface SavedSettings {
-  keyValue?: unknown;
-  includeSustained?: unknown;
-  mode?: unknown;
-  chordTypes?: unknown;
-  promptStyle?: unknown;
-  inversions?: unknown;
-  chordKey?: unknown;
-  exercise?: unknown;
-  routine?: unknown;
-  ear?: unknown;
-  earChords?: unknown;
-  reading?: unknown;
-  latencyMs?: unknown;
-  latencyCalibrated?: unknown;
-}
-
-export const LATENCY_RANGE = { min: -200, max: 300 } as const;
-const sanitizeLatency = (v: unknown) => typeof v === "number" && Number.isFinite(v)
-  ? Math.min(LATENCY_RANGE.max, Math.max(LATENCY_RANGE.min, Math.round(v))) : 0;
 
 export interface AppState {
   readonly perf: PerformanceState;
@@ -109,36 +56,28 @@ export type AppAction =
   | { type: "setCalibrating"; on: boolean }
   | { type: "setPage"; page: Page };
 
-const oneOf = <T>(values: readonly T[], v: unknown, fallback: T): T => values.includes(v as T) ? v as T : fallback;
-
 /** Initial state from saved settings, validating each one. */
 export function createAppState(saved: SavedSettings = {}): AppState {
-  const keyValue = typeof saved.keyValue === "string" && isKeyValue(saved.keyValue) ? saved.keyValue : "";
+  const settings = sanitizeSettings(saved);
   return {
     perf: initialPerformance,
     history: [],
     transport: null,
     calibrating: false,
     page: "practice",
-    settings: {
-      keyValue, key: buildKey(keyValue),
-      includeSustained: typeof saved.includeSustained === "boolean" ? saved.includeSustained : true,
-      mode: oneOf(MODES, saved.mode, "free"),
-      chordTypes: sanitizeChordTypes(Array.isArray(saved.chordTypes) ? saved.chordTypes : DEFAULT_CHORD_TYPES),
-      promptStyle: oneOf(PROMPT_STYLES, saved.promptStyle, "names"),
-      inversions: saved.inversions === true,
-      chordKey: sanitizeChordKey(saved.chordKey),
-      exercise: sanitizeExerciseOptions(saved.exercise),
-      routine: sanitizeRoutineOptions(saved.routine),
-      ear: sanitizeEarOptions(saved.ear),
-      earChords: sanitizeChordEarOptions(saved.earChords),
-      reading: sanitizeReadingOptions(saved.reading),
-      latencyMs: sanitizeLatency(saved.latencyMs),
-      // A latency saved before this flag existed was calibrated or typed in, unless it's the default 0
-      latencyCalibrated: saved.latencyCalibrated === true || sanitizeLatency(saved.latencyMs) !== 0,
-    },
+    settings: { ...settings, key: buildKey(settings.keyValue) },
   };
 }
+
+/** The state with these settings changed, or the same state when they already have these values (so subscribers,
+ *  the controls and saving among them, see no change) */
+function withSettings(s: AppState, changes: Partial<Settings>): AppState {
+  const same = (Object.keys(changes) as (keyof Settings)[]).every(k => sameSetting(changes[k], s.settings[k]));
+  return same ? s : { ...s, settings: { ...s.settings, ...changes } };
+}
+
+/** An options object with some fields changed, then checked */
+const merged = <T>(was: T, options: Partial<T>, spec: SettingSpec<T>) => spec.sanitize({ ...was, ...options });
 
 export function reduceApp(s: AppState, a: AppAction): AppState {
   switch (a.type) {
@@ -149,59 +88,37 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return { ...s, perf: reducePerformance(s.perf, a.event), history };
     }
     case "setKey":
-      return { ...s, settings: { ...s.settings, keyValue: a.value, key: buildKey(a.value) } };
+      // The key context is built anew each time, so only the value decides whether anything changed
+      return a.value === s.settings.keyValue ? s : withSettings(s, { keyValue: a.value, key: buildKey(a.value) });
     case "setIncludeSustained":
-      return { ...s, settings: { ...s.settings, includeSustained: a.on } };
-    case "setMode":
+      return withSettings(s, { includeSustained: a.on });
+    case "setMode": {
       // Choosing a mode is choosing to practise: it leaves the Progress page
-      if (a.mode === s.settings.mode) return s.page === "practice" ? s : { ...s, page: "practice" };
-      return { ...s, page: "practice", settings: { ...s.settings, mode: a.mode } };
+      const t = withSettings(s, { mode: a.mode });
+      return t.page === "practice" ? t : { ...t, page: "practice" };
+    }
     case "setChordTypes":
-      return { ...s, settings: { ...s.settings, chordTypes: sanitizeChordTypes(a.types) } };
+      return withSettings(s, { chordTypes: SETTINGS.chordTypes.sanitize(a.types) });
     case "setPromptStyle":
-      return a.style === s.settings.promptStyle ? s : { ...s, settings: { ...s.settings, promptStyle: a.style } };
+      return withSettings(s, { promptStyle: a.style });
     case "setInversions":
-      return a.on === s.settings.inversions ? s : { ...s, settings: { ...s.settings, inversions: a.on } };
-    case "setChordKey": {
-      const chordKey = sanitizeChordKey(a.value);
-      return chordKey === s.settings.chordKey ? s : { ...s, settings: { ...s.settings, chordKey } };
-    }
-    case "setExerciseOptions": {
-      const exercise = sanitizeExerciseOptions({ ...s.settings.exercise, ...a.options });
-      const same = (Object.keys(exercise) as (keyof ExerciseOptions)[]).every(k => exercise[k] === s.settings.exercise[k]);
-      return same ? s : { ...s, settings: { ...s.settings, exercise } };
-    }
-    case "setRoutineOptions": {
-      const routine = sanitizeRoutineOptions({ ...s.settings.routine, ...a.options });
-      const was = s.settings.routine;
-      return routine.id === was.id && routine.direction === was.direction && routine.start === was.start ? s
-        : { ...s, settings: { ...s.settings, routine } };
-    }
-    case "setEarOptions": {
-      const ear = sanitizeEarOptions({ ...s.settings.ear, ...a.options });
-      return ear.tonic === s.settings.ear.tonic && ear.degrees.join() === s.settings.ear.degrees.join() &&
-        ear.melodyLength === s.settings.ear.melodyLength ? s
-        : { ...s, settings: { ...s.settings, ear } };
-    }
-    case "setEarChordOptions": {
-      const earChords = sanitizeChordEarOptions({ ...s.settings.earChords, ...a.options });
-      const was = s.settings.earChords;
-      return earChords.types.join() === was.types.join() && earChords.inversions === was.inversions &&
-        earChords.broken === was.broken ? s : { ...s, settings: { ...s.settings, earChords } };
-    }
-    case "setReadingOptions": {
-      const reading = sanitizeReadingOptions({ ...s.settings.reading, ...a.options });
-      const r = s.settings.reading;
-      return reading.level === r.level && reading.part === r.part && reading.length === r.length && reading.range === r.range && reading.key === r.key ? s
-        : { ...s, settings: { ...s.settings, reading } };
-    }
-    case "setLatency": {
-      const latencyMs = sanitizeLatency(a.ms);
-      return latencyMs === s.settings.latencyMs && s.settings.latencyCalibrated ? s
-        : { ...s, settings: { ...s.settings, latencyMs, latencyCalibrated: true } };
-    }
+      return withSettings(s, { inversions: a.on });
+    case "setChordKey":
+      return withSettings(s, { chordKey: SETTINGS.chordKey.sanitize(a.value) });
+    case "setExerciseOptions":
+      return withSettings(s, { exercise: merged(s.settings.exercise, a.options, SETTINGS.exercise) });
+    case "setRoutineOptions":
+      return withSettings(s, { routine: merged(s.settings.routine, a.options, SETTINGS.routine) });
+    case "setEarOptions":
+      return withSettings(s, { ear: merged(s.settings.ear, a.options, SETTINGS.ear) });
+    case "setEarChordOptions":
+      return withSettings(s, { earChords: merged(s.settings.earChords, a.options, SETTINGS.earChords) });
+    case "setReadingOptions":
+      return withSettings(s, { reading: merged(s.settings.reading, a.options, SETTINGS.reading) });
+    case "setLatency":
+      return withSettings(s, { latencyMs: sanitizeLatency(a.ms), latencyCalibrated: true });
     case "setLatencyCalibrated":
-      return s.settings.latencyCalibrated ? s : { ...s, settings: { ...s.settings, latencyCalibrated: true } };
+      return withSettings(s, { latencyCalibrated: true });
     case "setTransport":
       return a.transport === s.transport ? s : { ...s, transport: a.transport };
     case "setCalibrating":

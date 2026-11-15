@@ -9,9 +9,9 @@ import { exerciseRow } from "../views/exerciseRow";
 import type { StaffView } from "../views/staff";
 import { createPerformanceDrawer, heldNotes, onPlayerInput, onTimingGrid, timingGrid, type AppStore, type Mode } from "./performance";
 
-export function startRoutinePractice(store: AppStore, views: {
-  staff: StaffView; practice: PracticeView; circle: CircleView;
-}, recorder: Recorder = noRecorder): Mode {
+export function startRoutinePractice({ store, views, recorder = noRecorder }: {
+  store: AppStore; views: { staff: StaffView; practice: PracticeView; circle: CircleView }; recorder?: Recorder;
+}): Mode {
   const fresh = (): RoutineState => {
     const s = store.getState();
     return initialRoutine(routineById(s.settings.routine.id)!, s.settings.routine, s.settings.exercise, heldNotes(s),

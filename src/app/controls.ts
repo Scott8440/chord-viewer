@@ -1,9 +1,9 @@
 // The settings controls: each shows a setting and dispatches changes to it, and `showControls` shows just the ones
 // the current mode (or page) uses.
 import { KEY_PROGRESSION_LABELS, KEY_PROGRESSIONS, type KeyProgression } from "../exercises/keyOrder";
-import { CHORD_KEYS } from "../exercises/chordPractice";
+import { CHORD_KEYS, CHORD_PRACTICE_GROUPS } from "../exercises/chordPractice";
 import type { PromptStyle } from "../exercises/chordPrompt";
-import { EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTraining";
+import { EAR_DEGREES, EAR_TONICS, MELODY_LENGTHS, PROMPTS_PER_KEY } from "../exercises/earTraining";
 import { PRESCRIPTIVE, type ExerciseOption, type ExerciseOptions, type PrescriptiveId } from "../exercises/prescriptive";
 import { CHROMATIC_TONICS, DIRECTION_NAMES, ROUTINES, routineById, type CircleDirection } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
@@ -17,18 +17,23 @@ import type { AppStore } from "../modes/performance";
 import type { AppAction, AppState, ModeId, Settings } from "../state/app";
 import type { Strictness, Subdivision } from "../timing/grid";
 import { buildKey, prettyAcc } from "../theory";
+import { createFilterView, type FilterGroup } from "../views/filter";
 import { fillKeySelect } from "../views/header";
 import { $ } from "./dom";
 
 /** Binds every settings control in the page to its setting. */
 export function bindControls(store: AppStore) {
+  // Most dispatches are notes being played: the controls only need to look again when a setting changed
+  const onSettings = (show: (s: Settings) => void) =>
+    store.subscribe((s, prev) => { if (s.settings !== prev.settings) show(s.settings); });
+
   function bindSelect(el: HTMLSelectElement, get: (s: Settings) => string, set: (value: string) => AppAction) {
     el.value = get(store.getState().settings);
     el.onchange = () => {
       store.dispatch(set(el.value));
       el.blur();   // so computer-key note input keeps working
     };
-    store.subscribe(s => { if (el.value !== get(s.settings)) el.value = get(s.settings); });
+    onSettings(s => { if (el.value !== get(s)) el.value = get(s); });
   }
 
   function bindCheckbox(el: HTMLInputElement, get: (s: Settings) => boolean, set: (on: boolean) => AppAction) {
@@ -37,7 +42,7 @@ export function bindControls(store: AppStore) {
       store.dispatch(set(el.checked));
       el.blur();
     };
-    store.subscribe(s => { el.checked = get(s.settings); });
+    onSettings(s => { el.checked = get(s); });
   }
 
   /** A number input: dispatches on change (Enter, the arrows, or leaving the field), showing the setting as clamped. */
@@ -48,7 +53,20 @@ export function bindControls(store: AppStore) {
       el.value = String(get(store.getState().settings));
     };
     el.onkeydown = e => { if (e.key === "Enter" || e.key === "Escape") el.blur(); };
-    store.subscribe(s => { if (document.activeElement !== el) el.value = String(get(s.settings)); });
+    onSettings(s => { if (document.activeElement !== el) el.value = String(get(s)); });
+  }
+
+  /**
+   * A filter of grouped checkboxes (`<prefix>Filters`, a details element, with its `<prefix>FilterSummary` and
+   * `<prefix>FilterBody`), showing a list setting; `min` of them stay checked.
+   */
+  function bindFilter(prefix: string, groups: readonly FilterGroup[], label: string, get: (s: Settings) => readonly string[],
+                      set: (selected: string[]) => AppAction, min?: number) {
+    const summary = $(`${prefix}FilterSummary`);
+    const filter = createFilterView({ summary, body: $(`${prefix}FilterBody`) }, groups, label, selected => store.dispatch(set(selected)), min);
+    filter.render(get(store.getState().settings));
+    $(`${prefix}Filters`).addEventListener("toggle", () => summary.blur());   // so Space stays the pedal
+    store.subscribe((s, prev) => { if (get(s.settings) !== get(prev.settings)) filter.render(get(s.settings)); });
   }
 
   fillKeySelect($("keySel"), true);
@@ -114,6 +132,13 @@ export function bindControls(store: AppStore) {
     direction => ({ type: "setRoutineOptions", options: { direction: direction as CircleDirection } }));
   for (const t of CHROMATIC_TONICS) $("routineStart").append(new Option(prettyAcc(t), `${t}:major`));
   bindSelect($("routineStart"), s => s.routine.start, start => ({ type: "setRoutineOptions", options: { start } }));
+  bindFilter("chord", CHORD_PRACTICE_GROUPS, "Chord types", s => s.chordTypes, types => ({ type: "setChordTypes", types }));
+  // Ear training: which scale degrees it asks for (start with 1 and 5, add more as they get easy)
+  bindFilter("ear", [{ label: "Scale degrees", types: EAR_DEGREES }], "Degrees", s => s.ear.degrees,
+    degrees => ({ type: "setEarOptions", options: { degrees } }));
+  // Ear training, chord qualities: which chord types it plays (the chord practice groups; at least two, so there's a choice)
+  bindFilter("earChord", CHORD_PRACTICE_GROUPS, "Chord types", s => s.earChords.types,
+    types => ({ type: "setEarChordOptions", options: { types } }), 2);
 }
 
 const isPrescriptive = (id: ModeId): id is ModeId & PrescriptiveId => id in PRESCRIPTIVE;

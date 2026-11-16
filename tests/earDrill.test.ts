@@ -230,6 +230,43 @@ describe("chord qualities", () => {
     expect(t.shown().promptHtml).toContain("Level 2 of 12 · Add diminished");
   });
 
+  it("with the Piano sound, plays each chord on the piano, voiced with a bass note low down; Simple uses the tone", async () => {
+    const t = setup();
+    const answers = fakeBoard();
+    const plays: { note: number; delay: number }[] = [];
+    let loaded = false;
+    const piano = {
+      load: async () => {
+        loaded = true;
+      },
+      loaded: () => loaded,
+      noteOn() {},
+      noteOff() {},
+      pedal() {},
+      play: (note: number, _v: number, delay: number) => plays.push({ note, delay }),
+      allOff() {},
+    };
+    t.store.dispatch({ type: "setEarChordOptions", options: { sound: "piano" } });
+    const mode = startEarChords({
+      store: t.store,
+      views: { practice: t.practice, tones: t.tones, answers, roundViz: t.roundViz, piano },
+      recorder: t.recorder,
+      rng: seeded(),
+    });
+    // The first chord waits for the samples, then plays: the bass first, the rest just after, all on the piano
+    await vi.advanceTimersByTimeAsync(0);
+    expect(plays.length).toBeGreaterThanOrEqual(4);
+    expect(plays[0].delay).toBe(0);
+    expect(plays[0].note).toBeLessThan(52);
+    expect(lastSounded(t.tones)).toEqual([]);
+    // Simple again: a fresh chord, on the tone, in close position
+    plays.length = 0;
+    t.store.dispatch({ type: "setEarChordOptions", options: { sound: "simple" } });
+    expect(plays).toEqual([]);
+    expect(lastSounded(t.tones).length).toBe(3);
+    mode.stop();
+  });
+
   it("keeps the level to those unlocked, and doesn't count broken rounds", async () => {
     const t = start();
     t.store.dispatch({ type: "setEarChordOptions", options: { level: 5 } });

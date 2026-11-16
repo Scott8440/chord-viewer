@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 500 tests (54 voicings) should pass
+npm test           # Vitest: 506 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -122,7 +122,10 @@ Layers that only talk through data. Read the file before changing a layer; this 
   every note that reaches the store on a sampled grand piano (Salamander Grand Piano V3, CC BY 3.0, credited in
   `public/piano/README.txt`): 30 MP3s, one every three semitones, re-pitched to the nearest; velocity sets level and
   a low-pass cutoff; the sustain pedal holds. The samples load the first time it's on. Off by default (the user
-  monitors through Ableton).
+  monitors through Ableton). Chord-quality ear training can also play its prompts on it (option Sound: Piano, with
+  `spreadVoicing`: a low bass note and the chord spread above, as in a song) through its own player sharing the
+  samples. Sus and sixth chords are never inverted there, and m7/m7♭5 skip the inversion that is 6/m6 when that's an
+  answer too: those inversions are other chords, and the honest answer would be marked wrong.
 - **MIDI mapping** (`src/input/midiMap.ts` pure, `src/app/midiMap.ts`): maps a key to any control with
   `data-midi-map`, per mode, active only while the control is on screen; a mapped key's note-on/off never reaches the
   performance (main's input asks the mapper first). One key may press several controls that never show together:

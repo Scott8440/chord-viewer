@@ -8,6 +8,7 @@ import { $, onPress } from "./app/dom";
 import { openHistory } from "./app/history";
 import { createMidiMapper } from "./app/midiMap";
 import { bindPianoSound } from "./app/piano";
+import { createPianoSound } from "./audio/piano";
 import { deviceId, loadSettings, saveSettingsOnChange } from "./app/storage";
 import { createClickPlayer } from "./audio/click";
 import { createTonePlayer } from "./audio/tones";
@@ -139,6 +140,8 @@ const modeDeps: ModeDeps = {
     answers: answerBoard,
     roundViz,
     ladder: ladderPick,
+    // Its own player (so turning the footer's Piano sound off doesn't cut a prompt off), sharing the samples
+    piano: createPianoSound(),
     degreePad,
     progress: progressView,
     reference: referenceView,

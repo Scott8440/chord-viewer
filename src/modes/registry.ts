@@ -14,6 +14,7 @@ import type { PracticeView } from "../views/practice";
 import type { ProgressView } from "../views/progressView";
 import type { RoundVizView } from "../views/roundViz";
 import type { LadderPickView } from "../views/ladderPick";
+import type { PianoSound } from "../audio/piano";
 import type { ReferenceView } from "../views/referenceView";
 import { startReference } from "./reference";
 import type { DegreePadView } from "../views/degreePad";
@@ -44,6 +45,8 @@ export interface ModeDeps {
     answers: AnswerBoard;
     roundViz: RoundVizView;
     ladder: LadderPickView;
+    /** The sampled piano the chord-quality drill can play its chords on */
+    piano: PianoSound;
     degreePad: DegreePadView;
     progress: ProgressView;
     reference: ReferenceView;

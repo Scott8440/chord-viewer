@@ -232,6 +232,11 @@ export function bindControls(store: AppStore) {
     v => ({ type: "setEarChordOptions", options: { inversions: v === "inversions" } }),
   );
   bindSelect(
+    $("earChordSound"),
+    s => s.earChords.sound,
+    v => ({ type: "setEarChordOptions", options: { sound: v === "piano" ? "piano" : "simple" } }),
+  );
+  bindSelect(
     $("earChordPlay"),
     s => (s.earChords.broken ? "broken" : "together"),
     v => ({ type: "setEarChordOptions", options: { broken: v === "broken" } }),

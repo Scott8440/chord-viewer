@@ -44,6 +44,7 @@ describe("the Piano sound toggle", () => {
       noteOn: (n, v) => calls.push(`on ${n} ${v}`),
       noteOff: n => calls.push(`off ${n}`),
       pedal: d => calls.push(`pedal ${d}`),
+      play: () => calls.push("play"),
       allOff: () => calls.push("allOff"),
     };
     const button = { textContent: "Piano sound" } as HTMLElement;

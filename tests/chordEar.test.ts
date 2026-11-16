@@ -9,6 +9,7 @@ import {
   qualityLabel,
   reduceChordEar,
   sanitizeChordEarOptions,
+  spreadVoicing,
   voiceChord,
   type ChordEarOptions,
 } from "../src/exercises/chordEar";
@@ -27,9 +28,69 @@ const opts: ChordEarOptions = {
   types: ["M", "m", "dim", "7"],
   inversions: false,
   broken: false,
+  sound: "simple",
   ladder: false,
   level: 0,
 };
+
+describe("piano voicing", () => {
+  it("a bass note low down (the root, or the inversion's tone) and every chord tone above, read as the same chord", () => {
+    const rng = seq(...Array.from({ length: 97 }, (_, i) => (i * 0.6180339887) % 1));
+    for (const type of ["M", "m", "dim", "aug", "sus4", "6", "maj7", "7", "m7", "m7b5", "dim7", "9"]) {
+      const size = chordSemitones(type).length;
+      for (let rootPc = 0; rootPc < 12; rootPc++)
+        // Sus and sixth chords are only ever played in root position (their inversions are other chords)
+        for (let inversion = 0; inversion < (["sus4", "6"].includes(type) ? 1 : Math.min(size, 4)); inversion++) {
+          const notes = spreadVoicing(rng, rootPc, type, inversion);
+          const [bass, ...upper] = notes;
+          expect(bass).toBeGreaterThanOrEqual(40);
+          expect(bass).toBeLessThanOrEqual(51);
+          expect(bass % 12).toBe((rootPc + chordSemitones(type)[inversion]) % 12);
+          expect(upper[0]).toBeGreaterThan(bass);
+          // Every chord tone is in the right hand
+          expect(new Set(upper.map(n => n % 12))).toEqual(new Set(chordSemitones(type).map(x => (rootPc + x) % 12)));
+          // And the app's recognizer hears the chord it meant. Augmented and diminished seventh chords are symmetrical
+          // (C+ over E is E+), so for them only the quality is certain, which is all the drill asks
+          const a = analyze(notes, null);
+          expect(a?.kind).toBe("chord");
+          // Cm7 over E♭ is also E♭6, and Cm7♭5 over E♭ is E♭m6 (the drill doesn't play those when the twin is an
+          // answer too): the recognizer may name either
+          const twinOf: Record<string, string> = { m7: "6", m7b5: "m6" };
+          const twin = inversion === 1 && a?.kind === "chord" && a.best.alias === twinOf[type];
+          if (a?.kind === "chord" && !twin) {
+            expect(a.best.alias, `${type} on ${rootPc}/${inversion}`).toBe(type);
+            if (type !== "aug" && type !== "dim7")
+              expect(a.best.rootPc, `${type} on ${rootPc}/${inversion}`).toBe(rootPc);
+          }
+        }
+    }
+  });
+
+  it("doesn't play Cm7 over E♭ when 6 is also an answer (it's E♭6), but does when it isn't", () => {
+    const inversions = (types: string[]) =>
+      new Set(
+        Array.from({ length: 400 }, () => makeChordEarPrompt(Math.random, { ...opts, types, inversions: true }))
+          .filter(p => p.type === "m7")
+          .map(p => p.inversion),
+      );
+    expect(inversions(["m7", "6"]).has(1)).toBe(false);
+    expect(inversions(["m7", "7"]).has(1)).toBe(true);
+  });
+
+  it("never inverts a chord whose inversion is another chord", () => {
+    for (let i = 0; i < 200; i++) {
+      const p = makeChordEarPrompt(Math.random, { ...opts, types: ["sus2", "sus4", "6", "m6"], inversions: true });
+      expect(p.inversion).toBe(0);
+    }
+  });
+
+  it("is only used with the piano sound: the simple sound keeps its close position, and its random numbers", () => {
+    const simple = makeChordEarPrompt(seq(0.1, 0.5, 0.3), opts);
+    expect(simple.notes).toEqual(voiceChord(48 + simple.rootPc, simple.type, simple.inversion));
+    const piano = makeChordEarPrompt(seq(0.1, 0.5, 0.3, 0.7, 0.2), { ...opts, sound: "piano" });
+    expect(piano.notes[0]).toBeLessThan(52);
+  });
+});
 
 describe("chord tones", () => {
   it("a chord type's semitones, optional tones included", () => {
@@ -128,6 +189,7 @@ describe("options", () => {
       types: ["M", "m"],
       inversions: false,
       broken: false,
+      sound: "simple",
       ladder: true,
       level: 0,
     });
@@ -136,9 +198,15 @@ describe("options", () => {
       types: ["dim", "aug"],
       inversions: true,
       broken: true,
+      sound: "simple",
       ladder: true,
       level: 0,
     });
+  });
+
+  it("the sound: simple unless piano", () => {
+    expect(sanitizeChordEarOptions({ sound: "piano" }).sound).toBe("piano");
+    expect(sanitizeChordEarOptions({ sound: "kazoo" }).sound).toBe("simple");
   });
 
   it("the ladder: on unless turned off, its level kept to the ladder, and it decides what's played", () => {

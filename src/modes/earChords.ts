@@ -7,6 +7,7 @@
 // On the ladder (the default), the level sets the types and inversions: rounds played on it are tagged with it, the
 // levels unlocked are worked out from those rounds (src/exercises/ladders.ts), and after a round that unlocks the next
 // level, Next round moves up to it.
+import type { PianoSound } from "../audio/piano";
 import type { TonePlayer } from "../audio/tones";
 import {
   answerOrder,
@@ -66,6 +67,8 @@ export function startEarChords({
     roundViz: RoundVizView;
     /** The level picker (left out in tests) */
     ladder?: LadderPickView;
+    /** The sampled piano, for the Piano sound (left out in tests, which then hear the simple sound) */
+    piano?: PianoSound;
   };
   recorder?: Recorder;
   history?: Promise<ProgressStore> | null;
@@ -90,6 +93,34 @@ export function startEarChords({
       counts: chordEarLadderTag(o) != null,
     };
   }
+  /**
+   * The chord on the sampled piano, as a pianist might play it: a little louder or softer each time, the bass first
+   * and the right hand a few milliseconds behind it, unevenly (with Broken, its notes one by one first). The first
+   * time, it waits for the samples to load, then plays if the chord is still the one to play.
+   */
+  function playOnPiano(piano: PianoSound, s: ChordEarState) {
+    if (!piano.loaded()) {
+      piano.load().then(
+        () => {
+          if (!stopped && drill.running() && drill.state().prompt === s.prompt) playOnPiano(piano, s);
+        },
+        e => console.error("Couldn't load the piano samples", e),
+      );
+      return;
+    }
+    const notes = s.prompt.notes;
+    const velocity = 68 + Math.round(rng() * 30);
+    let at = 0;
+    if (options().broken) {
+      notes.forEach((n, i) => piano.play(n, velocity - 10, i * BROKEN_GAP_S, 1.2));
+      at = notes.length * BROKEN_GAP_S + BROKEN_PAUSE_S;
+    }
+    notes.forEach((n, i) => {
+      const spread = i === 0 ? 0 : rng() * 0.025;
+      piano.play(n, velocity + (i === 0 ? 6 : Math.round(rng() * 10) - 5), at + spread, CHORD_RING_S);
+    });
+  }
+
   /** The level a round just unlocked, while its summary shows: Next round moves up to it */
   let promoteTo: number | null = null;
   let showingSummary = false;
@@ -103,7 +134,9 @@ export function startEarChords({
       options: s => s.settings.earChords,
       setup: () => {
         const o = options();
-        return `types:${answerOrder(o.types).join(",")};inversions:${o.inversions};broken:${o.broken}`;
+        // Piano rounds compare only with piano rounds (and simple ones keep the key they always had)
+        const sound = o.sound === "piano" ? ";sound:piano" : "";
+        return `types:${answerOrder(o.types).join(",")};inversions:${o.inversions};broken:${o.broken}${sound}`;
       },
       ladder: () => chordEarLadderTag(saved()),
       initial: initialChordEar(makeChordEarPrompt(rng, options())),
@@ -116,6 +149,11 @@ export function startEarChords({
       // The chord (its notes one by one first, with Broken), cutting off anything still sounding
       sound(s) {
         views.tones.stopNotes();
+        views.piano?.allOff();
+        if (options().sound === "piano" && views.piano) {
+          playOnPiano(views.piano, s);
+          return;
+        }
         const notes = s.prompt.notes,
           level = 1 / Math.sqrt(notes.length);
         const together = options().broken ? notes.length * BROKEN_GAP_S + BROKEN_PAUSE_S : 0;
@@ -123,7 +161,10 @@ export function startEarChords({
         for (const n of notes) views.tones.play(n, together, CHORD_RING_S, level);
       },
       // At a round's end the chord just named rings out rather than being cut off
-      silence: () => views.tones.stopNotes(),
+      silence() {
+        views.tones.stopNotes();
+        views.piano?.allOff();
+      },
       display(s, blocked, running) {
         const d = chordEarDisplay(s, options().types, blocked, running),
           st = ladderStatus();

@@ -13,6 +13,9 @@ export interface ChordEarOptions {
   inversions: boolean;
   /** Play the notes one by one, low to high, before the chord together */
   broken: boolean;
+  /** How it sounds: "simple", the app's own tone in close position; "piano", a sampled piano with a bass note below
+   *  and the upper notes spread and in a different order each time, nearer to a chord in a song */
+  sound: ChordEarSound;
   /** Climb the ladder (CHORD_EAR_LADDER): its level sets the types and inversions, and `types`/`inversions` above
    *  wait, kept, for free choice */
   ladder: boolean;
@@ -20,10 +23,13 @@ export interface ChordEarOptions {
   level: number;
 }
 
+export type ChordEarSound = "simple" | "piano";
+
 export const DEFAULT_CHORD_EAR: ChordEarOptions = {
   types: ["M", "m"],
   inversions: false,
   broken: false,
+  sound: "simple",
   ladder: true,
   level: 0,
 };
@@ -48,6 +54,7 @@ export function sanitizeChordEarOptions(raw: unknown): ChordEarOptions {
     types: types.length >= 2 ? types : [...DEFAULT_CHORD_EAR.types],
     inversions: o.inversions === true,
     broken: o.broken === true,
+    sound: o.sound === "piano" ? "piano" : "simple",
     // Options saved before the ladder existed start on it (the old types are kept for free choice)
     ladder: o.ladder !== false,
     level: Math.min(Math.max(level, 0), CHORD_EAR_LADDER.levels.length - 1),
@@ -74,14 +81,62 @@ export function voiceChord(rootMidi: number, type: string, inversion: number): n
   return [...tones.slice(inversion), ...tones.slice(0, inversion).map(t => t + 12)];
 }
 
+/**
+ * Chords whose inversions are other chords, so they're always played in root position: Csus4 over F is F–C–G, which
+ * is Fsus2, and C6 over A is Am7. Asked as an inversion, the honest answer would be marked wrong.
+ */
+const ROOT_POSITION_ONLY = new Set(["sus2", "sus4", "6", "m6"]);
+
+/** Inversions that are another chord type: Cm7 over E♭ (its first inversion) has the notes of E♭6, and Cm7♭5 over
+ *  E♭ those of E♭m6. Only a problem when that other type is also an answer. */
+const SAME_AS_INVERTED: Readonly<Record<string, Readonly<Record<number, string>>>> = {
+  m7: { 1: "6" },
+  m7b5: { 1: "m6" },
+};
+
+/** The bass note's range for a spread voicing: E2 to D♯3 */
+const SPREAD_BASS_LOW = 40;
+/** The upper notes start between G3 and F♯4 */
+const SPREAD_UPPER_LOW = 55;
+
+/**
+ * A chord voiced the way a pianist might play it in a song: the bass note (the root, or the inversion's chord tone)
+ * alone in the left hand, low down, and every chord tone above it in the right hand, starting from a random one, in
+ * close position or, half the time, opened up by dropping the second-highest note an octave.
+ */
+export function spreadVoicing(rng: Rng, rootPc: number, type: string, inversion: number): number[] {
+  const pcs = chordSemitones(type).map(s => (rootPc + s) % 12);
+  const bass = SPREAD_BASS_LOW + ((pcs[inversion] - SPREAD_BASS_LOW + 120) % 12);
+  const start = randomInt(rng, pcs.length);
+  const order = [...pcs.slice(start), ...pcs.slice(0, start)];
+  const upper: number[] = [];
+  for (const pc of order) {
+    // The next note up with this pitch class (the first from the bottom of the range)
+    const from = upper.length ? upper[upper.length - 1] + 1 : SPREAD_UPPER_LOW;
+    upper.push(from + ((pc - from + 120) % 12));
+  }
+  if (upper.length >= 3 && rng() < 0.5) {
+    const i = upper.length - 2;
+    if (upper[i] - 12 > bass + 2) upper[i] -= 12;
+  }
+  return [bass, ...upper].sort((a, b) => a - b);
+}
+
 /** A chord to play: one of the allowed types on a random root, never the same chord (root and type) twice running. */
 export function makeChordEarPrompt(rng: Rng, o: ChordEarOptions, previous?: ChordEarPrompt): ChordEarPrompt {
   for (;;) {
     const type = pick(rng, o.types);
     const rootPc = randomInt(rng, 12);
     if (previous && previous.type === type && previous.rootPc === rootPc) continue;
-    const inversion = o.inversions ? randomInt(rng, chordSemitones(type).length) : 0;
-    const notes = voiceChord(LOWEST_ROOT + rootPc, type, inversion);
+    const inversion = o.inversions && !ROOT_POSITION_ONLY.has(type) ? randomInt(rng, chordSemitones(type).length) : 0;
+    // An inversion that's another chord on offer (Cm7 over E♭ is E♭6) would make the honest answer wrong
+    const twin = SAME_AS_INVERTED[type]?.[inversion];
+    if (twin && o.types.includes(twin)) continue;
+    // With the piano, voiced as in a song; otherwise in close position (the rng is only used for that when it is)
+    const notes =
+      o.sound === "piano"
+        ? spreadVoicing(rng, rootPc, type, inversion)
+        : voiceChord(LOWEST_ROOT + rootPc, type, inversion);
     // Spelled as chord names usually are: minor-family chords on C♯ and G♯, others on D♭ and A♭
     const root = (templateById(type)?.minor ? ROOT_MINOR : ROOT_MAJOR)[rootPc];
     return { rootPc, root, type, inversion, notes };

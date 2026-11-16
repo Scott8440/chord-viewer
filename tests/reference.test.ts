@@ -119,11 +119,12 @@ describe("the pages", () => {
   });
 
   it("the diatonic chord page has a row per key, every chord in the app's spelling", () => {
-    const html = REFERENCE_PAGES.find(p => p.id === "diatonic")!
-      .sections.map(s => s.html)
-      .join("");
-    const row = (key: string) => {
-      const m = new RegExp(`<tr><td class="sym">${key}</td>(.*?)</tr>`).exec(html);
+    const page = REFERENCE_PAGES.find(p => p.id === "diatonic")!;
+    const html = page.sections.map(s => s.html).join("");
+    const section = (id: string) => page.sections.find(s => s.id === id)!.html;
+    /** A key's row in one section's table: its chords */
+    const row = (id: string, key: string) => {
+      const m = new RegExp(`<tr><td class="sym">${key}</td>(.*?)</tr>`).exec(section(id));
       return m
         ? m[1]
             .replace(/<\/?td>/g, " ")
@@ -131,9 +132,12 @@ describe("the pages", () => {
             .split(/\s+/)
         : null;
     };
-    expect(row("C major")).toEqual(["C", "Dm", "Em", "F", "G", "Am", "Bdim"]);
-    expect(row("B♭ major")).toEqual(["B♭", "Cm", "Dm", "E♭", "F", "Gm", "Adim"]);
-    expect(row("A minor")).toEqual(["Am", "Bdim", "C", "Dm", "Em", "F", "G"]);
+    // Whether the keys are major or minor is the caption; the rows name just the tonic
+    expect(section("major-triads")).toContain("<caption>Major keys</caption>");
+    expect(section("minor-triads")).toContain("<caption>Minor keys</caption>");
+    expect(row("major-triads", "C")).toEqual(["C", "Dm", "Em", "F", "G", "Am", "Bdim"]);
+    expect(row("major-triads", "B♭")).toEqual(["B♭", "Cm", "Dm", "E♭", "F", "Gm", "Adim"]);
+    expect(row("minor-triads", "A")).toEqual(["Am", "Bdim", "C", "Dm", "Em", "F", "G"]);
     expect(html).toContain("<td>Cmaj7</td><td>Dm7</td><td>Em7</td><td>Fmaj7</td><td>G7</td><td>Am7</td><td>Bm7♭5</td>");
     // Harmonic minor: major V, diminished vii on the raised seventh, augmented III
     expect(html).toContain("<td>Am</td><td>Bdim</td><td>Caug</td><td>Dm</td><td>E</td><td>F</td><td>G♯dim</td>");

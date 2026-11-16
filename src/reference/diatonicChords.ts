@@ -22,20 +22,24 @@ export function chordSymbol(symbol: string): string {
   return prettyAcc(m[1]) + quality;
 }
 
-const keyName = (tonic: string, minor: boolean) => `${prettyAcc(tonic)} ${minor ? "minor" : "major"}`;
-
-/** A row per key: its name, then the chord on each degree */
-const keyTable = (numerals: readonly string[], rows: readonly { key: string; chords: readonly string[] }[]) =>
+/** A row per key: its tonic, then the chord on each degree; whether the keys are major or minor is the caption */
+const keyTable = (
+  caption: string,
+  numerals: readonly string[],
+  rows: readonly { tonic: string; chords: readonly string[] }[],
+) =>
   simpleTable(
     ["Key", ...numerals],
-    rows.map(r => [r.key, ...r.chords.map(chordSymbol)]),
+    rows.map(r => [prettyAcc(r.tonic), ...r.chords.map(chordSymbol)]),
+    { caption },
   );
 
 const majorTable = (sevenths: boolean) =>
   keyTable(
+    sevenths ? "Major keys, seventh chords" : "Major keys",
     sevenths ? ["Imaj7", "ii7", "iii7", "IVmaj7", "V7", "vi7", "viiø7"] : ["I", "ii", "iii", "IV", "V", "vi", "vii°"],
     MAJOR_KEYS.map(k => ({
-      key: keyName(k, false),
+      tonic: k,
       chords: sevenths ? Key.majorKey(k).chords : Key.majorKey(k).triads,
     })),
   );
@@ -47,11 +51,14 @@ const minorTable = (scale: "natural" | "harmonic", sevenths: boolean) => {
         ? ["i7", "iiø7", "IIImaj7", "iv7", "v7", "VImaj7", "VII7"]
         : ["i", "ii°", "III", "iv", "v", "VI", "VII"]
       : ["i", "ii°", "III+", "iv", "V", "VI", "vii°"];
+  const caption =
+    scale === "harmonic" ? "Minor keys, harmonic minor" : sevenths ? "Minor keys, seventh chords" : "Minor keys";
   return keyTable(
+    caption,
     numerals,
     MINOR_KEYS.map(k => {
       const key = Key.minorKey(k)[scale];
-      return { key: keyName(k, true), chords: sevenths ? key.chords : key.triads };
+      return { tonic: k, chords: sevenths ? key.chords : key.triads };
     }),
   );
 };

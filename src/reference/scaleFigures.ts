@@ -99,14 +99,15 @@ export function scaleTable(
   );
 }
 
-/** A plain table from header cells and rows of cells (escaped) */
+/** A plain table from header cells and rows of cells (escaped), with an optional caption above it */
 export function simpleTable(
   head: readonly string[],
   rows: readonly (readonly string[])[],
-  { firstBold = true } = {},
+  { firstBold = true, caption = "" } = {},
 ): string {
   return (
-    `<div class="refTableWrap"><table class="refTable"><thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>` +
+    `<div class="refTableWrap"><table class="refTable">${caption ? `<caption>${esc(caption)}</caption>` : ""}` +
+    `<thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>` +
     rows
       .map(
         r => `<tr>${r.map((c, i) => `<td${i === 0 && firstBold ? ' class="sym"' : ""}>${esc(c)}</td>`).join("")}</tr>`,

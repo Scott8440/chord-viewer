@@ -1619,20 +1619,33 @@ main:has(#referenceView:not([hidden])) {
 .refTable {
   border-collapse: collapse;
   font-size: 14px;
+  /* Light, like the keyboards' paper, with every cell boxed in */
+  background: var(--paper);
+  color: var(--ink);
+}
+.refTable caption {
+  caption-side: top;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  padding-bottom: 8px;
 }
 .refTable th,
 .refTable td {
   text-align: left;
-  padding: 7px 28px 7px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 8px 14px;
+  border: 1px solid #d8d2c3;
   white-space: nowrap;
 }
 .refTable th {
-  font-weight: 500;
-  color: var(--muted);
+  font-weight: 600;
+  color: #5f5a50;
+  background: #ebe5d6;
 }
 .refTable td.sym {
   font-weight: 600;
+  background: #f0ebdf; /* the row's label, set apart from the cells beside it */
 }
 /* The summary's small keyboards: the chord's keys coloured, no labels (they'd be too small to read) */
 .refTable td.keys {
@@ -1661,6 +1674,6 @@ main:has(#referenceView:not([hidden])) {
   /* Tighter columns, so a row of seven chords fits a phone */
   .refTable th,
   .refTable td {
-    padding-right: 14px;
+    padding: 7px 9px;
   }
 }

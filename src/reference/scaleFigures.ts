@@ -99,18 +99,21 @@ export function scaleTable(
   );
 }
 
-/** A plain table from header cells and rows of cells (escaped), with an optional caption above it */
+/** A plain table from header cells and rows of cells (escaped), with an optional caption above it; `rowKeys` tags
+ *  each row with a key, for a page's key picker (src/views/referenceView.ts) to show only that key's rows */
 export function simpleTable(
   head: readonly string[],
   rows: readonly (readonly string[])[],
-  { firstBold = true, caption = "" } = {},
+  { firstBold = true, caption = "", rowKeys = [] as readonly string[] } = {},
 ): string {
   return (
     `<div class="refTableWrap"><table class="refTable">${caption ? `<caption>${esc(caption)}</caption>` : ""}` +
     `<thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>` +
     rows
       .map(
-        r => `<tr>${r.map((c, i) => `<td${i === 0 && firstBold ? ' class="sym"' : ""}>${esc(c)}</td>`).join("")}</tr>`,
+        (r, n) =>
+          `<tr${rowKeys[n] != null ? ` data-key="${esc(rowKeys[n])}"` : ""}>` +
+          `${r.map((c, i) => `<td${i === 0 && firstBold ? ' class="sym"' : ""}>${esc(c)}</td>`).join("")}</tr>`,
       )
       .join("") +
     `</tbody></table></div>`

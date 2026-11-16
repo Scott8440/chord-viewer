@@ -1,6 +1,6 @@
 // The reference section: a sidebar listing the pages (the open page's sections under it) beside the open page. A click
 // in the sidebar scrolls to that section; while reading, the sidebar marks the section in view. Clicking a table row
-// picks it out, fading the table's other rows.
+// picks it out, fading the table's other rows. A page can have a key picker, showing only one key's rows.
 import type { ReferencePage } from "../reference/pages";
 import { esc } from "./html";
 
@@ -14,6 +14,21 @@ export interface ReferenceView {
 export function createReferenceView(el: HTMLElement, scroller: HTMLElement): ReferenceView {
   let observer: IntersectionObserver | null = null;
   let pages: readonly ReferencePage[] = [];
+
+  // A page's key picker: only that key's table rows, and no section introductions (the tables are what's wanted)
+  el.addEventListener("change", e => {
+    const pick = (e.target as HTMLElement).closest<HTMLSelectElement>("select[data-key-pick]");
+    if (!pick) return;
+    pick.blur(); // so Space stays the pedal
+    showKey(pick.value);
+  });
+  function showKey(key: string) {
+    const article = el.querySelector("article");
+    if (!article) return;
+    article.classList.toggle("keyPicked", key !== "");
+    for (const row of article.querySelectorAll<HTMLElement>("tr[data-key]"))
+      row.hidden = key !== "" && row.dataset.key !== key;
+  }
 
   el.addEventListener("click", e => {
     // A table row: picks it out (the table's other rows fade); clicking it again puts the table back

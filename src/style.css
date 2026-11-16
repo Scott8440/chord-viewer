@@ -1531,6 +1531,20 @@ main:has(#referenceView:not([hidden])) {
 #referenceView article section {
   scroll-margin-top: 8px;
 }
+/* A page's key picker (diatonic chords): with a key picked, the sections' introductions go and only the tables stay */
+#referenceView .refKeyPick {
+  margin: 4px 0 8px;
+  font-size: 14px;
+}
+#referenceView article.keyPicked section > p {
+  display: none;
+}
+#referenceView .refKeyPick + section h2 {
+  margin-top: 16px;
+}
+#referenceView article.keyPicked h2 {
+  margin-top: 24px;
+}
 /* A page with no intro: its first section sits close under the title */
 #referenceView article h1 + section h2 {
   margin-top: 12px;

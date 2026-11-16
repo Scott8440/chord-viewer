@@ -124,7 +124,7 @@ describe("the pages", () => {
     const section = (id: string) => page.sections.find(s => s.id === id)!.html;
     /** A key's row in one section's table: its chords */
     const row = (id: string, key: string) => {
-      const m = new RegExp(`<tr><td class="sym">${key}</td>(.*?)</tr>`).exec(section(id));
+      const m = new RegExp(`<tr[^>]*><td class="sym">${key}</td>(.*?)</tr>`).exec(section(id));
       return m
         ? m[1]
             .replace(/<\/?td>/g, " ")
@@ -138,6 +138,12 @@ describe("the pages", () => {
     expect(row("major-triads", "C")).toEqual(["C", "Dm", "Em", "F", "G", "Am", "Bdim"]);
     expect(row("major-triads", "B♭")).toEqual(["B♭", "Cm", "Dm", "E♭", "F", "Gm", "Adim"]);
     expect(row("minor-triads", "A")).toEqual(["Am", "Bdim", "C", "Dm", "Em", "F", "G"]);
+    // The key picker pairs each major key with its relative minor; both rows carry the major key's tag
+    expect(page.intro).toContain("data-key-pick");
+    expect(page.intro).toContain('<option value="Bb">B♭ major / G minor</option>');
+    expect(section("major-triads")).toContain('<tr data-key="Bb"><td class="sym">B♭</td>');
+    expect(section("minor-triads")).toContain('<tr data-key="Bb"><td class="sym">G</td>');
+    expect(section("harmonic-minor")).toContain('<tr data-key="C"><td class="sym">A</td>');
     expect(html).toContain("<td>Cmaj7</td><td>Dm7</td><td>Em7</td><td>Fmaj7</td><td>G7</td><td>Am7</td><td>Bm7♭5</td>");
     // Harmonic minor: major V, diminished vii on the raised seventh, augmented III
     expect(html).toContain("<td>Am</td><td>Bdim</td><td>Caug</td><td>Dm</td><td>E</td><td>F</td><td>G♯dim</td>");

@@ -9,6 +9,17 @@ import { simpleTable } from "./scaleFigures";
 const MAJOR_KEYS = ["C", "G", "D", "A", "E", "B", "F#", "F", "Bb", "Eb", "Ab", "Db", "Gb"];
 /** Their relative minors, in the same order */
 const MINOR_KEYS = MAJOR_KEYS.map(k => Key.majorKey(k).minorRelative);
+/** A major key and its relative minor share a picker entry (the same notes, the same signature): rows of both are
+ *  tagged with the major tonic */
+const KEY_IDS = MAJOR_KEYS;
+
+/** The key picker, above the tables: all keys, or one major key with its relative minor */
+const keyPicker = () =>
+  `<label class="pick refKeyPick">Key <select data-key-pick><option value="">All keys</option>` +
+  MAJOR_KEYS.map(
+    (k, i) => `<option value="${k}">${prettyAcc(k)} major / ${prettyAcc(MINOR_KEYS[i])} minor</option>`,
+  ).join("") +
+  `</select></label>`;
 
 /** A tonal chord symbol in the app's spelling: "AmMaj7" is "Am(maj7)", "C+maj7" is "Cmaj7♯5", "G#o7" is "G♯dim7" */
 export function chordSymbol(symbol: string): string {
@@ -31,7 +42,7 @@ const keyTable = (
   simpleTable(
     ["Key", ...numerals],
     rows.map(r => [prettyAcc(r.tonic), ...r.chords.map(chordSymbol)]),
-    { caption },
+    { caption, rowKeys: KEY_IDS },
   );
 
 const majorTable = (sevenths: boolean) =>
@@ -66,6 +77,7 @@ const minorTable = (scale: "natural" | "harmonic", sevenths: boolean) => {
 export const DIATONIC_CHORDS: ReferencePage = {
   id: "diatonic",
   title: "Diatonic chords",
+  intro: keyPicker(),
   sections: [
     {
       id: "major-triads",

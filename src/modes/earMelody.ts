@@ -4,10 +4,12 @@
 // Rounds, replays and Stop/Start are the shared ear-drill runner's (earDrill.ts); this sounds the melody and draws it.
 import type { TonePlayer } from "../audio/tones";
 import {
+  degreeButtons,
   initialMelody,
   makeMelodyPrompt,
   pickTonic,
   reduceMelody,
+  tonicMidi,
   type EarOptions,
   type MelodyAction,
   type MelodyPrompt,
@@ -21,6 +23,7 @@ import { buildKey } from "../theory";
 import type { ProgressStore } from "../progress/store";
 import { earMelodyDisplay, roundSummaryDisplay, type PracticeView } from "../views/practice";
 import type { StaffView } from "../views/staff";
+import type { DegreePadView } from "../views/degreePad";
 import { createEarDrill } from "./earDrill";
 import { createPerformanceDrawer, onPlayerInput, type AppStore, type Mode } from "./performance";
 import type { RoundVizView } from "../views/roundViz";
@@ -40,7 +43,14 @@ export function startEarMelody({
   rng = Math.random,
 }: {
   store: AppStore;
-  views: { staff: StaffView; practice: PracticeView; tones: TonePlayer; roundViz: RoundVizView };
+  views: {
+    staff: StaffView;
+    practice: PracticeView;
+    tones: TonePlayer;
+    roundViz: RoundVizView;
+    /** Degree buttons to tap (left out in tests) */
+    degreePad?: DegreePadView;
+  };
   recorder?: Recorder;
   history?: Promise<ProgressStore> | null;
   rng?: Rng;
@@ -83,7 +93,10 @@ export function startEarMelody({
       display: (s, blocked, running) => earMelodyDisplay(s, options().degrees, blocked, running),
       summaryDisplay: summary => roundSummaryDisplay(summary, "Melodies"),
       // The drawer only redraws by itself on input; the melody and its key change here
-      rendered: () => drawer.schedule(),
+      rendered() {
+        drawer.schedule();
+        views.degreePad?.show(degreeButtons(tonicMidi(keys.key), options().degrees, true));
+      },
     },
     recorder,
     history,
@@ -110,6 +123,7 @@ export function startEarMelody({
   return {
     stop() {
       offInput();
+      views.degreePad?.show(null);
       drawer.stop();
       drill.stop();
     },

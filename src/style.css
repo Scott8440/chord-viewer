@@ -378,10 +378,41 @@ main {
   position: relative;
   background: var(--paper);
   display: flex;
+  flex-wrap: wrap; /* the degree buttons take a row of their own under the stage */
   align-items: center;
+  align-content: center;
   justify-content: center;
   padding: 12px;
   min-height: 340px;
+}
+/* Degree buttons for the ear modes answered by playing a note (src/views/degreePad.ts) */
+#degreePad {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 4px 4px;
+}
+#degreePad button {
+  flex: 1 1 0;
+  max-width: 84px;
+  min-height: 64px;
+  border-radius: 12px;
+  border: 2px solid #d8d2c3;
+  background: #fffdf8;
+  color: var(--ink);
+  font:
+    600 24px system-ui,
+    sans-serif;
+  cursor: pointer;
+  touch-action: manipulation; /* no double-tap zoom when answering quickly */
+}
+#degreePad button:hover {
+  border-color: #9a968c;
+  background: #fff;
+}
+#degreePad button:active {
+  background: #efeadf;
 }
 #staff {
   width: 100%;
@@ -408,6 +439,14 @@ main {
 }
 #degreeCircle[hidden] {
   display: none;
+}
+/* With the degree buttons under it, the stage is only as tall as it needs to be, and the circle a little smaller */
+#staffCard:has(> #degreePad:not([hidden])) > #degreeCircle,
+#staffCard:has(> #degreePad:not([hidden])) > #staff {
+  height: auto;
+}
+#staffCard:has(> #degreePad:not([hidden])) #degreeCircle svg {
+  width: min(100%, 52vh);
 }
 #degreeCircle svg {
   width: min(100%, 64vh);
@@ -681,6 +720,18 @@ body.midiMapping [data-midi-map].midiWaiting {
   flex-wrap: wrap;
   align-items: center;
   gap: 14px 28px;
+}
+/* The charts shrink to fit a narrow screen (their own width is the most they take) */
+#roundViz,
+#roundViz .rvTop,
+#roundViz .rvPart {
+  max-width: 100%;
+  min-width: 0;
+}
+#roundViz svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 #roundViz .rvNote {
   font-size: 12px;
@@ -1102,7 +1153,7 @@ label.opt input {
 
 @media (max-width: 760px) {
   main {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr); /* not 1fr, which can't shrink below a wide staff */
     padding: 16px;
   }
   header,
@@ -1112,6 +1163,36 @@ label.opt input {
   }
   #staffCard {
     min-height: 260px;
+  }
+  /* The page scrolls as one instead of fitting the window: the cards are as tall as what's in them */
+  html,
+  body {
+    height: auto;
+  }
+  main {
+    min-height: auto;
+    gap: 16px;
+  }
+  header {
+    gap: 10px 12px;
+  }
+  #chordCard {
+    padding: 20px 18px;
+  }
+  /* Long option names (routines) mustn't widen the page */
+  .pick {
+    max-width: 100%;
+  }
+  .pick select {
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+/* Touch screens: no computer keyboard to explain */
+@media (hover: none) and (pointer: coarse) {
+  #kbdHint,
+  #kbdOct {
+    display: none;
   }
 }
 
@@ -1179,7 +1260,7 @@ main:has(#progressView:not([hidden])) {
 }
 .pvGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
   gap: 16px;
 }
 .pvCard {

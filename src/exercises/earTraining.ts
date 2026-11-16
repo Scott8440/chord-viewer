@@ -34,6 +34,18 @@ export function degreeNote(tonic: number, degree: string): number | null {
   return d ? tonic + d.semitones : null;
 }
 
+/** The degrees on offer as notes above a tonic note, in scale order, for answering by tapping; with `octave` (melodies,
+ *  which can go up to the root an octave higher) the high root too, as "8" */
+export function degreeButtons(
+  tonic: number,
+  degrees: readonly string[],
+  octave: boolean,
+): { label: string; note: number }[] {
+  const out = EAR_DEGREES.filter(d => degrees.includes(d.id)).map(d => ({ label: d.label, note: tonic + d.semitones }));
+  if (octave && degrees.includes("1")) out.push({ label: "8", note: tonic + 12 });
+  return out;
+}
+
 /** Drone tonic: one of the major key tonics, or a random one that changes every PROMPTS_PER_KEY prompts */
 export const EAR_TONICS: readonly string[] = ["random", ...KEY_MAJORS];
 

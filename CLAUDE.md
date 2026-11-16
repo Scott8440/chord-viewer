@@ -8,8 +8,8 @@ ear-training modes, a metronome, and a practice history with a Progress page.
 
 The user plays a Komplete Kontrol S88 MK3 with a sustain pedal on Windows, often through loopMIDI because Ableton
 holds the device port, and monitors the keyboard's sound through Ableton (the app's own sound is the metronome and
-ear training). Desktop Chrome or Edge only (the user's decision); Safari has no Web MIDI, so an iPad version would
-need a native wrapper and only the input layer would change. The user practises on the GitHub Pages site.
+ear training). Desktop Chrome or Edge is the main target, but the page lays out on phones too (Nov 2026), so ear training
+works there by tapping; Safari has no Web MIDI, and there's no on-screen piano (not wanted for now). The user practises on the GitHub Pages site.
 
 ## Working conventions
 - **Work on `main`.** Commit and push straight to `main`; don't create a branch per feature (the user's preference,
@@ -168,6 +168,10 @@ Layers that only talk through data. Read the file before changing a layer; this 
   rather than queueing sound that bursts out on the first click.
 - **Round score** (`src/views/roundViz.ts`): all three views show at once (dots and ring side by side, the line
   below); the debug switcher that compared them is gone.
+- **Phone layout** (`@media (max-width: 760px)` in `src/style.css`): one column (`minmax(0, 1fr)`, so wide things
+  shrink), the page scrolls instead of fitting the window, and nothing may be wider than the screen (fixed-width SVGs
+  get `max-width: 100%`). The ear modes answered by playing a note show degree buttons (`src/views/degreePad.ts`,
+  source `"pad"`, bypassing the MIDI mapper) for the degrees on offer.
 - **The staff never moves:** room is reserved for A0–C8 and both chords share one fixed `TickContext`. Treble/bass
   split at middle C (≥ 60 treble). Rows of notes use the wider row staff.
 - **Practice modes don't show the circle of fifths** where its numerals would give answers away (chord, progression

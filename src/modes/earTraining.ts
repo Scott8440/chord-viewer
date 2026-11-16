@@ -6,6 +6,7 @@
 // ear-drill runner's (earDrill.ts); this adds the drone, its introduction and stopping while the window is away.
 import type { TonePlayer } from "../audio/tones";
 import {
+  degreeButtons,
   degreeNote,
   EAR_DEGREES,
   makeEarPrompt,
@@ -23,6 +24,7 @@ import { createDegreeKeys } from "../input/degreeKeys";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { earDrillBody } from "../progress/records";
 import type { DegreeCircleView } from "../views/degreeCircle";
+import type { DegreePadView } from "../views/degreePad";
 import type { ProgressStore } from "../progress/store";
 import { earDisplay, roundSummaryDisplay, type PracticeView } from "../views/practice";
 import { createEarDrill } from "./earDrill";
@@ -51,7 +53,14 @@ export function startEarTraining({
   rng = Math.random,
 }: {
   store: AppStore;
-  views: { practice: PracticeView; tones: TonePlayer; degrees: DegreeCircleView; roundViz: RoundVizView };
+  views: {
+    practice: PracticeView;
+    tones: TonePlayer;
+    degrees: DegreeCircleView;
+    roundViz: RoundVizView;
+    /** Degree buttons to tap (left out in tests) */
+    degreePad?: DegreePadView;
+  };
   recorder?: Recorder;
   history?: Promise<ProgressStore> | null;
   rng?: Rng;
@@ -140,7 +149,10 @@ export function startEarTraining({
       silence,
       display: earDisplay,
       summaryDisplay: summary => roundSummaryDisplay(summary, "Scale degrees"),
-      rendered: () => views.degrees.render(options().degrees),
+      rendered() {
+        views.degrees.render(options().degrees);
+        views.degreePad?.show(degreeButtons(tonicMidi(tonic()), options().degrees, false));
+      },
       judged(a, now) {
         if (a.type === "play")
           views.degrees.ping(a.note - tonicMidi(tonic()), now.status === "correct" ? "correct" : "wrong");
@@ -191,6 +203,7 @@ export function startEarTraining({
       document.removeEventListener("visibilitychange", onVisibility);
       offInput();
       offDegreeKeys();
+      views.degreePad?.show(null);
       drill.stop();
     },
     skip() {

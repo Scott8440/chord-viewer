@@ -28,6 +28,7 @@ import { createCircleView } from "./views/circleOfFifths";
 import { createAnswerBoard } from "./views/answerBoard";
 import { createRoundVizView } from "./views/roundViz";
 import { createLadderPick } from "./views/ladderPick";
+import { createDegreePad } from "./views/degreePad";
 import { createDegreeCircle } from "./views/degreeCircle";
 import { createHeaderView } from "./views/header";
 import { createPracticeView } from "./views/practice";
@@ -74,6 +75,8 @@ const degreeCircle = createDegreeCircle($("degreeCircle"));
 const answerBoard = createAnswerBoard($("answerBoard"));
 const roundViz = createRoundVizView($("roundViz"));
 const ladderPick = createLadderPick($<HTMLSelectElement>("earChordLevel"));
+// Its taps are answers, never MIDI-mapped keys, so they skip the mapper
+const degreePad = createDegreePad($("degreePad"), event => store.dispatch({ type: "input", event }));
 const progressView = createProgressView($("progressView"), {
   change(selection) {
     selectProgress(selection);
@@ -133,6 +136,7 @@ const modeDeps: ModeDeps = {
     answers: answerBoard,
     roundViz,
     ladder: ladderPick,
+    degreePad,
     progress: progressView,
   },
   recorder: history.recorder,
@@ -147,6 +151,7 @@ const modeDeps: ModeDeps = {
 function startMode(id: View): Mode {
   circle.render(null);
   roundViz.render(null); // the ear modes draw it
+  degreePad.show(null); // and these, those answered by playing a note
   const mode = MODE_REGISTRY[id](modeDeps);
   const offIdle = pageSetup(id).fadeChordWhenIdle
     ? onIdle(store, IDLE_MS, { idle: () => chordName.setIdle(true), active: () => chordName.setIdle(false) })

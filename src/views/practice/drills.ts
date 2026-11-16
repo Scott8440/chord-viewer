@@ -99,7 +99,7 @@ export function readingLoadingDisplay(
 }
 
 /** Browsers start audio only after a click or key press on the page (a MIDI note doesn't count) */
-const SOUND_WAITING = "Click anywhere or press a computer key to start";
+const SOUND_WAITING = "Tap or click anywhere, or press a computer key, to start";
 
 /** Ear training: the degree circle is the display (its pings say right or wrong), so no prompt and no feedback here:
  *  just the instruction, the score and, while stopped or waiting for audio, how to start */
@@ -115,7 +115,7 @@ export function earDisplay(s: EarState, soundBlocked: boolean, running: boolean)
   }
   return {
     ...base,
-    label: "Play the degree you hear over the drone, in any octave, or press it (1–7)",
+    label: "Play the degree you hear over the drone, in any octave, or tap it below (or press 1–7)",
     sub: soundBlocked ? SOUND_WAITING : "",
     stopLabel: "Stop",
   };
@@ -162,11 +162,11 @@ export function earMelodyDisplay(
   }
   const n = s.prompt.notes.length - 1;
   return {
-    label: "Play it back from the root, in order, at the same pitch",
+    label: "Play it back from the root, in order, at the same pitch, or tap the degrees below",
     promptHtml,
     size: "sequence",
     sub: soundBlocked
-      ? "Click anywhere or press a computer key to start the sound"
+      ? "Tap or click anywhere, or press a computer key, to start the sound"
       : `Root ${prettyAcc(key.tonic)} + ${n} notes · degrees ${degrees.map(prettyAcc).join(", ")}`,
     status: s.status,
     feedback,
@@ -289,7 +289,7 @@ export function chordEarDisplay(
     label: "Which kind of chord is it?",
     promptHtml: "",
     size: "chord",
-    sub: soundBlocked ? SOUND_WAITING : `Choose on the left, or press its number · ${answerOrder(types).length} kinds`,
+    sub: soundBlocked ? SOUND_WAITING : `Choose a box, or press its number · ${answerOrder(types).length} kinds`,
     status: s.status,
     feedback,
     score: scoreText(s),

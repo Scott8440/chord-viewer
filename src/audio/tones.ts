@@ -31,7 +31,7 @@ const freq = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
  * throws away a ramp still in progress, so the level jumps back to where the ramp began (a note's attack peak) and
  * clicks before any fade can start.
  */
-function holdAt(param: AudioParam, t: number) {
+export function holdAt(param: AudioParam, t: number) {
   if (typeof param.cancelAndHoldAtTime === "function") param.cancelAndHoldAtTime(t);
   else {
     const v = param.value;

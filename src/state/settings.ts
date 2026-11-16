@@ -59,6 +59,8 @@ export interface Settings {
   /** The latency has been dealt with: calibrated, set by hand, or calibration declined. Until it is, starting the
    *  metronome opens the calibration. */
   readonly latencyCalibrated: boolean;
+  /** Play what comes in on the sampled grand piano (src/audio/piano.ts); off, the player hears their own instrument */
+  readonly pianoSound: boolean;
 }
 
 /** The settings in the table: all but the key context, which is built from `keyValue` */
@@ -118,6 +120,7 @@ export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> }
     // A latency saved before this flag existed was calibrated or typed in, unless it's the default 0
     sanitize: (v, all) => v === true || sanitizeLatency(all?.latencyMs) !== 0,
   },
+  pianoSound: { storage: saved("pianoSound", "flag"), sanitize: v => v === true },
 };
 
 export const SETTING_NAMES = Object.keys(SETTINGS) as SettingName[];

@@ -7,6 +7,7 @@ import { loadExcerpts } from "./app/excerpts";
 import { $, onPress } from "./app/dom";
 import { openHistory } from "./app/history";
 import { createMidiMapper } from "./app/midiMap";
+import { bindPianoSound } from "./app/piano";
 import { deviceId, loadSettings, saveSettingsOnChange } from "./app/storage";
 import { createClickPlayer } from "./audio/click";
 import { createTonePlayer } from "./audio/tones";
@@ -184,6 +185,9 @@ store.subscribe((s, prev) => {
 onPress("progressBtn", () =>
   store.dispatch({ type: "setPage", page: store.getState().page === "progress" ? "practice" : "progress" }),
 );
+// Piano sound: what's played sounds on the sampled grand piano while it's on (saved)
+bindPianoSound(store, $("pianoBtn"));
+onPress("pianoBtn", () => store.dispatch({ type: "setPianoSound", on: !store.getState().settings.pianoSound }));
 // Reference: the same, for the music theory pages
 onPress("referenceBtn", () =>
   store.dispatch({ type: "setPage", page: store.getState().page === "reference" ? "practice" : "reference" }),

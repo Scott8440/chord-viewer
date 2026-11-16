@@ -1245,7 +1245,8 @@ main:has(#progressView:not([hidden])) {
 }
 /* The header's Progress and Reference buttons read as pressed while their page is open */
 #progressBtn.on,
-#referenceBtn.on {
+#referenceBtn.on,
+#pianoBtn.on {
   background: var(--accent);
   border-color: var(--accent);
   color: #14161a;

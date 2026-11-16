@@ -18,7 +18,8 @@ works there by tapping; Safari has no Web MIDI, and there's no on-screen piano (
 ## Build, deploy, checks
 Vite + TypeScript, built to one self-contained file with `vite-plugin-singlefile` (`vite.config.ts` renames it to
 `dist/chord-display.html`). `.github/workflows/pages.yml` runs the tests and the build on every push to `main` and
-publishes the file as `index.html` plus `reading/` (the excerpt files from `public/reading/`) to GitHub Pages.
+publishes the file as `index.html` plus `reading/` (the excerpt files from `public/reading/`) and `piano/` (the piano
+samples from `public/piano/`) to GitHub Pages.
 **Offline is no longer a requirement** (Oct 2026): the app may fetch its own static data, but there is still no
 server of our own and no telemetry.
 
@@ -26,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 494 tests (54 voicings) should pass
+npm test           # Vitest: 500 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -117,6 +118,11 @@ Layers that only talk through data. Read the file before changing a layer; this 
 - **Audio** (`src/audio/`): one shared AudioContext (`context.ts`), unlocked on any click, tap or key (a MIDI note
   isn't a gesture). `tones.ts` synthesises the ear-training sounds (no samples); `tones.latency()` is the output
   latency used to time visuals to what's heard.
+- **Piano sound** (`src/audio/piano.ts`, `src/app/piano.ts`, the footer's toggle, setting `pianoSound`): plays
+  every note that reaches the store on a sampled grand piano (Salamander Grand Piano V3, CC BY 3.0, credited in
+  `public/piano/README.txt`): 30 MP3s, one every three semitones, re-pitched to the nearest; velocity sets level and
+  a low-pass cutoff; the sustain pedal holds. The samples load the first time it's on. Off by default (the user
+  monitors through Ableton).
 - **MIDI mapping** (`src/input/midiMap.ts` pure, `src/app/midiMap.ts`): maps a key to any control with
   `data-midi-map`, per mode, active only while the control is on screen; a mapped key's note-on/off never reaches the
   performance (main's input asks the mapper first). One key may press several controls that never show together:
@@ -198,7 +204,6 @@ Layers that only talk through data. Read the file before changing a layer; this 
 - Ear training: minor and chromatic degrees, drone on/off and volume, resolving the note to the tonic, intervals;
   chord qualities answered by playing the chord back, weighted towards qualities missed.
 - Sight reading: judging rhythm against the metronome; more easy piano excerpts (the hands alone are thin at level 1).
-- Audio: maybe a small sampled piano, switchable, since the user monitors through Ableton.
 - Input: a future on-screen piano or recorded-MIDI playback would be just another `InputEvent` source.
 - Tests: recorded MIDI performances replayed through the whole pipeline; occasional notation screenshot tests.
 - Possibly a PWA.

@@ -39,6 +39,7 @@ const changes: AppAction[] = [
   { type: "setEarChordOptions", options: { types: ["M", "m", "dim"], broken: true } },
   { type: "setReadingOptions", options: { level: 0, length: 6, range: "bass" } },
   { type: "setLatency", ms: 35 },
+  { type: "setPianoSound", on: true },
 ];
 
 describe("saved settings", () => {
@@ -172,6 +173,7 @@ describe("setters", () => {
     setChordTypes: s => ({ type: "setChordTypes", types: [...s.settings.chordTypes] }),
     setPromptStyle: s => ({ type: "setPromptStyle", style: s.settings.promptStyle }),
     setInversions: s => ({ type: "setInversions", on: s.settings.inversions }),
+    setPianoSound: s => ({ type: "setPianoSound", on: s.settings.pianoSound }),
     setChordKey: s => ({ type: "setChordKey", value: s.settings.chordKey }),
     setExerciseOptions: s => ({ type: "setExerciseOptions", options: { ...s.settings.exercise } }),
     setRoutineOptions: s => ({ type: "setRoutineOptions", options: { id: s.settings.routine.id } }),

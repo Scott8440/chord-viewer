@@ -352,6 +352,8 @@ export function showControls(state: AppState) {
   const s = state.settings,
     id = s.mode,
     page = pageSetup(viewOf(state));
+  $("pianoBtn").classList.toggle("on", s.pianoSound);
+  $("pianoBtn").setAttribute("aria-pressed", String(s.pianoSound));
   $("progressBtn").classList.toggle("on", state.page === "progress");
   $("progressBtn").setAttribute("aria-pressed", String(state.page === "progress"));
   $("keyPick").hidden = !page.headerKey;

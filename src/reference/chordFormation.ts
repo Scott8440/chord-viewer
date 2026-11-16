@@ -1,5 +1,5 @@
-// Reference page: how chords are formed. Prose with keyboard diagrams; every diagram, note list and formula is worked
-// out from the chord templates (chordFormula), not typed in, so it can't disagree with what the app recognizes.
+// Reference page: chord forms, how each chord type is built. Prose with keyboard diagrams; every diagram, note list
+// and formula is worked out from the chord templates (chordFormula), not typed in, so it can't disagree with the app.
 import { chordDegrees, chordFormula, chordNotes, type FormulaTone } from "../theory/chordFormula";
 import { templateById } from "../theory/chords";
 import { prettyAcc } from "../theory/spelling";
@@ -54,20 +54,6 @@ function chordTable(ids: readonly string[], { formula = true } = {}): string {
     `<div class="refTableWrap"><table class="refTable"><thead><tr><th>Symbol</th><th>Name</th>` +
     (formula ? `<th>Formula</th>` : "") +
     `<th>Half steps</th><th>On C</th></tr></thead><tbody>${rows}</tbody></table></div>`
-  );
-}
-
-/** The twelve half steps of an octave from C, each key numbered with its distance from C */
-function halfStepFigure(): string {
-  // The numbers go on the keys: under the keyboard, the black keys' numbers would crowd their neighbours'
-  const keys: MarkedKey[] = Array.from({ length: 13 }, (_, i) => ({
-    midi: C4 + i,
-    label: String(i),
-    role: i === 0 || i === 12 ? "root" : "plain",
-  }));
-  return (
-    `<figure class="refFigure">${pianoSvg({ low: C4, high: C4 + 12, keys, label: "An octave from C to C, each key numbered by its distance in half steps from C" })}` +
-    `<figcaption>An octave from C to C, each key numbered by its distance from C in half steps</figcaption></figure>`
   );
 }
 
@@ -134,61 +120,10 @@ function inversionFigures(): string {
   );
 }
 
-const INTERVALS: readonly { name: string; interval: string }[] = [
-  { name: "major second", interval: "2M" },
-  { name: "minor third", interval: "3m" },
-  { name: "major third", interval: "3M" },
-  { name: "perfect fourth", interval: "4P" },
-  { name: "diminished fifth", interval: "5d" },
-  { name: "perfect fifth", interval: "5P" },
-  { name: "augmented fifth", interval: "5A" },
-  { name: "major sixth", interval: "6M" },
-  { name: "diminished seventh", interval: "7d" },
-  { name: "minor seventh", interval: "7m" },
-  { name: "major seventh", interval: "7M" },
-  { name: "major ninth", interval: "9M" },
-];
-
-/** The intervals chords are built from, with their size in half steps and the note they reach from C */
-function intervalTable(): string {
-  // One chord tone per interval, by placing it above C the same way the chords do
-  const rows = INTERVALS.map(({ name, interval }) => {
-    const tone = chordFormulaTone(interval);
-    return `<tr><td>${esc(name)}</td><td>${esc(tone.degree)}</td><td>${tone.semitones}</td><td>${esc(tone.note)}</td></tr>`;
-  }).join("");
-  return (
-    `<div class="refTableWrap"><table class="refTable"><thead><tr><th>Interval</th><th>In a formula</th>` +
-    `<th>Half steps</th><th>Above C</th></tr></thead><tbody>${rows}</tbody></table></div>`
-  );
-}
-
-/** An interval above C as a formula tone, by finding a chord that has it */
-function chordFormulaTone(interval: string): FormulaTone {
-  const ids = ["M", "m", "dim", "aug", "sus2", "sus4", "6", "7", "maj7", "dim7", "9"];
-  for (const id of ids) {
-    const t = chordFormula(id).find(x => x.interval === interval);
-    if (t) return t;
-  }
-  throw new Error(`No chord has ${interval}`);
-}
-
 export const CHORD_FORMATION: ReferencePage = {
   id: "chords",
-  title: "How chords are formed",
-  intro: `<p>A chord is three or more notes played together. Most chords in Western music are built the same way: start on a note, then stack notes above it at fixed distances. This page goes through those distances and the chord types they produce, from the four triads up to ninth chords. All the examples are built on C.</p>`,
+  title: "Chord forms",
   sections: [
-    {
-      id: "half-steps",
-      title: "Half steps and intervals",
-      html: `
-<p>The keyboard repeats a pattern of twelve keys, seven white and five black. Moving from one key to the next one up, black or white, is a <b>half step</b>, also called a semitone. Two half steps make a whole step. Twelve half steps bring you to the same note an octave higher.</p>
-${halfStepFigure()}
-<p>The distance between two notes is called an <b>interval</b>. Intervals have names such as "major third" or "perfect fifth", but underneath each name is a count of half steps. A major third is four half steps: from C, count four keys up and you land on E.</p>
-<p>A chord is described by the intervals of its notes above one note, the <b>root</b>. The root gives the chord its letter name. C major, C minor and C7 all have C as their root.</p>
-<p>These are the intervals that come up in the chords on this page:</p>
-${intervalTable()}
-<p>Some intervals share a key. The diminished seventh above C is B𝄫 (B double flat), the same key as A, and the augmented fifth G♯ is the same key as A♭. The name depends on which letter the note is written with. Chords are built in thirds, which means every other letter (C, E, G, B, D), so the fifth of a C chord is always some kind of G and the seventh is always some kind of B.</p>`,
-    },
     {
       id: "triads",
       title: "Triads",

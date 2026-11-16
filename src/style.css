@@ -1530,6 +1530,10 @@ main:has(#referenceView:not([hidden])) {
 #referenceView article section {
   scroll-margin-top: 8px;
 }
+/* A page with no intro: its first section sits close under the title */
+#referenceView article h1 + section h2 {
+  margin-top: 12px;
+}
 #referenceView article p,
 #referenceView article ul {
   margin: 0 0 14px;

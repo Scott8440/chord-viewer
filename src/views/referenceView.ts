@@ -63,7 +63,7 @@ export function createReferenceView(el: HTMLElement, scroller: HTMLElement): Ref
       .join("");
     // Page content is the app's own (src/reference/), written as HTML
     const article =
-      `<article data-page="${esc(page.id)}"><h1>${esc(page.title)}</h1>${page.intro}` +
+      `<article data-page="${esc(page.id)}"><h1>${esc(page.title)}</h1>${page.intro ?? ""}` +
       page.sections.map(s => `<section id="ref-${esc(s.id)}"><h2>${esc(s.title)}</h2>${s.html}</section>`).join("") +
       `</article>`;
     el.innerHTML = `<nav aria-label="Reference contents"><div class="refNavTitle">Reference</div><ul>${nav}</ul></nav>${article}`;

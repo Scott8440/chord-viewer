@@ -69,10 +69,9 @@ describe("the keyboard drawing", () => {
 });
 
 describe("the pages", () => {
-  it("each has a title, an intro and sections with unique ids and some content", () => {
+  it("each has a title and sections with unique ids and some content", () => {
     for (const page of REFERENCE_PAGES) {
       expect(page.title).toBeTruthy();
-      expect(page.intro).toContain("<p>");
       const ids = page.sections.map(s => s.id);
       expect(new Set(ids).size).toBe(ids.length);
       for (const s of page.sections) expect(s.html.length).toBeGreaterThan(100);

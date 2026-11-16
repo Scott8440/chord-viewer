@@ -128,11 +128,11 @@ Layers that only talk through data. Read the file before changing a layer; this 
   enforces it). The key only re-ranks readings, never turns a real chord into "?". Ties are broken so results are the
   same in every transposition. Known limits: Roman numerals ignore inversions; "I6" is an added-6th chord; rootless
   voicings aren't recognized.
-- **Reference pages** (`src/reference/`, `src/views/referenceView.ts`): music theory to read, opened from the header
-  like Progress (`AppState.page` "reference", a view started like a mode; nothing plays). A page is an intro and
-  sections of HTML, listed in `REFERENCE_PAGES`; the sidebar lists them and marks the section in view. Diagrams come
-  from `pianoSvg` (`src/views/piano.ts`) and chord facts from `chordFormula` (`src/theory/chordFormula.ts`, built on
-  the chord templates), never typed in. Prose style: plain and factual, no hype or filler (the user's request).
+- **Reference pages** (`src/reference/`, `src/views/referenceView.ts`; the first is "Chord forms"): music theory to
+  read, opened from the header like Progress (`AppState.page` "reference", a view started like a mode; nothing
+  plays). A page is an optional intro and sections of HTML, listed in `REFERENCE_PAGES`; the sidebar lists them
+  and marks the section in view. Diagrams come from `pianoSvg` (`src/views/piano.ts`) and chord facts from
+  `chordFormula` (`src/theory/chordFormula.ts`, built on the chord templates), never typed in. Prose style: plain and factual, no hype or filler (the user's request).
 - **Practice history** (`src/progress/`): records (`run`, `routine`, `drill`, `round`) are plain JSON, only ever
   added, each with a UUID, schema version (`RECORD_VERSION`), UTC time and device id. Charts are worked out from
   records (`stats.ts`), so a new chart needs no new record. Everything goes through the `ProgressStore` interface;

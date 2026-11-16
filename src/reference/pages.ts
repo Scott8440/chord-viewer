@@ -13,8 +13,8 @@ export interface ReferenceSection {
 export interface ReferencePage {
   id: string;
   title: string;
-  /** HTML before the first section */
-  intro: string;
+  /** HTML before the first section, if any */
+  intro?: string;
   sections: readonly ReferenceSection[];
 }
 

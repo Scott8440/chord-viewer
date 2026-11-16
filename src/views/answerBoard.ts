@@ -42,12 +42,32 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
     else if (button.classList.contains("next")) for (const l of nextListeners) l();
   });
   let shown = "";
+  /** What the board's buttons are (Replay or not, and which boxes in which order): while that stays the same, a
+   *  render updates them in place rather than redrawing, since a redrawn button under the pointer loses its hover look
+   *  (and a mapped key's badge) for a frame, a flicker on the box just pressed */
+  let layout = "";
   return {
     render(boxes, replay) {
+      const nextLayout = `${replay ? "r" : ""}|${boxes.map(b => b.id).join("\u0000")}`;
+      if (nextLayout === layout) {
+        const replayButton = el.querySelector<HTMLButtonElement>("button.replay");
+        if (replayButton && replay) replayButton.disabled = !replay.enabled;
+        const buttons = el.querySelectorAll<HTMLButtonElement>("button.box");
+        boxes.forEach((b, i) => {
+          const button = buttons[i];
+          button.className = `box${b.state ? " " + b.state : ""}`;
+          button.disabled = b.disabled;
+          button.querySelector(".boxLabel")!.textContent = b.label;
+          // A non-breaking space keeps the line's height when there's no detail
+          button.querySelector(".boxDetail")!.textContent = b.detail ?? "\u00a0";
+        });
+        return;
+      }
+      layout = nextLayout;
       const replayHtml = replay
         ? `<button class="replay" title="Play it again" data-midi-map="replay" data-midi-name="Replay"${replay.enabled ? "" : " disabled"}><span aria-hidden="true">▶</span> Replay</button>`
         : "";
-      const html =
+      el.innerHTML = shown =
         replayHtml +
         `<div class="boxes">` +
         boxes
@@ -60,8 +80,6 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
           )
           .join("") +
         `</div>`;
-      // Redraw only on change, so a box isn't replaced under the pointer mid-click
-      if (html !== shown) el.innerHTML = shown = html;
     },
     onAnswer(listener) {
       listeners.add(listener);
@@ -77,6 +95,7 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
     },
     renderNext(label) {
       const html = `<button class="next" data-midi-map="nextRound" data-midi-name="Next round">${esc(label)} <span aria-hidden="true">→</span></button>`;
+      layout = "next";
       if (html !== shown) el.innerHTML = shown = html;
     },
     onNext(listener) {

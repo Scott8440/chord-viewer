@@ -132,7 +132,8 @@ Layers that only talk through data. Read the file before changing a layer; this 
   read, opened from the header like Progress (`AppState.page` "reference", a view started like a mode; nothing
   plays). A page is an optional intro and sections of HTML, listed in `REFERENCE_PAGES`; the sidebar lists them
   and marks the section in view. Diagrams come from `pianoSvg` (`src/views/piano.ts`) and chord facts from
-  `chordFormula` (`src/theory/chordFormula.ts`, built on the chord templates), never typed in. Prose style: plain and factual, no hype or filler (the user's request).
+  `chordFormula` (`src/theory/chordFormula.ts`, built on the chord templates), never typed in. Prose style: plain
+  and factual, no hype or filler (the user's request).
 - **Practice history** (`src/progress/`): records (`run`, `routine`, `drill`, `round`) are plain JSON, only ever
   added, each with a UUID, schema version (`RECORD_VERSION`), UTC time and device id. Charts are worked out from
   records (`stats.ts`), so a new chart needs no new record. Everything goes through the `ProgressStore` interface;

@@ -358,8 +358,11 @@ export function showControls(state: AppState) {
   $("freeView").hidden = page.panel !== "chordName";
   $("practice").hidden = page.panel !== "practice";
   // The progress charts take the whole page: no staff, no practice card
-  $("staffCard").hidden = $("chordCard").hidden = page.panel === "progress";
+  $("staffCard").hidden = $("chordCard").hidden = page.panel === "progress" || page.panel === "reference";
   $("progressView").hidden = page.panel !== "progress";
+  $("referenceView").hidden = page.panel !== "reference";
+  $("referenceBtn").classList.toggle("on", state.page === "reference");
+  $("referenceBtn").setAttribute("aria-pressed", String(state.page === "reference"));
   $("staff").hidden = page.stage !== "staff";
   $("degreeCircle").hidden = page.stage !== "degrees";
   $("answerBoard").hidden = page.stage !== "answers";

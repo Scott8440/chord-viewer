@@ -14,6 +14,8 @@ import type { PracticeView } from "../views/practice";
 import type { ProgressView } from "../views/progressView";
 import type { RoundVizView } from "../views/roundViz";
 import type { LadderPickView } from "../views/ladderPick";
+import type { ReferenceView } from "../views/referenceView";
+import { startReference } from "./reference";
 import type { DegreePadView } from "../views/degreePad";
 import type { StaffView } from "../views/staff";
 import { startChordPractice } from "./chordPractice";
@@ -44,6 +46,7 @@ export interface ModeDeps {
     ladder: LadderPickView;
     degreePad: DegreePadView;
     progress: ProgressView;
+    reference: ReferenceView;
   };
   recorder: Recorder;
   /** Practice history, for the Progress page and the ear modes' rounds */
@@ -72,4 +75,5 @@ export const MODE_REGISTRY: Record<View, (deps: ModeDeps) => Mode> = {
   earMelody: startEarMelody,
   earChords: startEarChords,
   progress: startProgress,
+  reference: startReference,
 };

@@ -1,0 +1,81 @@
+// The reference section: a sidebar listing the pages (the open page's sections under it) beside the open page. A click
+// in the sidebar scrolls to that section; while reading, the sidebar marks the section in view.
+import type { ReferencePage } from "../reference/pages";
+import { esc } from "./html";
+
+export interface ReferenceView {
+  /** Shows a page (the first, if `id` isn't one) */
+  show(pages: readonly ReferencePage[], id?: string): void;
+  clear(): void;
+}
+
+/** `scroller` is what scrolls the page (the main area), for following the section in view */
+export function createReferenceView(el: HTMLElement, scroller: HTMLElement): ReferenceView {
+  let observer: IntersectionObserver | null = null;
+  let pages: readonly ReferencePage[] = [];
+
+  el.addEventListener("click", e => {
+    const link = (e.target as HTMLElement).closest<HTMLAnchorElement>("a[data-ref]");
+    if (!link) return;
+    e.preventDefault();
+    link.blur(); // so Space stays the pedal
+    const [pageId, sectionId] = link.dataset.ref!.split("/");
+    const open = el.querySelector<HTMLElement>("article")?.dataset.page;
+    if (pageId !== open) show(pages, pageId);
+    const target = sectionId ? el.querySelector(`#ref-${CSS.escape(sectionId)}`) : el.querySelector("article");
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  /** Marks the sidebar link of the section nearest the top of the view */
+  function follow() {
+    observer?.disconnect();
+    const sections = [...el.querySelectorAll<HTMLElement>("article section")];
+    const visible = new Set<string>();
+    observer = new IntersectionObserver(
+      entries => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target.id);
+          else visible.delete(e.target.id);
+        }
+        const current = sections.find(s => visible.has(s.id));
+        if (!current) return;
+        for (const a of el.querySelectorAll<HTMLElement>("nav a[data-section]"))
+          a.classList.toggle("current", `ref-${a.dataset.section}` === current.id);
+      },
+      // A section counts once it reaches the top third of the view
+      { root: scroller, rootMargin: "0px 0px -66% 0px" },
+    );
+    sections.forEach(s => observer!.observe(s));
+  }
+
+  function show(all: readonly ReferencePage[], id?: string) {
+    pages = all;
+    const page = all.find(p => p.id === id) ?? all[0];
+    if (!page) return;
+    const nav = all
+      .map(p => {
+        const sections =
+          p === page
+            ? `<ol>${p.sections.map(s => `<li><a href="#ref-${esc(s.id)}" data-ref="${esc(p.id)}/${esc(s.id)}" data-section="${esc(s.id)}">${esc(s.title)}</a></li>`).join("")}</ol>`
+            : "";
+        return `<li><a href="#" class="refPageLink${p === page ? " open" : ""}" data-ref="${esc(p.id)}">${esc(p.title)}</a>${sections}</li>`;
+      })
+      .join("");
+    // Page content is the app's own (src/reference/), written as HTML
+    const article =
+      `<article data-page="${esc(page.id)}"><h1>${esc(page.title)}</h1>${page.intro}` +
+      page.sections.map(s => `<section id="ref-${esc(s.id)}"><h2>${esc(s.title)}</h2>${s.html}</section>`).join("") +
+      `</article>`;
+    el.innerHTML = `<nav aria-label="Reference contents"><div class="refNavTitle">Reference</div><ul>${nav}</ul></nav>${article}`;
+    follow();
+  }
+
+  return {
+    show,
+    clear() {
+      observer?.disconnect();
+      observer = null;
+      el.innerHTML = "";
+    },
+  };
+}

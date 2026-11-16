@@ -5,7 +5,7 @@ import type { AppState, ModeId } from "../state/app";
 export interface PageSetup {
   /** The right-hand panel: the chord name or the practice card, beside the staff; or the progress charts, in place
    *  of both */
-  panel: "chordName" | "practice" | "progress";
+  panel: "chordName" | "practice" | "progress" | "reference";
   /** What the left-hand card shows: the staff, ear training's scale-degree circle (no notes, only degrees), or a
    *  board of large answer boxes (chord qualities) */
   stage: "staff" | "degrees" | "answers";
@@ -46,12 +46,17 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   earChords: { ...PRACTICE, stage: "answers" },
 };
 
-/** What's on screen: a practice mode, or the Progress page (opened from the header, apart from the modes) */
-export type View = ModeId | "progress";
+/** What's on screen: a practice mode, or the Progress or Reference page (opened from the header, apart from the
+ *  modes) */
+export type View = ModeId | "progress" | "reference";
 
-export const viewOf = (s: AppState): View => (s.page === "progress" ? "progress" : s.settings.mode);
+export const viewOf = (s: AppState): View => (s.page === "practice" ? s.settings.mode : s.page);
 
 /** The Progress page: its charts in place of the staff and practice card, nothing running */
 const PROGRESS_PAGE: PageSetup = { ...PRACTICE, panel: "progress" };
 
-export const pageSetup = (view: View): PageSetup => (view === "progress" ? PROGRESS_PAGE : PAGE_SETUP[view]);
+/** The Reference page: reading, in place of the staff and practice card, nothing running */
+const REFERENCE_PAGE: PageSetup = { ...PRACTICE, panel: "reference" };
+
+export const pageSetup = (view: View): PageSetup =>
+  view === "progress" ? PROGRESS_PAGE : view === "reference" ? REFERENCE_PAGE : PAGE_SETUP[view];

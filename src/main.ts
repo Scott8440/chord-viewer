@@ -33,6 +33,7 @@ import { createDegreeCircle } from "./views/degreeCircle";
 import { createHeaderView } from "./views/header";
 import { createPracticeView } from "./views/practice";
 import { createProgressView } from "./views/progressView";
+import { createReferenceView } from "./views/referenceView";
 import { createStaffView } from "./views/staff";
 import { fitToStaffCorner } from "./views/staffCorner";
 
@@ -45,7 +46,7 @@ saveSettingsOnChange(store);
 const midiMapper = createMidiMapper({
   button: $<HTMLButtonElement>("midiMapBtn"),
   hint: $("midiMapHint"),
-  scope: () => (store.getState().page === "progress" ? null : store.getState().settings.mode),
+  scope: () => (store.getState().page !== "practice" ? null : store.getState().settings.mode),
 });
 const input = (event: InputEvent) => {
   if (!midiMapper.handle(event)) store.dispatch({ type: "input", event });
@@ -77,6 +78,7 @@ const roundViz = createRoundVizView($("roundViz"));
 const ladderPick = createLadderPick($<HTMLSelectElement>("earChordLevel"));
 // Its taps are answers, never MIDI-mapped keys, so they skip the mapper
 const degreePad = createDegreePad($("degreePad"), event => store.dispatch({ type: "input", event }));
+const referenceView = createReferenceView($("referenceView"), $("main"));
 const progressView = createProgressView($("progressView"), {
   change(selection) {
     selectProgress(selection);
@@ -138,6 +140,7 @@ const modeDeps: ModeDeps = {
     ladder: ladderPick,
     degreePad,
     progress: progressView,
+    reference: referenceView,
   },
   recorder: history.recorder,
   history: history.store,
@@ -180,6 +183,10 @@ store.subscribe((s, prev) => {
 // Progress: a page of its own, opened and closed from the header (choosing a mode also goes back to practising)
 onPress("progressBtn", () =>
   store.dispatch({ type: "setPage", page: store.getState().page === "progress" ? "practice" : "progress" }),
+);
+// Reference: the same, for the music theory pages
+onPress("referenceBtn", () =>
+  store.dispatch({ type: "setPage", page: store.getState().page === "reference" ? "practice" : "reference" }),
 );
 
 /* ---------------------------------------------------------------

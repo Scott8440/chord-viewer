@@ -31,6 +31,7 @@
         </select>
       </label>
       <button id="progressBtn" title="Your practice history, as charts" aria-pressed="false">Progress</button>
+      <button id="referenceBtn" title="Music theory reference" aria-pressed="false">Reference</button>
       <label class="pick" id="keyPick" title="Key for free play"
         >Key
         <select id="keySel"></select>
@@ -41,7 +42,7 @@
       <button id="panic" title="Clear all notes (Esc)">Clear</button>
     </header>
 
-    <main>
+    <main id="main">
       <section class="card" id="staffCard">
         <div id="staff"></div>
         <div id="circle" hidden></div>
@@ -264,6 +265,7 @@
         </div>
       </section>
       <section id="progressView" hidden></section>
+      <section id="referenceView" hidden></section>
     </main>
 
     <dialog id="calibration"></dialog>

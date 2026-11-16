@@ -231,9 +231,9 @@ describe("sameSetting", () => {
 });
 
 describe("modes", () => {
-  it("has a start function for every mode and the Progress page", async () => {
+  it("has a start function for every mode and the Progress and Reference pages", async () => {
     const { MODE_REGISTRY } = await import("../src/modes/registry");
-    expect(Object.keys(MODE_REGISTRY).sort()).toEqual([...MODES, "progress"].sort());
+    expect(Object.keys(MODE_REGISTRY).sort()).toEqual([...MODES, "progress", "reference"].sort());
     for (const start of Object.values(MODE_REGISTRY)) expect(typeof start).toBe("function");
   });
 });

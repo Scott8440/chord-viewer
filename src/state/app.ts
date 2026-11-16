@@ -33,11 +33,11 @@ export interface AppState {
   readonly transport: Transport | null;
   /** A latency calibration is listening: exercises ignore the player's notes meanwhile */
   readonly calibrating: boolean;
-  /** Practising (the mode in settings), or looking at the Progress page. Not saved: the app always opens on practice */
+  /** Practising (the mode in settings), or looking at the Progress or Reference page. Not saved: the app always opens on practice */
   readonly page: Page;
 }
 
-export type Page = "practice" | "progress";
+export type Page = "practice" | "progress" | "reference";
 
 export type AppAction =
   | { type: "input"; event: InputEvent }

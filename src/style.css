@@ -1448,3 +1448,199 @@ main:has(#progressView:not([hidden])) {
   color: var(--text);
   font-weight: 600;
 }
+
+/* Reference pages (src/views/referenceView.ts, src/reference/): a sidebar of contents beside a readable column */
+main:has(#referenceView:not([hidden])) {
+  overflow-y: auto;
+}
+#referenceView {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 36px;
+  align-items: start;
+}
+#referenceView nav {
+  position: sticky;
+  top: 0;
+  font-size: 14px;
+}
+#referenceView .refNavTitle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+#referenceView nav ul,
+#referenceView nav ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+#referenceView nav ol {
+  margin: 6px 0 12px;
+  border-left: 1px solid var(--line);
+}
+#referenceView nav a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 4px 0;
+}
+#referenceView nav ol a {
+  padding: 4px 0 4px 12px;
+  margin-left: -1px;
+  border-left: 2px solid transparent;
+}
+#referenceView nav a.open {
+  color: var(--text);
+  font-weight: 600;
+}
+#referenceView nav a.current {
+  color: var(--text);
+  border-left-color: var(--accent);
+}
+@media (hover: hover) {
+  #referenceView nav a:hover {
+    color: var(--text);
+  }
+}
+#referenceView article {
+  max-width: 760px;
+  font-size: 16px;
+  line-height: 1.65;
+  padding-bottom: 40vh; /* so the last section can reach the top of the view */
+}
+#referenceView article h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  font-size: 32px;
+  margin: 0 0 12px;
+}
+#referenceView article h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  font-size: 24px;
+  margin: 40px 0 10px;
+  padding-top: 8px;
+  scroll-margin-top: 8px;
+}
+#referenceView article section {
+  scroll-margin-top: 8px;
+}
+#referenceView article p,
+#referenceView article ul {
+  margin: 0 0 14px;
+  max-width: 68ch;
+}
+#referenceView article li {
+  margin-bottom: 6px;
+}
+#referenceView article b {
+  font-weight: 600;
+}
+.refFigures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+  margin: 18px 0 22px;
+}
+.refFigure {
+  margin: 18px 0 22px;
+  max-width: 100%;
+}
+.refFigures .refFigure {
+  margin: 0;
+}
+.refFigure figcaption {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.refFigure figcaption b {
+  color: var(--text);
+}
+/* The keyboard (src/views/piano.ts): the root in the accent colour, the chord's other notes in green */
+.piano {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.piano .white {
+  fill: var(--paper);
+  stroke: #3a3e47;
+  stroke-width: 1;
+}
+.piano .black {
+  fill: #23262c;
+  stroke: #0f1013;
+  stroke-width: 1;
+}
+.piano .white.tone {
+  fill: #a6dcb8;
+}
+.piano .black.tone {
+  fill: #3f9a63;
+}
+.piano .white.root {
+  fill: #f0c873;
+}
+.piano .black.root {
+  fill: #c8901f;
+}
+.piano text {
+  text-anchor: middle;
+  font:
+    600 12px system-ui,
+    sans-serif;
+}
+.piano .keyLabel {
+  fill: var(--ink);
+}
+.piano .keyLabel.onBlack {
+  fill: #fff;
+  font-size: 10px;
+}
+.piano .keyCaption {
+  fill: var(--muted);
+  font-weight: 500;
+}
+.refTableWrap {
+  overflow-x: auto;
+  margin: 14px 0 20px;
+}
+.refTable {
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.refTable th,
+.refTable td {
+  text-align: left;
+  padding: 7px 28px 7px 0;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.refTable th {
+  font-weight: 500;
+  color: var(--muted);
+}
+.refTable td.sym {
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  #referenceView {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  /* The contents come first, as a list, and scroll away with the page */
+  #referenceView nav {
+    position: static;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px;
+  }
+  #referenceView article h1 {
+    font-size: 26px;
+  }
+}

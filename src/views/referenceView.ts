@@ -1,5 +1,6 @@
 // The reference section: a sidebar listing the pages (the open page's sections under it) beside the open page. A click
-// in the sidebar scrolls to that section; while reading, the sidebar marks the section in view.
+// in the sidebar scrolls to that section; while reading, the sidebar marks the section in view. Clicking a table row
+// picks it out, fading the table's other rows.
 import type { ReferencePage } from "../reference/pages";
 import { esc } from "./html";
 
@@ -15,6 +16,16 @@ export function createReferenceView(el: HTMLElement, scroller: HTMLElement): Ref
   let pages: readonly ReferencePage[] = [];
 
   el.addEventListener("click", e => {
+    // A table row: picks it out (the table's other rows fade); clicking it again puts the table back
+    const row = (e.target as HTMLElement).closest<HTMLTableRowElement>(".refTable tbody tr");
+    if (row) {
+      const table = row.closest("table")!;
+      const picked = !row.classList.contains("picked");
+      for (const r of table.querySelectorAll("tbody tr.picked")) r.classList.remove("picked");
+      row.classList.toggle("picked", picked);
+      table.classList.toggle("hasPick", picked);
+      return;
+    }
     const link = (e.target as HTMLElement).closest<HTMLAnchorElement>("a[data-ref]");
     if (!link) return;
     e.preventDefault();

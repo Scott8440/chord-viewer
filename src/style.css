@@ -1643,6 +1643,20 @@ main:has(#referenceView:not([hidden])) {
   color: #5f5a50;
   background: #ebe5d6;
 }
+/* Click a row to pick it out: the rest of its table fades to grey (src/views/referenceView.ts) */
+.refTable tbody tr {
+  cursor: pointer;
+  transition:
+    opacity 0.15s,
+    filter 0.15s;
+}
+.refTable.hasPick tbody tr:not(.picked) {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+.refTable tbody tr.picked td {
+  background: #f6e2b0;
+}
 .refTable td.sym {
   font-weight: 600;
   background: #f0ebdf; /* the row's label, set apart from the cells beside it */

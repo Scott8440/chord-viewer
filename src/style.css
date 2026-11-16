@@ -1509,7 +1509,9 @@ main:has(#referenceView:not([hidden])) {
   }
 }
 #referenceView article {
-  max-width: 760px;
+  /* Room for the widest tables (the modes' keyboards, about 820px) beside the sidebar on a desktop screen; paragraphs
+     keep their own reading width (68ch) */
+  max-width: 880px;
   font-size: 16px;
   line-height: 1.65;
   padding-bottom: 40vh; /* so the last section can reach the top of the view */

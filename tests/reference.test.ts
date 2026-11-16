@@ -2,6 +2,14 @@
 import { describe, expect, it } from "vitest";
 import { REFERENCE_PAGES } from "../src/reference/pages";
 import { chordDegrees, chordFormula, chordNotes, degreeOf } from "../src/theory/chordFormula";
+import {
+  diatonicTriads,
+  keySignature,
+  scaleFormula,
+  scaleNotes,
+  scaleSteps,
+  stepName,
+} from "../src/theory/scaleFormula";
 import { pianoSvg } from "../src/views/piano";
 
 describe("chord formulas", () => {
@@ -42,6 +50,33 @@ describe("chord formulas", () => {
   });
 });
 
+describe("scale formulas", () => {
+  it("spells each scale from its tonic, one letter per note", () => {
+    expect(scaleNotes(scaleFormula("major", "G4"))).toBe("G A B C D E F♯");
+    expect(scaleNotes(scaleFormula("minor", "C4"))).toBe("C D E♭ F G A♭ B♭");
+    expect(scaleNotes(scaleFormula("locrian", "C4"))).toBe("C D♭ E♭ F G♭ A♭ B♭");
+    expect(scaleFormula("lydian", "C4").map(t => t.degree)).toEqual(["1", "2", "3", "♯4", "5", "6", "7", "8"]);
+  });
+
+  it("gives the steps between neighbouring notes", () => {
+    expect(scaleSteps(scaleFormula("major")).map(stepName).join(" ")).toBe("W W H W W W H");
+    expect(scaleSteps(scaleFormula("harmonic minor")).map(stepName).join(" ")).toBe("W H W W H W+H H");
+    expect(scaleFormula("major", "C4", { octave: false })).toHaveLength(7);
+  });
+
+  it("knows each major key's signature, in the order it's written, and its diatonic triads", () => {
+    expect(keySignature("C")).toEqual({ count: 0, notes: [] });
+    expect(keySignature("A")).toEqual({ count: 3, notes: ["F♯", "C♯", "G♯"] });
+    expect(keySignature("Eb")).toEqual({ count: -3, notes: ["B♭", "E♭", "A♭"] });
+    expect(diatonicTriads("C")).toEqual(["C", "Dm", "Em", "F", "G", "Am", "Bdim"]);
+    expect(diatonicTriads("A", true)).toEqual(["Am", "Bdim", "C", "Dm", "Em", "F", "G"]);
+  });
+
+  it("refuses a scale it doesn't know", () => {
+    expect(() => scaleFormula("nonsense")).toThrow();
+  });
+});
+
 describe("the keyboard drawing", () => {
   it("draws every key in the range, marking and labelling the chord's notes", () => {
     const svg = pianoSvg({
@@ -77,6 +112,28 @@ describe("the pages", () => {
       for (const s of page.sections) expect(s.html.length).toBeGreaterThan(100);
     }
     expect(new Set(REFERENCE_PAGES.map(p => p.id)).size).toBe(REFERENCE_PAGES.length);
+  });
+
+  it("lists chord forms, then scales, then modes", () => {
+    expect(REFERENCE_PAGES.map(p => p.id)).toEqual(["chords", "scales", "modes"]);
+  });
+
+  it("the scale and mode pages show their scales on keyboards, worked out rather than typed", () => {
+    const text = (id: string) =>
+      REFERENCE_PAGES.find(p => p.id === id)!
+        .sections.map(s => s.html)
+        .join("");
+    const scales = text("scales"),
+      modes = text("modes");
+    for (const notes of ["C D E F G A B", "A B C D E F G", "C D E♭ F G A♭ B", "F♯ C♯ G♯ D♯ A♯ E♯"])
+      expect(scales).toContain(notes);
+    // C Lydian has G major's notes, C Locrian D♭ major's; A Mixolydian is D major from A
+    expect(modes).toContain("C Lydian has the notes of G major");
+    expect(modes).toContain("D♭ major (five flats)");
+    expect(modes).toContain("which is D major, and play its notes from A: A B C♯ D E F♯ G");
+    expect(modes).toContain("Cm7♭5");
+    expect(scales.match(/<svg class="piano"/g)!.length).toBeGreaterThan(10);
+    expect(modes.match(/<svg class="piano"/g)!.length).toBeGreaterThan(15);
   });
 
   it("the chord page shows each chord type it discusses on a keyboard", () => {

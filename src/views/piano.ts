@@ -26,12 +26,15 @@ const WHITE_W = 26,
   WHITE_H = 104,
   BLACK_W = 16,
   BLACK_H = 64,
-  CAPTION_H = 26;
+  CAPTION_H = 26,
+  /** Black keys' captions sit a row lower, so they never run into a neighbouring white key's */
+  CAPTION_ROW = 15;
 const isBlack = (midi: number) => [1, 3, 6, 8, 10].includes(((midi % 12) + 12) % 12);
 
 export function pianoSvg(o: PianoOptions): string {
   const marked = new Map(o.keys.map(k => [k.midi, k]));
   const hasCaptions = o.keys.some(k => k.caption);
+  const blackCaptions = o.keys.some(k => k.caption && isBlack(k.midi));
   /** Each white key's left edge, and each black key's centre (on the line between its white neighbours) */
   const whites: { midi: number; x: number }[] = [],
     blacks: { midi: number; x: number }[] = [];
@@ -44,7 +47,7 @@ export function pianoSvg(o: PianoOptions): string {
     }
   }
   const width = x,
-    height = WHITE_H + (hasCaptions ? CAPTION_H : 0);
+    height = WHITE_H + (hasCaptions ? CAPTION_H : 0) + (blackCaptions ? CAPTION_ROW : 0);
   const cls = (k: MarkedKey | undefined) => (k ? ` ${k.role ?? "tone"}` : "");
 
   const whiteKeys = whites
@@ -69,7 +72,10 @@ export function pianoSvg(o: PianoOptions): string {
     isBlack(midi) ? blacks.find(b => b.midi === midi)?.x : (whites.find(w => w.midi === midi)?.x ?? 0) + WHITE_W / 2;
   const captions = o.keys
     .filter(k => k.caption)
-    .map(k => `<text class="keyCaption" x="${centre(k.midi)}" y="${WHITE_H + 18}">${esc(k.caption!)}</text>`)
+    .map(
+      k =>
+        `<text class="keyCaption" x="${centre(k.midi)}" y="${WHITE_H + 18 + (isBlack(k.midi) ? CAPTION_ROW : 0)}">${esc(k.caption!)}</text>`,
+    )
     .join("");
 
   return (

@@ -1658,4 +1658,9 @@ main:has(#referenceView:not([hidden])) {
   #referenceView article h1 {
     font-size: 26px;
   }
+  /* Tighter columns, so a row of seven chords fits a phone */
+  .refTable th,
+  .refTable td {
+    padding-right: 14px;
+  }
 }

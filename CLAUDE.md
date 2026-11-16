@@ -26,7 +26,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 493 tests (54 voicings) should pass
+npm test           # Vitest: 494 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -129,7 +129,7 @@ Layers that only talk through data. Read the file before changing a layer; this 
   same in every transposition. Known limits: Roman numerals ignore inversions; "I6" is an added-6th chord; rootless
   voicings aren't recognized.
 - **Reference pages** (`src/reference/`, `src/views/referenceView.ts`; "Chord forms", "Major and minor scales",
-  "Modes"): music theory to read, opened from the header like Progress (`AppState.page` "reference", a view started
+  "Diatonic chords", "Modes"): music theory to read, opened from the header like Progress (`AppState.page` "reference", a view started
   like a mode; nothing plays). A page is an optional intro and sections of HTML, listed in `REFERENCE_PAGES`; the
   sidebar lists them and marks the section in view. Diagrams come from `pianoSvg` (`src/views/piano.ts`), and chord
   and scale facts from `chordFormula` (`src/theory/chordFormula.ts`, built on the chord templates) and `scaleFormula`

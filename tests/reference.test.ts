@@ -114,8 +114,30 @@ describe("the pages", () => {
     expect(new Set(REFERENCE_PAGES.map(p => p.id)).size).toBe(REFERENCE_PAGES.length);
   });
 
-  it("lists chord forms, then scales, then modes", () => {
-    expect(REFERENCE_PAGES.map(p => p.id)).toEqual(["chords", "scales", "modes"]);
+  it("lists chord forms, scales, diatonic chords, then modes", () => {
+    expect(REFERENCE_PAGES.map(p => p.id)).toEqual(["chords", "scales", "diatonic", "modes"]);
+  });
+
+  it("the diatonic chord page has a row per key, every chord in the app's spelling", () => {
+    const html = REFERENCE_PAGES.find(p => p.id === "diatonic")!
+      .sections.map(s => s.html)
+      .join("");
+    const row = (key: string) => {
+      const m = new RegExp(`<tr><td class="sym">${key}</td>(.*?)</tr>`).exec(html);
+      return m
+        ? m[1]
+            .replace(/<\/?td>/g, " ")
+            .trim()
+            .split(/\s+/)
+        : null;
+    };
+    expect(row("C major")).toEqual(["C", "Dm", "Em", "F", "G", "Am", "Bdim"]);
+    expect(row("B♭ major")).toEqual(["B♭", "Cm", "Dm", "E♭", "F", "Gm", "Adim"]);
+    expect(row("A minor")).toEqual(["Am", "Bdim", "C", "Dm", "Em", "F", "G"]);
+    expect(html).toContain("<td>Cmaj7</td><td>Dm7</td><td>Em7</td><td>Fmaj7</td><td>G7</td><td>Am7</td><td>Bm7♭5</td>");
+    // Harmonic minor: major V, diminished vii on the raised seventh, augmented III
+    expect(html).toContain("<td>Am</td><td>Bdim</td><td>Caug</td><td>Dm</td><td>E</td><td>F</td><td>G♯dim</td>");
+    expect(html).not.toMatch(/mMaj7|\+maj7|o7|b5/);
   });
 
   it("the scale and mode pages show their scales on keyboards, worked out rather than typed", () => {

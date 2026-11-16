@@ -1243,8 +1243,9 @@ main:has(#progressView:not([hidden])) {
     color: var(--text);
   }
 }
-/* The header's Progress button reads as pressed while the page is open */
-#progressBtn.on {
+/* The header's Progress and Reference buttons read as pressed while their page is open */
+#progressBtn.on,
+#referenceBtn.on {
   background: var(--accent);
   border-color: var(--accent);
   color: #14161a;
@@ -1632,6 +1633,16 @@ main:has(#referenceView:not([hidden])) {
 }
 .refTable td.sym {
   font-weight: 600;
+}
+/* The summary's small keyboards: the chord's keys coloured, no labels (they'd be too small to read) */
+.refTable td.keys {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.refTable .piano {
+  width: 150px;
+  min-width: 150px; /* a narrow table scrolls rather than shrinking them past reading */
+  max-width: none;
 }
 @media (max-width: 760px) {
   #referenceView {

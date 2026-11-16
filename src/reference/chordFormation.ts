@@ -38,20 +38,30 @@ function chordFigure(id: string): string {
 /** Several chords side by side (they wrap on a narrow screen) */
 const figures = (...ids: string[]) => `<div class="refFigures">${ids.map(chordFigure).join("")}</div>`;
 
-/** A table row per chord type: symbol, name, formula, half steps above the root, notes on C */
-function chordTable(ids: readonly string[], { formula = true } = {}): string {
+/** A table row per chord type: symbol, name, formula, half steps above the root, notes on C; with `keys`, a small
+ *  keyboard of the chord after the symbol (where a phone still shows it), every one over the same keys, C4 to E5, so the
+ *  column lines up */
+function chordTable(ids: readonly string[], { formula = true, keys = false } = {}): string {
   const rows = ids
     .map(id => {
       const tones = chordFormula(id);
+      const piano = keys
+        ? `<td class="keys">${pianoSvg({
+            low: C4,
+            high: C4 + 16,
+            keys: tones.map((t, i) => ({ midi: t.midi, role: i === 0 ? "root" : "tone" })),
+            label: `${symbolOf(id)}: ${chordNotes(tones)}`,
+          })}</td>`
+        : "";
       return (
-        `<tr><td class="sym">${esc(symbolOf(id))}</td><td>${esc(nameOf(id))}</td>` +
+        `<tr><td class="sym">${esc(symbolOf(id))}</td>${piano}<td>${esc(nameOf(id))}</td>` +
         (formula ? `<td>${esc(chordDegrees(tones))}</td>` : "") +
         `<td>${tones.map(t => t.semitones).join(", ")}</td><td>${esc(chordNotes(tones))}</td></tr>`
       );
     })
     .join("");
   return (
-    `<div class="refTableWrap"><table class="refTable"><thead><tr><th>Symbol</th><th>Name</th>` +
+    `<div class="refTableWrap"><table class="refTable"><thead><tr><th>Symbol</th>${keys ? "<th>Keys</th>" : ""}<th>Name</th>` +
     (formula ? `<th>Formula</th>` : "") +
     `<th>Half steps</th><th>On C</th></tr></thead><tbody>${rows}</tbody></table></div>`
   );
@@ -197,7 +207,7 @@ ${inversionFigures()}
       title: "Summary",
       html: `
 <p>Every chord type on this page, with its formula and its notes on C. The formula numbers each note by its distance from the root in steps of the major scale, with ♭ or ♯ where the note is lower or higher than the major scale's.</p>
-${chordTable(["M", "m", "dim", "aug", "sus2", "sus4", "6", "m6", "maj7", "7", "m7", "m7b5", "dim7", "mMaj7", "add9", "madd9", "9", "maj9", "m9"])}`,
+${chordTable(["M", "m", "dim", "aug", "sus2", "sus4", "6", "m6", "maj7", "7", "m7", "m7b5", "dim7", "mMaj7", "add9", "madd9", "9", "maj9", "m9"], { keys: true })}`,
     },
   ],
 };

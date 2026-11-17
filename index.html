@@ -27,6 +27,7 @@
           <option value="routines">Routines</option>
           <option value="ear">Ear training: scale degrees</option>
           <option value="earMelody">Ear training: melodies</option>
+          <option value="earIntervals">Ear training: intervals</option>
           <option value="earChords">Ear training: chord qualities</option>
           <option value="earProgressions">Ear training: progressions</option>
         </select>
@@ -136,6 +137,39 @@
             <details id="earChordFilters">
               <summary id="earChordFilterSummary"></summary>
               <div id="earChordFilterBody"></div>
+            </details>
+          </div>
+          <div id="earIntervalOptions" hidden>
+            <label class="pick"
+              >Intervals
+              <select id="earIntervalLadder">
+                <option value="ladder">Ladder (unlock as you go)</option>
+                <option value="free">Free choice</option>
+              </select>
+            </label>
+            <label class="pick" id="earIntervalLevelPick"
+              >Level
+              <select id="earIntervalLevel"></select>
+            </label>
+            <label class="pick"
+              >Play
+              <select id="earIntervalPlay">
+                <option value="up">Up (lower note first)</option>
+                <option value="down">Down (upper note first)</option>
+                <option value="together">Together</option>
+                <option value="mixed">A mix of all three</option>
+              </select>
+            </label>
+            <label class="pick"
+              >Sound
+              <select id="earIntervalSound">
+                <option value="simple">Simple</option>
+                <option value="piano">Piano</option>
+              </select>
+            </label>
+            <details id="earIntervalFilters">
+              <summary id="earIntervalFilterSummary"></summary>
+              <div id="earIntervalFilterBody"></div>
             </details>
           </div>
           <div id="earProgOptions" hidden>

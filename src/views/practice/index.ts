@@ -6,6 +6,8 @@ export {
   chordPracticeDisplay,
   earDisplay,
   earMelodyDisplay,
+  intervalEarAnswers,
+  intervalEarDisplay,
   progressionDisplay,
   progressionEarAnswers,
   progressionEarDisplay,

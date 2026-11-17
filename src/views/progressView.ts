@@ -2,12 +2,14 @@
 // practice history (src/progress/stats.ts). Each chart has a table underneath for the exact values.
 import { qualityLabel } from "../exercises/chordEar";
 import { numeralLabel } from "../exercises/progressionEar";
+import { intervalLabel } from "../exercises/intervalEar";
 import { DIRECTION_NAMES, routineById } from "../exercises/routines";
 import type { DrillKind, ProgressRecord } from "../progress/records";
 import {
   DRILLS,
   chordConfusions,
   numeralConfusions,
+  intervalConfusions,
   dailyMedian,
   dayStart,
   dayOf,
@@ -85,6 +87,7 @@ const DRILL_NAMES = {
   reading: "Sight reading",
   chordEar: "Ear: chord qualities",
   progressionEar: "Ear: progressions",
+  intervalEar: "Ear: intervals",
 } as const;
 
 function table(head: string[], rows: string[][]): string {
@@ -330,7 +333,9 @@ export function createProgressView(
             ? { rows: chordConfusions(records), label: (t: string) => prettyAcc(qualityLabel(t)), what: "Chord played" }
             : drill.kind === "progressionEar"
               ? { rows: numeralConfusions(records), label: numeralLabel, what: "Numeral played" }
-              : null;
+              : drill.kind === "intervalEar"
+                ? { rows: intervalConfusions(records), label: intervalLabel, what: "Interval played" }
+                : null;
         if (confusions) {
           mixups =
             `<h4>Mixed up with</h4>` +

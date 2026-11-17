@@ -1843,6 +1843,14 @@ main:has(#referenceView:not([hidden])) {
   .refTable.refCells .refSub {
     display: none;
   }
+  /* Answer boxes two to a row (intervals and chord types can be many), shorter */
+  #answerBoard .boxes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #answerBoard .box {
+    min-height: 84px;
+    padding: 12px 8px;
+  }
   /* Tighter columns, so a row of seven chords fits a phone */
   .refTable th,
   .refTable td {

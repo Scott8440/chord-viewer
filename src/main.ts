@@ -79,6 +79,7 @@ const answerBoard = createAnswerBoard($("answerBoard"));
 const roundViz = createRoundVizView($("roundViz"));
 const ladderPick = createLadderPick($<HTMLSelectElement>("earChordLevel"));
 const progressionLadderPick = createLadderPick($<HTMLSelectElement>("earProgLevel"));
+const intervalLadderPick = createLadderPick($<HTMLSelectElement>("earIntervalLevel"));
 // Its taps are answers, never MIDI-mapped keys, so they skip the mapper
 const degreePad = createDegreePad($("degreePad"), event => store.dispatch({ type: "input", event }));
 const referenceView = createReferenceView($("referenceView"), $("main"));
@@ -142,6 +143,7 @@ const modeDeps: ModeDeps = {
     roundViz,
     ladder: ladderPick,
     progressionLadder: progressionLadderPick,
+    intervalLadder: intervalLadderPick,
     // Its own player (so turning the footer's Piano sound off doesn't cut a prompt off), sharing the samples
     piano: createPianoSound(),
     degreePad,

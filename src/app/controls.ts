@@ -19,6 +19,7 @@ import {
 } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
 import { PROGRESSION_LENGTHS, tonicName } from "../exercises/progressionEar";
+import { INTERVAL_GROUPS, type IntervalPlay } from "../exercises/intervalEar";
 import type { ArpeggioInversion } from "../exercises/technique";
 import { levelsFor, type ReadingPart } from "../exercises/excerpts";
 import {
@@ -232,6 +233,22 @@ export function bindControls(store: AppStore) {
     s => (s.earChords.inversions ? "inversions" : "root"),
     v => ({ type: "setEarChordOptions", options: { inversions: v === "inversions" } }),
   );
+  // Ear training, intervals: on the ladder or free choice, how the two notes are played, and the sound
+  bindSelect(
+    $("earIntervalLadder"),
+    s => (s.earIntervals.ladder ? "ladder" : "free"),
+    v => ({ type: "setEarIntervalOptions", options: { ladder: v === "ladder" } }),
+  );
+  bindSelect(
+    $("earIntervalPlay"),
+    s => s.earIntervals.play,
+    v => ({ type: "setEarIntervalOptions", options: { play: v as IntervalPlay } }),
+  );
+  bindSelect(
+    $("earIntervalSound"),
+    s => s.earIntervals.sound,
+    v => ({ type: "setEarIntervalOptions", options: { sound: v === "piano" ? "piano" : "simple" } }),
+  );
   // Ear training, progressions: the key (random, or a tonic: major or minor by the level) and chords per progression
   $("earProgKey").append(new Option(`Random (new key every ${PROMPTS_PER_KEY})`, "random"));
   for (let pc = 0; pc < 12; pc++)
@@ -342,6 +359,15 @@ export function bindControls(store: AppStore) {
     s => s.ear.degrees,
     degrees => ({ type: "setEarOptions", options: { degrees } }),
   );
+  // Ear training, intervals, with free choice: which intervals it plays (at least two, so there's a choice)
+  bindFilter(
+    "earInterval",
+    INTERVAL_GROUPS,
+    "Intervals",
+    s => s.earIntervals.intervals,
+    intervals => ({ type: "setEarIntervalOptions", options: { intervals } }),
+    2,
+  );
   // Ear training, chord qualities: which chord types it plays (the chord practice groups; at least two, so there's a choice)
   bindFilter(
     "earChord",
@@ -415,6 +441,10 @@ export function showControls(state: AppState) {
   $("practiceReplay").hidden = !ear;
   $("earChordOptions").hidden = id !== "earChords";
   $("earProgOptions").hidden = id !== "earProgressions";
+  $("earIntervalOptions").hidden = id !== "earIntervals";
+  // On the ladder its level decides the intervals; with free choice the player does
+  $("earIntervalLevelPick").hidden = !s.earIntervals.ladder;
+  $("earIntervalFilters").hidden = s.earIntervals.ladder;
   // On the ladder its level decides the types and voicing; with free choice the player does
   $("earChordLevelPick").hidden = !s.earChords.ladder;
   $("earChordVoicingPick").hidden = $("earChordFilters").hidden = s.earChords.ladder;

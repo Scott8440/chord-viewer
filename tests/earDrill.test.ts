@@ -6,6 +6,7 @@ import type { TonePlayer } from "../src/audio/tones";
 import { ROUND_SIZE } from "../src/exercises/rounds";
 import { startEarChords } from "../src/modes/earChords";
 import { startEarProgressions } from "../src/modes/earProgressions";
+import { startEarIntervals } from "../src/modes/earIntervals";
 import { REPLAY_AFTER_MISS_MS } from "../src/modes/earDrill";
 import { startEarMelody } from "../src/modes/earMelody";
 import { startEarTraining } from "../src/modes/earTraining";
@@ -266,6 +267,56 @@ describe("progressions", () => {
     const s = t.board();
     // Either the first chord was named by key 1, or key 1 was a wrong answer for it
     expect(s.slots![0].state === "done" || s.boxes!.find(b => b.id === first)!.state === "wrong").toBe(true);
+    t.mode.stop();
+  });
+});
+
+describe("intervals", () => {
+  function start() {
+    const t = setup();
+    const answers = fakeBoard();
+    const mode = startEarIntervals({
+      store: t.store,
+      views: { practice: t.practice, tones: t.tones, answers, roundViz: t.roundViz },
+      recorder: t.recorder,
+      rng: seeded(),
+    });
+    const board = () => answers.shown[answers.shown.length - 1];
+    return { ...t, answers, mode, board };
+  }
+
+  it("plays two notes the interval apart, the lower first; the board has the level's intervals", () => {
+    const t = start();
+    const notes = lastSounded(t.tones);
+    expect(notes).toHaveLength(2);
+    expect([4, 7, 12]).toContain(notes[1] - notes[0]);
+    expect(t.board().boxes!.map(b => b.label)).toEqual(["Major 3rd", "Perfect 5th", "Octave"]);
+    expect(t.shown().label).toBe("How far apart are the two notes?");
+    t.mode.stop();
+  });
+
+  it("a wrong answer is struck out and kept; the right one names the notes, and it's recorded with the mix-up", async () => {
+    const t = start();
+    const notes = lastSounded(t.tones);
+    const right = { 4: "M3", 7: "P5", 12: "P8" }[notes[1] - notes[0]]!;
+    const wrong = ["M3", "P5", "P8"].find(i => i !== right)!;
+    t.answers.press(wrong);
+    expect(t.board().boxes!.find(b => b.id === wrong)!.state).toBe("wrong");
+    expect(t.shown().feedback).toMatch(/^✗ Not an? /);
+    t.answers.press(right);
+    expect(t.board().boxes!.find(b => b.id === right)!.detail).toMatch(/ up to /);
+    const drills = t.records.filter((r): r is DrillBody => r.kind === "drill");
+    expect(drills[0]).toMatchObject({ drill: "intervalEar", outcome: "corrected" });
+    expect(drills[0].detail).toMatchObject({ interval: right, guesses: wrong, direction: "up" });
+    t.mode.stop();
+  });
+
+  it("free choice plays the player's intervals", () => {
+    const t = start();
+    t.store.dispatch({ type: "setEarIntervalOptions", options: { ladder: false, intervals: ["m2", "M7"] } });
+    expect(t.board().boxes!.map(b => b.id)).toEqual(["m2", "M7"]);
+    const notes = lastSounded(t.tones);
+    expect([1, 11]).toContain(notes[1] - notes[0]);
     t.mode.stop();
   });
 });

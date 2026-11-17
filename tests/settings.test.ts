@@ -41,6 +41,7 @@ const changes: AppAction[] = [
   { type: "setLatency", ms: 35 },
   { type: "setPianoSound", on: true },
   { type: "setEarProgressionOptions", options: { tonic: "7", length: 6 } },
+  { type: "setEarIntervalOptions", options: { intervals: ["m2", "M7"], play: "mixed", sound: "piano", ladder: false } },
 ];
 
 describe("saved settings", () => {
@@ -181,6 +182,7 @@ describe("setters", () => {
     setEarOptions: s => ({ type: "setEarOptions", options: { degrees: [...s.settings.ear.degrees] } }),
     setEarChordOptions: s => ({ type: "setEarChordOptions", options: { types: [...s.settings.earChords.types] } }),
     setEarProgressionOptions: s => ({ type: "setEarProgressionOptions", options: { ...s.settings.earProgressions } }),
+    setEarIntervalOptions: s => ({ type: "setEarIntervalOptions", options: { ...s.settings.earIntervals } }),
     setReadingOptions: s => ({ type: "setReadingOptions", options: { ...s.settings.reading } }),
     setLatency: s => ({ type: "setLatency", ms: s.settings.latencyMs }),
     setLatencyCalibrated: () => ({ type: "setLatencyCalibrated" }),

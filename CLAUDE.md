@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 529 tests (54 voicings) should pass
+npm test           # Vitest: 540 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -108,6 +108,9 @@ Layers that only talk through data. Read the file before changing a layer; this 
   `ladder: {id, level}` (two rounds in a row at 85%+ at the top level unlock the next; only ever up). Rounds played
   broken, or with free choice, aren't tagged. Changing what a level means needs a new ladder id. The saved level is
   pulled back to the highest unlocked once history is read; after an unlocking round, Next round moves up.
+- **Interval ear training** (`src/exercises/intervalEar.ts` pure, `src/modes/earIntervals.ts`): two notes (up, down,
+  together or mixed; simple tone or piano), named from a board of intervals m2–P8. A ladder of 7 levels (M3/P5/P8 up to
+  all twelve) or free choice with a filter. Records keep wrong answers for the Progress page's mix-ups.
 - **Progression ear training** (`src/exercises/progressionEar.ts` pure, `src/modes/earProgressions.ts`): a cadence
   sets up the key, then 3–8 chords play on the sampled piano (bass low, triad above, voice-led to the nearest
   inversion); the player names each by numeral, in any order, on the answer board, whose optional `slots` row shows

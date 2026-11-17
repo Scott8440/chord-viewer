@@ -12,6 +12,7 @@ import { esc } from "../html";
 import { chordStepHtml, describeMiss, inversionName, romanHtml } from "./chords";
 import { stepHtml } from "./steps";
 import type { AnswerBox, AnswerSlot } from "../answerBoard";
+import { intervalLabel, intervalNotes, intervalOrder, type IntervalEarState } from "../../exercises/intervalEar";
 import {
   chordsText,
   numeralLabel,
@@ -370,6 +371,65 @@ export function progressionEarDisplay(
     sub: soundBlocked
       ? SOUND_WAITING
       : `The key is set up first, then ${s.prompt.chords.length} chords. Name them in any order: pick a slot (or ← →), then a box or its number`,
+    status: s.status,
+    feedback,
+    score: scoreText(s),
+    stopLabel: "Stop",
+  };
+}
+
+/**
+ * Ear training, intervals: a box per interval on offer, smallest first (number keys 1, 2 …); the right one names the
+ * notes once found, wrong ones are struck out
+ */
+export function intervalEarAnswers(s: IntervalEarState, intervals: readonly string[], running: boolean): AnswerBox[] {
+  return intervalOrder(intervals).map((id, i) => {
+    const right = s.status === "correct" && id === s.prompt.interval,
+      wrong = s.wrong.includes(id);
+    return {
+      id,
+      label: intervalLabel(id),
+      key: i < 9 ? i + 1 : undefined,
+      state: right ? "right" : wrong ? "wrong" : "",
+      detail: right ? intervalNotes(s.prompt) : undefined,
+      disabled: !running || s.status === "correct" || wrong,
+    };
+  });
+}
+
+/** Ear training, intervals, the practice panel: the instruction, feedback and score (the answers are on the board) */
+export function intervalEarDisplay(
+  s: IntervalEarState,
+  intervals: readonly string[],
+  soundBlocked: boolean,
+  running: boolean,
+): PracticeDisplay {
+  if (!running) {
+    return {
+      label: soundBlocked ? "Ready" : "Stopped",
+      promptHtml: "",
+      size: "chord",
+      sub: soundBlocked ? SOUND_WAITING : "Press Start to hear the notes again",
+      status: "waiting",
+      feedback: "",
+      score: scoreText(s),
+      stopLabel: "Start",
+    };
+  }
+  let feedback = "";
+  if (s.status === "correct") feedback = `✓ ${intervalLabel(s.prompt.interval)}: ${intervalNotes(s.prompt)}`;
+  else if (s.status === "wrong") {
+    const name = intervalLabel(s.wrong[s.wrong.length - 1]).toLowerCase();
+    feedback = `✗ Not ${/^[aeiou]/.test(name) ? "an" : "a"} ${name}. Listen again`;
+  }
+  const how = { up: "lower note first", down: "upper note first", together: "both together" }[s.prompt.direction];
+  return {
+    label: "How far apart are the two notes?",
+    promptHtml: "",
+    size: "chord",
+    sub: soundBlocked
+      ? SOUND_WAITING
+      : `Played ${how} · choose a box, or press its number · ${intervalOrder(intervals).length} intervals`,
     status: s.status,
     feedback,
     score: scoreText(s),

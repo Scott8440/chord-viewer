@@ -200,6 +200,7 @@ export const DRILLS: readonly DrillKind[] = [
   "reading",
   "chordEar",
   "progressionEar",
+  "intervalEar",
 ];
 
 /** Per day and drill: the share of prompts right first time (skips count against), and how many there were */
@@ -393,4 +394,29 @@ export function numeralConfusions(records: readonly ProgressRecord[]): ChordConf
     }))
     .filter(c => c.mistakenFor.length)
     .sort((a, b) => total(b) - total(a) || a.type.localeCompare(b.type));
+}
+
+/** Intervals: what each was mistaken for, the intervals with the most wrong answers first (none: left out) */
+export function intervalConfusions(records: readonly ProgressRecord[]): ChordConfusion[] {
+  const m = new Map<string, { prompt: string; asked: number; guesses: Map<string, number> }>();
+  for (const d of drills(records)) {
+    if (d.drill !== "intervalEar" || typeof d.detail.interval !== "string") continue;
+    const e = m.get(d.detail.interval) ?? { prompt: d.prompt, asked: 0, guesses: new Map<string, number>() };
+    e.asked++;
+    if (typeof d.detail.guesses === "string")
+      for (const g of d.detail.guesses.split(",").filter(Boolean)) e.guesses.set(g, (e.guesses.get(g) ?? 0) + 1);
+    m.set(d.detail.interval, e);
+  }
+  const total = (c: ChordConfusion) => c.mistakenFor.reduce((n, x) => n + x.n, 0);
+  return [...m]
+    .map(([type, e]) => ({
+      type,
+      prompt: e.prompt,
+      asked: e.asked,
+      mistakenFor: [...e.guesses]
+        .map(([t, n]) => ({ type: t, n }))
+        .sort((a, b) => b.n - a.n || a.type.localeCompare(b.type)),
+    }))
+    .filter(c => c.mistakenFor.length)
+    .sort((a, b) => total(b) - total(a) || a.prompt.localeCompare(b.prompt));
 }

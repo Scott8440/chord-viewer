@@ -1,9 +1,10 @@
-// Ear training, progressions: a cadence sets up the key, then a few chords play, and the player names each in order by
-// its Roman numeral, on a board of numeral boxes with a slot per chord above them. A wrong answer plays the chords up
-// to that one again a second later; Replay plays the whole progression. With a random key, the key changes every
-// PROMPTS_PER_KEY progressions. Levels on a ladder (src/exercises/progressionEar.ts) add numerals. Chords play on the
-// sampled piano, voiced with a bass note low down (the simple tone in tests, which have no piano). Rounds, replays and
-// Stop/Start are the shared ear-drill runner's (earDrill.ts); this sounds the progression and runs the board.
+// Ear training, progressions: a cadence sets up the key, then a few chords play, and the player names each by its Roman
+// numeral, in any order: a board of numeral boxes, with a slot per chord above them; a slot still to come can be picked
+// (or reached with ← →) to name that chord next. A wrong answer plays the chords up to that one again a second later;
+// Replay plays the whole progression. With a random key, the key changes every PROMPTS_PER_KEY progressions. Levels
+// on a ladder (src/exercises/progressionEar.ts) add numerals. Chords play on the sampled piano, voiced with a bass note
+// low down (the simple tone in tests, which have no piano). Rounds, replays and Stop/Start are the shared ear-drill
+// runner's (earDrill.ts); this sounds the progression and runs the board.
 import type { PianoSound } from "../audio/piano";
 import type { TonePlayer } from "../audio/tones";
 import { countInKey, keyRotation, rotateKey } from "../exercises/keyRotation";
@@ -167,10 +168,11 @@ export function startEarProgressions({
           playChords(s.prompt.chords, at, CHORD_GAP_S, CHORD_RING_S);
         });
       },
-      // After a wrong answer, the chords up to the one being named; otherwise (Replay) the whole progression
+      // After a wrong answer, the chords up to the one being named (its context); otherwise (Replay) the whole
+      // progression
       replay(s) {
         cut();
-        const upTo = s.status === "wrong" ? s.index + 1 : s.prompt.chords.length;
+        const upTo = s.status === "wrong" ? s.selected + 1 : s.prompt.chords.length;
         whenReady(s, () => playChords(s.prompt.chords.slice(0, upTo), 0, CHORD_GAP_S, CHORD_RING_S));
       },
       silence: cut,
@@ -196,11 +198,19 @@ export function startEarProgressions({
   const answer = (numeral: string) => drill.answer({ type: "answer", numeral });
   const offAnswer = views.answers.onAnswer(answer);
   const offReplay = views.answers.onReplay(drill.replay);
+  // A slot picked: name that chord next
+  const offSlot = views.answers.onSlot(slot => drill.answer({ type: "select", slot }));
   const offNext = views.answers.onNext(ladder.nextRound);
 
-  /** The number keys answer: 1 for the first button, and so on (not while typing in a field, nor with modifiers) */
+  /** The number keys answer: 1 for the first button, and so on; ← and → move to another chord still to name (not
+   *  while typing in a field, nor with modifiers) */
   function onKey(e: KeyboardEvent) {
     if (e.repeat || isTypingOrModified(e)) return;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      drill.answer({ type: "step", by: e.key === "ArrowRight" ? 1 : -1 });
+      return;
+    }
     const n = Number(e.key);
     const order = numerals();
     if (!Number.isInteger(n) || n < 1 || n > Math.min(9, order.length)) return;
@@ -216,6 +226,7 @@ export function startEarProgressions({
       ladder.stop();
       offAnswer();
       offReplay();
+      offSlot();
       offNext();
       window.removeEventListener("keydown", onKey);
       drill.stop();

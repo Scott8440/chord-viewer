@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 523 tests (54 voicings) should pass
+npm test           # Vitest: 527 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -110,8 +110,8 @@ Layers that only talk through data. Read the file before changing a layer; this 
   pulled back to the highest unlocked once history is read; after an unlocking round, Next round moves up.
 - **Progression ear training** (`src/exercises/progressionEar.ts` pure, `src/modes/earProgressions.ts`): a cadence
   sets up the key, then 3–8 chords play on the sampled piano (bass low, triad above, voice-led to the nearest
-  inversion); the player names each in order by numeral on the answer board, whose optional `slots` row shows the
-  chords named so far. Numerals are defined by interval and quality (`NUMERALS`), so chords are spelled in any key.
+  inversion); the player names each by numeral, in any order, on the answer board, whose optional `slots` row shows
+  the chords named so far (a slot still to come can be picked, or reached with ← →, to name it next). Numerals are defined by interval and quality (`NUMERALS`), so chords are spelled in any key.
   Half the progressions are common pop loops (`COMMON_LOOPS`), half random. A ladder of 8 levels, I/IV/V up to
   borrowed chords and minor keys; rounds of 10 (a drill can set `roundSize`). Records keep each wrong answer as "played>answered" for the Progress page's mix-ups.
 - **Metronome / timing** (`src/timing/`): `AppState.transport` is the one source of truth for where the beats are.

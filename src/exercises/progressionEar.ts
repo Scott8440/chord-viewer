@@ -260,37 +260,75 @@ export function makeProgressionEarPrompt(
 }
 
 export interface ProgressionEarState extends Judged<ProgressionEarPrompt> {
-  /** How many chords have been named so far */
-  index: number;
-  /** Wrong answers for the chord being named, so their buttons can show it */
-  wrong: string[];
+  /** Which chords have been named, in order: they can be named in any order */
+  named: boolean[];
+  /** The chord being named: the first at the start, then the next still unnamed (or any the player picks) */
+  selected: number;
+  /** Wrong answers given for each chord, so its buttons can show them while it's the one being named */
+  wrongBySlot: string[][];
   /** Every wrong answer this progression, as "played>answered" ("vi>IV"), for the Progress page's mix-ups */
   guesses: string[];
 }
 
-export type ProgressionEarAction = { type: "answer"; numeral: string } | MoveOn<ProgressionEarPrompt>;
+export type ProgressionEarAction =
+  | { type: "answer"; numeral: string }
+  /** Name this chord next (out of order) */
+  | { type: "select"; slot: number }
+  /** Name the next (+1) or previous (-1) chord still unnamed */
+  | { type: "step"; by: 1 | -1 }
+  | MoveOn<ProgressionEarPrompt>;
+
+/** Nothing named yet, the first chord selected */
+const fresh = (p: ProgressionEarPrompt) => ({
+  named: p.chords.map(() => false),
+  selected: 0,
+  wrongBySlot: p.chords.map((): string[] => []),
+  guesses: [] as string[],
+});
 
 export const initialProgressionEar = (prompt: ProgressionEarPrompt): ProgressionEarState => ({
   prompt,
   status: "waiting",
-  index: 0,
-  wrong: [],
-  guesses: [],
+  ...fresh(prompt),
   missed: false,
   answered: 0,
   firstTry: 0,
 });
 
-/** Chord by chord: a right answer moves to the next chord (the last one answers the progression), a wrong one waits */
+/** Wrong answers for the chord being named */
+export const wrongNow = (s: ProgressionEarState): readonly string[] => s.wrongBySlot[s.selected] ?? [];
+
+/** The unnamed chord `by` steps from `from` (wrapping round), or `from` if there's none other */
+function unnamedFrom(named: readonly boolean[], from: number, by: 1 | -1): number {
+  for (let i = 1; i <= named.length; i++) {
+    const at = (from + by * i + named.length * 2) % named.length;
+    if (!named[at]) return at;
+  }
+  return from;
+}
+
+/**
+ * Chord by chord, in any order: a right answer names the selected chord and moves on to the next still unnamed (the
+ * last one answers the progression); a wrong one waits on it. Selecting another unnamed chord names that one next.
+ */
 export function reduceProgressionEar(s: ProgressionEarState, a: ProgressionEarAction): ProgressionEarState {
-  if (a.type !== "answer") return movedOn(s, a, { index: 0, wrong: [], guesses: [] });
-  if (s.status === "correct" || s.wrong.includes(a.numeral)) return s;
-  const played = s.prompt.chords[s.index].numeral;
-  if (a.numeral !== played)
-    return answeredWrong(s, { wrong: [...s.wrong, a.numeral], guesses: [...s.guesses, `${played}>${a.numeral}`] });
-  const index = s.index + 1;
-  if (index < s.prompt.chords.length) return { ...s, index, status: "waiting", wrong: [] };
-  return answeredRight(s, { index, wrong: [] });
+  if (a.type === "next" || a.type === "skip") return movedOn(s, a, fresh(a.prompt));
+  if (s.status === "correct") return s;
+  if (a.type === "select" || a.type === "step") {
+    const slot = a.type === "select" ? a.slot : unnamedFrom(s.named, s.selected, a.by);
+    if (slot === s.selected || slot < 0 || slot >= s.named.length || s.named[slot]) return s;
+    // A new chord to name: waiting on it (any replay after a wrong answer is off)
+    return { ...s, selected: slot, status: "waiting" };
+  }
+  if (wrongNow(s).includes(a.numeral)) return s;
+  const played = s.prompt.chords[s.selected].numeral;
+  if (a.numeral !== played) {
+    const wrongBySlot = s.wrongBySlot.map((w, i) => (i === s.selected ? [...w, a.numeral] : w));
+    return answeredWrong(s, { wrongBySlot, guesses: [...s.guesses, `${played}>${a.numeral}`] });
+  }
+  const named = s.named.map((n, i) => n || i === s.selected);
+  if (named.every(Boolean)) return answeredRight(s, { named });
+  return { ...s, named, selected: unnamedFrom(named, s.selected, 1), status: "waiting" };
 }
 
 /** "I–V–vi–IV" */

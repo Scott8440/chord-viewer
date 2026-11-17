@@ -974,6 +974,28 @@ body.midiMapping [data-midi-map].midiWaiting {
     600 22px system-ui,
     sans-serif;
 }
+#answerBoard button.slot {
+  background: none;
+  cursor: default;
+  touch-action: manipulation;
+}
+/* One still to come: pick it to name it next */
+#answerBoard button.slot.todo {
+  cursor: pointer;
+}
+@media (hover: hover) {
+  #answerBoard button.slot.todo:hover {
+    border-color: #9a968c;
+    background: #fff;
+  }
+}
+#answerBoard button.slot.todo:active {
+  background: #efeadf;
+}
+#answerBoard button.slot:disabled {
+  opacity: 1;
+  color: var(--ink);
+}
 #answerBoard .slot .slotDetail {
   font-size: 13px;
   font-weight: 500;

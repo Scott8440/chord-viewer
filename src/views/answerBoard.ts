@@ -15,7 +15,8 @@ export interface AnswerBox {
   disabled: boolean;
 }
 
-/** One answer of several asked in order (progressions: one per chord), shown in a row above the boxes */
+/** One answer of several (progressions: one per chord), shown in a row above the boxes; the ones still to come can be
+ *  picked, to answer that one next */
 export interface AnswerSlot {
   /** "vi" once answered, "?" for the one being asked, empty for those still to come */
   label: string;
@@ -32,6 +33,8 @@ export interface AnswerBoard {
   onAnswer(listener: (id: string) => void): () => void;
   /** Called when the Replay button is pressed; returns a function that stops it */
   onReplay(listener: () => void): () => void;
+  /** Called with a slot's place (0 for the first) when one still to come is picked; returns a function that stops it */
+  onSlot(listener: (slot: number) => void): () => void;
   /** In place of everything else, one large button (between rounds: "Next round"); mapped like Skip */
   renderNext(label: string): void;
   /** Called when that button is pressed; returns a function that stops it */
@@ -41,13 +44,15 @@ export interface AnswerBoard {
 export function createAnswerBoard(el: HTMLElement): AnswerBoard {
   const listeners = new Set<(id: string) => void>(),
     replayListeners = new Set<() => void>(),
-    nextListeners = new Set<() => void>();
+    nextListeners = new Set<() => void>(),
+    slotListeners = new Set<(slot: number) => void>();
   // The buttons are redrawn with each render, so one listener on the board catches them all
   el.addEventListener("click", e => {
     const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
     if (!button || button.disabled) return;
     button.blur(); // so Space stays the pedal
     if (button.dataset.answer) for (const l of listeners) l(button.dataset.answer);
+    else if (button.dataset.slot) for (const l of slotListeners) l(Number(button.dataset.slot));
     else if (button.classList.contains("replay")) for (const l of replayListeners) l();
     else if (button.classList.contains("next")) for (const l of nextListeners) l();
   });
@@ -58,20 +63,23 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
   let layout = "";
   return {
     render(boxes, replay, slots) {
-      const slotsHtml = slots
-        ? slots
-            .map(
-              x =>
-                `<span class="slot ${x.state}"><span class="slotLabel">${esc(x.label) || "&nbsp;"}</span>` +
-                `<span class="slotDetail">${x.detail ? esc(x.detail) : "&nbsp;"}</span></span>`,
-            )
-            .join("")
-        : "";
+      /** A slot: a button, which can be pressed while it's still to come */
+      const slotHtml = (x: AnswerSlot, i: number) =>
+        `<button class="slot ${x.state}" data-slot="${i}"${x.state === "todo" ? "" : " disabled"}>` +
+        `<span class="slotLabel">${esc(x.label) || "&nbsp;"}</span>` +
+        `<span class="slotDetail">${x.detail ? esc(x.detail) : "&nbsp;"}</span></button>`;
+      const slotsHtml = slots ? slots.map(slotHtml).join("") : "";
       const nextLayout = `${replay ? "r" : ""}|${slots ? slots.length : "-"}|${boxes.map(b => b.id).join("\u0000")}`;
       if (nextLayout === layout) {
-        // The slots aren't pressed, so they're simply redrawn
-        const row = el.querySelector(".slots");
-        if (row && row.innerHTML !== slotsHtml) row.innerHTML = slotsHtml;
+        // The slots too are updated in place (one can be under the pointer)
+        const slotButtons = el.querySelectorAll<HTMLButtonElement>("button.slot");
+        slots?.forEach((x, i) => {
+          const b = slotButtons[i];
+          b.className = `slot ${x.state}`;
+          b.disabled = x.state !== "todo";
+          b.querySelector(".slotLabel")!.textContent = x.label || "\u00a0";
+          b.querySelector(".slotDetail")!.textContent = x.detail ?? "\u00a0";
+        });
         const replayButton = el.querySelector<HTMLButtonElement>("button.replay");
         if (replayButton && replay) replayButton.disabled = !replay.enabled;
         const buttons = el.querySelectorAll<HTMLButtonElement>("button.box");
@@ -108,6 +116,12 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
+      };
+    },
+    onSlot(listener) {
+      slotListeners.add(listener);
+      return () => {
+        slotListeners.delete(listener);
       };
     },
     onReplay(listener) {

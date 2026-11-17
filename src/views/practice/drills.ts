@@ -12,7 +12,13 @@ import { esc } from "../html";
 import { chordStepHtml, describeMiss, inversionName, romanHtml } from "./chords";
 import { stepHtml } from "./steps";
 import type { AnswerBox, AnswerSlot } from "../answerBoard";
-import { chordsText, numeralLabel, numeralsText, type ProgressionEarState } from "../../exercises/progressionEar";
+import {
+  chordsText,
+  numeralLabel,
+  numeralsText,
+  wrongNow,
+  type ProgressionEarState,
+} from "../../exercises/progressionEar";
 import type { PracticeDisplay } from "./view";
 
 const scoreText = (s: { answered: number; firstTry: number }) =>
@@ -307,8 +313,9 @@ export function progressionEarAnswers(
   numerals: readonly string[],
   running: boolean,
 ): AnswerBox[] {
+  const wrongs = wrongNow(s);
   return numerals.map((n, i) => {
-    const wrong = s.wrong.includes(n);
+    const wrong = wrongs.includes(n);
     return {
       id: n,
       label: numeralLabel(n),
@@ -319,14 +326,17 @@ export function progressionEarAnswers(
   });
 }
 
-/** A slot per chord: named (numeral and chord) once answered, "?" for the one being named, blank for the rest */
+/**
+ * A slot per chord: named (numeral and chord) once answered; "?" on the one being named (red after a wrong answer);
+ * the rest show their place, and can be picked to name next
+ */
 export function progressionEarSlots(s: ProgressionEarState): AnswerSlot[] {
   return s.prompt.chords.map((c, i) =>
-    i < s.index
+    s.named[i]
       ? { label: numeralLabel(c.numeral), detail: c.name, state: "done" }
-      : i === s.index
-        ? { label: "?", state: s.status === "wrong" ? "wrong" : "current" }
-        : { label: "", state: "todo" },
+      : i === s.selected && s.status !== "correct"
+        ? { label: "?", detail: String(i + 1), state: s.status === "wrong" ? "wrong" : "current" }
+        : { label: "", detail: String(i + 1), state: "todo" },
   );
 }
 
@@ -352,14 +362,14 @@ export function progressionEarDisplay(
   let feedback = "";
   if (s.status === "correct") feedback = `✓ ${numeralsText(s.prompt)}: ${chordsText(s.prompt)}`;
   else if (s.status === "wrong")
-    feedback = `✗ Chord ${s.index + 1} isn't ${numeralLabel(s.wrong[s.wrong.length - 1])}. Listen again`;
+    feedback = `✗ Chord ${s.selected + 1} isn't ${numeralLabel(wrongNow(s)[wrongNow(s).length - 1])}. Listen again`;
   return {
-    label: `Name each chord in order · ${key}`,
+    label: `Name each chord · ${key}`,
     promptHtml: "",
     size: "chord",
     sub: soundBlocked
       ? SOUND_WAITING
-      : `The key is set up first, then ${s.prompt.chords.length} chords. Choose a box, or press its number`,
+      : `The key is set up first, then ${s.prompt.chords.length} chords. Name them in any order: pick a slot (or ← →), then a box or its number`,
     status: s.status,
     feedback,
     score: scoreText(s),

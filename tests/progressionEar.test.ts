@@ -13,6 +13,7 @@ import {
   reduceProgressionEar,
   sanitizeProgressionEarOptions,
   voiceLead,
+  wrongNow,
 } from "../src/exercises/progressionEar";
 import { analyze } from "../src/theory";
 
@@ -147,34 +148,71 @@ describe("progressions", () => {
 
 describe("judging", () => {
   const prompt = makeProgressionEarPrompt(seq(0.1, 0), { tonic: "random", length: 4, level: 1 }, 0); // I–V–vi–IV
+  const answer = (s: ReturnType<typeof initialProgressionEar>, numeral: string) =>
+    reduceProgressionEar(s, { type: "answer", numeral });
 
-  it("chord by chord: a right answer moves on, the last one answers the progression", () => {
+  it("in order: a right answer names the chord and moves to the next, the last one answers the progression", () => {
     let s = initialProgressionEar(prompt);
     for (const n of ["I", "V", "vi"]) {
-      s = reduceProgressionEar(s, { type: "answer", numeral: n });
+      s = answer(s, n);
       expect(s.status).toBe("waiting");
     }
-    expect(s.index).toBe(3);
-    s = reduceProgressionEar(s, { type: "answer", numeral: "IV" });
+    expect(s.named).toEqual([true, true, true, false]);
+    expect(s.selected).toBe(3);
+    s = answer(s, "IV");
     expect(s).toMatchObject({ status: "correct", answered: 1, firstTry: 1, guesses: [] });
   });
 
-  it("a wrong answer waits on that chord, is struck out, and is kept for the mix-ups", () => {
-    let s = initialProgressionEar(prompt);
-    s = reduceProgressionEar(s, { type: "answer", numeral: "I" });
-    s = reduceProgressionEar(s, { type: "answer", numeral: "IV" });
-    expect(s).toMatchObject({ status: "wrong", index: 1, wrong: ["IV"], guesses: ["V>IV"] });
+  it("in any order: a picked chord is named next, then on to the next still unnamed, wrapping round", () => {
+    let s = reduceProgressionEar(initialProgressionEar(prompt), { type: "select", slot: 3 });
+    expect(s.selected).toBe(3);
+    s = answer(s, "IV");
+    expect(s).toMatchObject({ named: [false, false, false, true], selected: 0, status: "waiting" });
+    s = reduceProgressionEar(s, { type: "select", slot: 2 });
+    s = answer(s, "vi");
+    expect(s).toMatchObject({ named: [false, false, true, true], selected: 0 });
+    // Named chords can't be picked again
+    expect(reduceProgressionEar(s, { type: "select", slot: 3 })).toBe(s);
+    for (const n of ["I", "V"]) s = answer(s, n);
+    expect(s).toMatchObject({ status: "correct", firstTry: 1 });
+  });
+
+  it("stepping moves to the next or previous chord still unnamed", () => {
+    let s = answer(initialProgressionEar(prompt), "I"); // chord 1 named, chord 2 selected
+    s = reduceProgressionEar(s, { type: "step", by: 1 });
+    expect(s.selected).toBe(2);
+    s = reduceProgressionEar(s, { type: "step", by: -1 });
+    s = reduceProgressionEar(s, { type: "step", by: -1 });
+    // Back past the named first chord, round to the last
+    expect(s.selected).toBe(3);
+  });
+
+  it("a wrong answer waits on that chord, is kept for it alone, and for the mix-ups", () => {
+    let s = answer(initialProgressionEar(prompt), "I");
+    s = answer(s, "IV");
+    expect(s).toMatchObject({ status: "wrong", selected: 1, guesses: ["V>IV"] });
+    expect(wrongNow(s)).toEqual(["IV"]);
     // The same wrong answer again changes nothing
-    expect(reduceProgressionEar(s, { type: "answer", numeral: "IV" })).toBe(s);
-    s = reduceProgressionEar(s, { type: "answer", numeral: "V" });
-    expect(s).toMatchObject({ status: "waiting", index: 2, wrong: [] });
-    for (const n of ["vi", "IV"]) s = reduceProgressionEar(s, { type: "answer", numeral: n });
+    expect(answer(s, "IV")).toBe(s);
+    // Another chord picked: its own (no) wrong answers, and waiting again; back on chord 2, IV is still struck out
+    s = reduceProgressionEar(s, { type: "select", slot: 3 });
+    expect(s.status).toBe("waiting");
+    expect(wrongNow(s)).toEqual([]);
+    s = reduceProgressionEar(s, { type: "select", slot: 1 });
+    expect(wrongNow(s)).toEqual(["IV"]);
+    for (const n of ["V", "vi", "IV"]) s = answer(s, n);
     expect(s).toMatchObject({ status: "correct", answered: 1, firstTry: 0, guesses: ["V>IV"] });
   });
 
-  it("moving on starts the next progression from its first chord", () => {
-    let s = reduceProgressionEar(initialProgressionEar(prompt), { type: "answer", numeral: "I" });
+  it("moving on starts the next progression with nothing named", () => {
+    let s = answer(initialProgressionEar(prompt), "I");
     s = reduceProgressionEar(s, { type: "skip", prompt });
-    expect(s).toMatchObject({ index: 0, wrong: [], guesses: [], answered: 1, firstTry: 0 });
+    expect(s).toMatchObject({
+      named: [false, false, false, false],
+      selected: 0,
+      guesses: [],
+      answered: 1,
+      firstTry: 0,
+    });
   });
 });

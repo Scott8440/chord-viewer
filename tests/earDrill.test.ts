@@ -75,7 +75,8 @@ function lastSounded(tones: ReturnType<typeof fakeTones>): number[] {
 function fakeBoard() {
   const answer = new Set<(id: string) => void>(),
     replay = new Set<() => void>(),
-    next = new Set<() => void>();
+    next = new Set<() => void>(),
+    slot = new Set<(n: number) => void>();
   const shown: { boxes?: readonly AnswerBox[]; slots?: readonly AnswerSlot[]; next?: string }[] = [];
   const on =
     <T>(set: Set<T>) =>
@@ -95,6 +96,7 @@ function fakeBoard() {
     onAnswer: on(answer),
     onReplay: on(replay),
     onNext: on(next),
+    onSlot: on(slot),
   };
   return {
     ...board,
@@ -102,6 +104,7 @@ function fakeBoard() {
     press: (id: string) => answer.forEach(l => l(id)),
     replay: () => replay.forEach(l => l()),
     next: () => next.forEach(l => l()),
+    pickSlot: (n: number) => slot.forEach(l => l(n)),
   };
 }
 
@@ -174,7 +177,7 @@ describe("progressions", () => {
     expect(t.board().boxes!.map(b => b.label)).toEqual(["I", "IV", "V"]);
     expect(t.board().slots).toHaveLength(4);
     expect(t.board().slots!.map(x => x.state)).toEqual(["current", "todo", "todo", "todo"]);
-    expect(t.shown().label).toMatch(/^Name each chord in order · /);
+    expect(t.shown().label).toMatch(/^Name each chord · /);
     t.mode.stop();
   });
 
@@ -204,6 +207,35 @@ describe("progressions", () => {
     expect(drills[0]).toMatchObject({ drill: "progressionEar", outcome: wrongs ? "corrected" : "firstTry" });
     expect(String(drills[0].detail.numerals).split(",")).toHaveLength(4);
     expect(String(drills[0].detail.guesses).split(",").filter(Boolean)).toHaveLength(wrongs);
+    t.mode.stop();
+  });
+
+  it("chords can be named in any order: pick the last slot and name it first", () => {
+    const t = start();
+    const last = t.board().slots!.length - 1;
+    t.answers.pickSlot(last);
+    expect(t.board().slots!.map(x => x.state)).toEqual(["todo", "todo", "todo", "current"]);
+    // Try boxes until the last chord is named
+    for (const box of t.board().boxes!) {
+      t.answers.press(box.id);
+      if (t.board().slots![last].state === "done") break;
+    }
+    // Named, and on to the next still unnamed, wrapping round to the first
+    expect(t.board().slots!.map(x => x.state)).toEqual(["current", "todo", "todo", "done"]);
+    // A slot already named can't be picked again
+    t.answers.pickSlot(last);
+    expect(t.board().slots![0].state).toBe("current");
+    t.mode.stop();
+  });
+
+  it("← and → move between the chords still to name", () => {
+    const t = start();
+    const key = (k: string) => window.dispatchEvent(Object.assign(new Event("keydown"), { key: k }));
+    key("ArrowRight");
+    expect(t.board().slots!.map(x => x.state)).toEqual(["todo", "current", "todo", "todo"]);
+    key("ArrowLeft");
+    key("ArrowLeft");
+    expect(t.board().slots!.map(x => x.state)).toEqual(["todo", "todo", "todo", "current"]);
     t.mode.stop();
   });
 

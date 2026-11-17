@@ -17,7 +17,9 @@ export const roundProgress = (start: Counters, now: Counters): Counters => ({
   firstTry: now.firstTry - start.firstTry,
 });
 
-export const roundDone = (start: Counters, now: Counters) => roundProgress(start, now).answered >= ROUND_SIZE;
+/** The round is over: `size` prompts (ROUND_SIZE unless the drill has its own) finished since it began */
+export const roundDone = (start: Counters, now: Counters, size = ROUND_SIZE) =>
+  roundProgress(start, now).answered >= size;
 
 export interface RoundComparison {
   /** This round's share right first time, 0–1 */

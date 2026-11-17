@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 521 tests (54 voicings) should pass
+npm test           # Vitest: 523 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -113,7 +113,7 @@ Layers that only talk through data. Read the file before changing a layer; this 
   inversion); the player names each in order by numeral on the answer board, whose optional `slots` row shows the
   chords named so far. Numerals are defined by interval and quality (`NUMERALS`), so chords are spelled in any key.
   Half the progressions are common pop loops (`COMMON_LOOPS`), half random. A ladder of 8 levels, I/IV/V up to
-  borrowed chords and minor keys. Records keep each wrong answer as "played>answered" for the Progress page's mix-ups.
+  borrowed chords and minor keys; rounds of 10 (a drill can set `roundSize`). Records keep each wrong answer as "played>answered" for the Progress page's mix-ups.
 - **Metronome / timing** (`src/timing/`): `AppState.transport` is the one source of truth for where the beats are.
   Only the driver (today the built-in clock, `src/modes/metronome.ts`) dispatches `setTransport`; the click
   (`src/audio/click.ts`, look-ahead scheduler), beat light and judging (`grid.ts`) only read it, so an external clock

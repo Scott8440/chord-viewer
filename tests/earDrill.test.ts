@@ -207,6 +207,26 @@ describe("progressions", () => {
     t.mode.stop();
   });
 
+  it("rounds of 10 progressions", async () => {
+    const t = start();
+    expect(t.shown().score).toBe("Round: 0 / 10");
+    for (let i = 0; i < 10; i++) t.mode.skip!();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(t.shown().label).toBe("Progressions: round complete");
+    expect(t.records.filter(r => r.kind === "round")).toEqual([expect.objectContaining({ size: 10 })]);
+    t.mode.stop();
+  });
+
+  it("an unhurried cadence: its chords 0.9 s apart, then 1.2 s before the progression", () => {
+    const t = start();
+    // The bass of each chord, in order: four cadence chords, then the progression
+    const basses = t.tones.calls
+      .filter((c): c is { play: number; delay: number } => "play" in c)
+      .filter((_, i) => i % 4 === 0);
+    expect(basses.slice(0, 5).map(c => +c.delay.toFixed(2))).toEqual([0, 0.9, 1.8, 2.7, 4 * 0.9 + 1.2]);
+    t.mode.stop();
+  });
+
   it("the number keys answer, in the order of the boxes", () => {
     const t = start();
     const first = t.board().boxes![0].id;

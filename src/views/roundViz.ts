@@ -8,22 +8,25 @@ export interface RoundVizModel {
   outcomes: readonly PromptOutcome[];
   /** Earlier rounds' average share right first time, null if none */
   average: number | null;
+  /** Prompts per round (ROUND_SIZE if not given) */
+  size?: number;
 }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
-/** 1. A row of ROUND_SIZE dots */
+/** 1. A dot per prompt of the round */
 export function dotsSvg(m: RoundVizModel): string {
   const r = 7,
     gap = 6,
-    w = ROUND_SIZE * (2 * r + gap) - gap;
-  const dots = Array.from({ length: ROUND_SIZE }, (_, i) => {
+    size = m.size ?? ROUND_SIZE,
+    w = size * (2 * r + gap) - gap;
+  const dots = Array.from({ length: size }, (_, i) => {
     const o = m.outcomes[i];
     return `<circle class="dot ${o ?? "todo"}${i === m.outcomes.length ? " next" : ""}" cx="${r + i * (2 * r + gap)}" cy="${r + 2}" r="${r}"/>`;
   }).join("");
   return (
     `<svg class="rvDots" viewBox="-2 0 ${w + 4} ${2 * r + 4}" width="${w + 4}" height="${2 * r + 4}" role="img" ` +
-    `aria-label="${m.outcomes.filter(o => o === "firstTry").length} of ${m.outcomes.length} right first time, ${ROUND_SIZE - m.outcomes.length} to go">${dots}</svg>`
+    `aria-label="${m.outcomes.filter(o => o === "firstTry").length} of ${m.outcomes.length} right first time, ${size - m.outcomes.length} to go">${dots}</svg>`
   );
 }
 
@@ -51,7 +54,7 @@ export function ringSvg(m: RoundVizModel): string {
       ? `<circle class="fill" r="${R}" stroke-dasharray="${(share * C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90)"/>`
       : "") +
     tick +
-    `<text class="share" y="-1">${n ? pct(share) : "–"}</text><text class="count" y="14">${n} / ${ROUND_SIZE}</text></svg>`
+    `<text class="share" y="-1">${n ? pct(share) : "–"}</text><text class="count" y="14">${n} / ${m.size ?? ROUND_SIZE}</text></svg>`
   );
 }
 
@@ -60,7 +63,7 @@ export function lineSvg(m: RoundVizModel): string {
   const W = 518, // as wide as the dots and the ring beside them
     H = 64,
     pad = 4;
-  const x = (i: number) => pad + (i / (ROUND_SIZE - 1)) * (W - 2 * pad),
+  const x = (i: number) => pad + (i / ((m.size ?? ROUND_SIZE) - 1)) * (W - 2 * pad),
     y = (v: number) => pad + (1 - v) * (H - 2 * pad);
   const shares = runningShares(m.outcomes);
   const avg =

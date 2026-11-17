@@ -35,6 +35,8 @@ export interface EarDrillConfig<P, S extends Judged<P>, A extends { type: string
   options(s: AppState): O;
   /** The options that make rounds comparable, as a key */
   setup(): string;
+  /** Prompts per round (ROUND_SIZE if not given) */
+  roundSize?: number;
   /** The ladder and level its rounds are played on, if they are */
   ladder?(): { id: string; level: number } | null;
   initial: S;
@@ -106,6 +108,7 @@ export function createEarDrill<P, S extends Judged<P>, A extends { type: string 
     history,
     changed: () => render(),
     setup: cfg.setup,
+    size: cfg.roundSize,
     ladder: cfg.ladder,
   });
   let state = cfg.initial;
@@ -135,11 +138,14 @@ export function createEarDrill<P, S extends Judged<P>, A extends { type: string 
 
   function render() {
     const summary = rounds.summary();
-    views.roundViz.render({ outcomes: rounds.outcomes(), average: rounds.average() });
+    views.roundViz.render({ outcomes: rounds.outcomes(), average: rounds.average(), size: rounds.size });
     views.practice.render(
       summary
         ? cfg.summaryDisplay(summary)
-        : { ...cfg.display(state, views.tones.blocked(), running), score: roundScore(rounds.progress(state)) },
+        : {
+            ...cfg.display(state, views.tones.blocked(), running),
+            score: roundScore(rounds.progress(state), rounds.size),
+          },
     );
     cfg.rendered?.(state, { summary, running, over: rounds.over() });
   }

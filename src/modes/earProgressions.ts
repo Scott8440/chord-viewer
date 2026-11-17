@@ -38,13 +38,16 @@ import { createEarDrill, type EarDrill } from "./earDrill";
 import { createLadderDrill, type LadderDrill } from "./ladderDrill";
 import type { AppStore, Mode } from "./performance";
 
-/** The cadence: a chord this often, each ringing this long, then a pause before the progression */
-const CADENCE_GAP_S = 0.6,
-  CADENCE_RING_S = 0.75,
-  CADENCE_PAUSE_S = 0.8;
+/** The cadence: a chord this often, each ringing this long, then a pause before the progression (unhurried, so the
+ *  key sinks in) */
+const CADENCE_GAP_S = 0.9,
+  CADENCE_RING_S = 1.125,
+  CADENCE_PAUSE_S = 1.2;
 /** The progression: a chord this often, each ringing this long */
 const CHORD_GAP_S = 1.15,
   CHORD_RING_S = 1.35;
+/** Progressions per round: each is several answers, so half the usual round */
+const ROUND_OF = 10;
 /** How long the named progression stays up before the next */
 const NEXT_PROMPT_MS = 2200;
 
@@ -142,6 +145,7 @@ export function startEarProgressions({
       drill: "progressionEar",
       options: s => s.settings.earProgressions,
       setup: () => `level:${options().level};length:${options().length}`,
+      roundSize: ROUND_OF,
       ladder: () => ({ id: PROGRESSION_EAR_LADDER.id, level: options().level }),
       initial: initialProgressionEar(newPrompt()),
       reduce: reduceProgressionEar,

@@ -1,9 +1,10 @@
-// Rounds for the ear-training modes: counts a round's prompts from the mode's own counters, and when ROUND_SIZE are
-// done, records the round and compares it with earlier rounds of the same drill played the same way (read from the
+// Rounds for the ear-training modes: counts a round's prompts from the mode's own counters, and when the round's size
+// (ROUND_SIZE, or the drill's own) are done, records the round and compares it with earlier rounds of the same drill played the same way (read from the
 // practice history once per mode session, then kept up to date here). The mode then waits for "Next round". The last
 // answer stays on screen for a moment (SUMMARY_DELAY_MS) before the summary replaces it.
 import {
   compareRound,
+  ROUND_SIZE,
   roundDone,
   roundProgress,
   type Counters,
@@ -39,6 +40,8 @@ export interface RoundKeeper {
   summary(): RoundSummary | null;
   /** Start a round from these counters (Next round, or new options) */
   next(now: Counters): void;
+  /** Prompts per round */
+  size: number;
   /** This drill's rounds so far, oldest first, once read from the history (null until then); a finished round is in
    *  it by the time its comparison shows */
   known(): readonly KnownRound[] | null;
@@ -55,6 +58,8 @@ export function createRoundKeeper(o: {
   drill: DrillKind;
   /** The options that make rounds comparable, as a key */
   setup(): string;
+  /** Prompts per round: ROUND_SIZE unless the drill's prompts are long (progressions) */
+  size?: number;
   /** The ladder and level a round is played on, if it is (kept on its record) */
   ladder?(): { id: string; level: number } | null;
   recorder: Recorder;
@@ -128,7 +133,7 @@ export function createRoundKeeper(o: {
         outcomes.push(now.firstTry > last.firstTry ? "firstTry" : skipped ? "skipped" : "corrected");
         last = { ...now };
       }
-      if (!roundDone(start, now)) return false;
+      if (!roundDone(start, now, o.size)) return false;
       const p = roundProgress(start, now),
         setup = o.setup(),
         ladder = o.ladder?.() ?? null;
@@ -173,6 +178,7 @@ export function createRoundKeeper(o: {
     outcomes: () => outcomes,
     average: () => average,
     known: () => read,
+    size: o.size ?? ROUND_SIZE,
     next(now) {
       start = { answered: now.answered, firstTry: now.firstTry };
       last = start;

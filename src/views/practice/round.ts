@@ -9,8 +9,8 @@ const clock = (ms: number) => {
 };
 
 /** "Round: 7 / 20 · 5 right first time" */
-export const roundScore = (p: Counters) =>
-  `Round: ${p.answered} / ${ROUND_SIZE}` + (p.answered ? ` · ${p.firstTry} right first time` : "");
+export const roundScore = (p: Counters, size = ROUND_SIZE) =>
+  `Round: ${p.answered} / ${size}` + (p.answered ? ` · ${p.firstTry} right first time` : "");
 
 /** Earlier rounds as small bars (oldest first, muted) and this one (accent), 0–100% */
 function roundBars(previous: readonly number[], share: number): string {

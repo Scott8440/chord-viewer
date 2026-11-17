@@ -7,6 +7,9 @@ export {
   earDisplay,
   earMelodyDisplay,
   progressionDisplay,
+  progressionEarAnswers,
+  progressionEarDisplay,
+  progressionEarSlots,
   readingLoadingDisplay,
   sightReadingDisplay,
 } from "./drills";

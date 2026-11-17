@@ -44,6 +44,7 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   ear: { ...PRACTICE, stage: "degrees" },
   earMelody: PRACTICE,
   earChords: { ...PRACTICE, stage: "answers" },
+  earProgressions: { ...PRACTICE, stage: "answers" },
 };
 
 /** What's on screen: a practice mode, or the Progress or Reference page (opened from the header, apart from the

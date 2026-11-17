@@ -1,11 +1,13 @@
 // The Progress view: a filter row (date range, routine, exercise, drill), summary tiles, and chart cards worked out from the
 // practice history (src/progress/stats.ts). Each chart has a table underneath for the exact values.
 import { qualityLabel } from "../exercises/chordEar";
+import { numeralLabel } from "../exercises/progressionEar";
 import { DIRECTION_NAMES, routineById } from "../exercises/routines";
 import type { DrillKind, ProgressRecord } from "../progress/records";
 import {
   DRILLS,
   chordConfusions,
+  numeralConfusions,
   dailyMedian,
   dayStart,
   dayOf,
@@ -82,6 +84,7 @@ const DRILL_NAMES = {
   melody: "Ear: melodies",
   reading: "Sight reading",
   chordEar: "Ear: chord qualities",
+  progressionEar: "Ear: progressions",
 } as const;
 
 function table(head: string[], rows: string[][]): string {
@@ -321,16 +324,22 @@ export function createProgressView(
         const color = SERIES[DRILLS.indexOf(drill.kind)] ?? SERIES[0];
         const seconds = (ms: number | null) => (ms == null ? "–" : `${(ms / 1000).toFixed(1)} s`);
         let mixups = "";
-        if (drill.kind === "chordEar") {
-          const conf = chordConfusions(records);
+        // Chord qualities and progressions: what each chord (or numeral) gets mistaken for
+        const confusions =
+          drill.kind === "chordEar"
+            ? { rows: chordConfusions(records), label: (t: string) => prettyAcc(qualityLabel(t)), what: "Chord played" }
+            : drill.kind === "progressionEar"
+              ? { rows: numeralConfusions(records), label: numeralLabel, what: "Numeral played" }
+              : null;
+        if (confusions) {
           mixups =
             `<h4>Mixed up with</h4>` +
-            (conf.length
-              ? `<table><thead><tr><th>Chord played</th><th>Taken for</th><th>Times played</th></tr></thead><tbody>` +
-                conf
+            (confusions.rows.length
+              ? `<table><thead><tr><th>${confusions.what}</th><th>Taken for</th><th>Times played</th></tr></thead><tbody>` +
+                confusions.rows
                   .map(
                     c =>
-                      `<tr><td>${esc(prettyAcc(c.prompt))}</td><td>${c.mistakenFor.map(x => `${esc(prettyAcc(qualityLabel(x.type)))} ×${x.n}`).join(", ")}</td><td>${c.asked}</td></tr>`,
+                      `<tr><td>${esc(drill.kind === "chordEar" ? prettyAcc(c.prompt) : confusions.label(c.type))}</td><td>${c.mistakenFor.map(x => `${esc(confusions.label(x.type))} ×${x.n}`).join(", ")}</td><td>${c.asked}</td></tr>`,
                   )
                   .join("") +
                 `</tbody></table>`

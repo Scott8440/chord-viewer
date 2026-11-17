@@ -8,6 +8,7 @@ import { sanitizeReadingOptions, type ReadingOptions } from "../exercises/sightR
 import { sanitizeExerciseOptions, type ExerciseOptions } from "../exercises/prescriptive";
 import { sanitizeRoutineOptions, type RoutineOptions } from "../exercises/routines";
 import { isKeyValue, type KeyContext } from "../theory";
+import { sanitizeProgressionEarOptions, type ProgressionEarOptions } from "../exercises/progressionEar";
 
 export const MODES = [
   "free",
@@ -24,6 +25,7 @@ export const MODES = [
   "ear",
   "earMelody",
   "earChords",
+  "earProgressions",
 ] as const;
 export type ModeId = (typeof MODES)[number];
 
@@ -52,6 +54,8 @@ export interface Settings {
   readonly ear: EarOptions;
   /** Ear training, chord qualities: which chord types it plays, inversions, and broken before together */
   readonly earChords: ChordEarOptions;
+  /** Ear training, progressions: the key (or random), chords per progression and the ladder level */
+  readonly earProgressions: ProgressionEarOptions;
   /** Sight reading (mode "reading"): how many notes, which staff, which key (or random) */
   readonly reading: ReadingOptions;
   /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
@@ -113,6 +117,7 @@ export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> }
   routine: { storage: saved("routine", "json"), sanitize: sanitizeRoutineOptions },
   ear: { storage: saved("ear", "json"), sanitize: sanitizeEarOptions },
   earChords: { storage: saved("earChords", "json"), sanitize: sanitizeChordEarOptions },
+  earProgressions: { storage: saved("earProgressions", "json"), sanitize: sanitizeProgressionEarOptions },
   reading: { storage: saved("reading", "json"), sanitize: sanitizeReadingOptions },
   latencyMs: { storage: saved("latency", "json"), sanitize: sanitizeLatency },
   latencyCalibrated: {

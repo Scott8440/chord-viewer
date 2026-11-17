@@ -21,6 +21,7 @@ import type { DegreePadView } from "../views/degreePad";
 import type { StaffView } from "../views/staff";
 import { startChordPractice } from "./chordPractice";
 import { startEarChords } from "./earChords";
+import { startEarProgressions } from "./earProgressions";
 import { startEarMelody } from "./earMelody";
 import { startEarTraining } from "./earTraining";
 import { startFreePlay } from "./freePlay";
@@ -45,6 +46,8 @@ export interface ModeDeps {
     answers: AnswerBoard;
     roundViz: RoundVizView;
     ladder: LadderPickView;
+    /** The progressions drill's level picker */
+    progressionLadder: LadderPickView;
     /** The sampled piano the chord-quality drill can play its chords on */
     piano: PianoSound;
     degreePad: DegreePadView;
@@ -77,6 +80,7 @@ export const MODE_REGISTRY: Record<View, (deps: ModeDeps) => Mode> = {
   ear: startEarTraining,
   earMelody: startEarMelody,
   earChords: startEarChords,
+  earProgressions: startEarProgressions,
   progress: startProgress,
   reference: startReference,
 };

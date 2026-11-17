@@ -15,9 +15,19 @@ export interface AnswerBox {
   disabled: boolean;
 }
 
+/** One answer of several asked in order (progressions: one per chord), shown in a row above the boxes */
+export interface AnswerSlot {
+  /** "vi" once answered, "?" for the one being asked, empty for those still to come */
+  label: string;
+  /** A second line once answered, e.g. the chord's name ("Am") */
+  detail?: string;
+  state: "done" | "current" | "wrong" | "todo";
+}
+
 export interface AnswerBoard {
-  /** The boxes; with `replay`, a wide Replay button above them (enabled or not) */
-  render(boxes: readonly AnswerBox[], replay?: { enabled: boolean }): void;
+  /** The boxes; with `replay`, a wide Replay button above them (enabled or not); with `slots`, a row of the answers
+   *  asked in order, between them */
+  render(boxes: readonly AnswerBox[], replay?: { enabled: boolean }, slots?: readonly AnswerSlot[]): void;
   /** Called with a box's id when it's pressed; returns a function that stops it */
   onAnswer(listener: (id: string) => void): () => void;
   /** Called when the Replay button is pressed; returns a function that stops it */
@@ -47,9 +57,21 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
    *  (and a mapped key's badge) for a frame, a flicker on the box just pressed */
   let layout = "";
   return {
-    render(boxes, replay) {
-      const nextLayout = `${replay ? "r" : ""}|${boxes.map(b => b.id).join("\u0000")}`;
+    render(boxes, replay, slots) {
+      const slotsHtml = slots
+        ? slots
+            .map(
+              x =>
+                `<span class="slot ${x.state}"><span class="slotLabel">${esc(x.label) || "&nbsp;"}</span>` +
+                `<span class="slotDetail">${x.detail ? esc(x.detail) : "&nbsp;"}</span></span>`,
+            )
+            .join("")
+        : "";
+      const nextLayout = `${replay ? "r" : ""}|${slots ? slots.length : "-"}|${boxes.map(b => b.id).join("\u0000")}`;
       if (nextLayout === layout) {
+        // The slots aren't pressed, so they're simply redrawn
+        const row = el.querySelector(".slots");
+        if (row && row.innerHTML !== slotsHtml) row.innerHTML = slotsHtml;
         const replayButton = el.querySelector<HTMLButtonElement>("button.replay");
         if (replayButton && replay) replayButton.disabled = !replay.enabled;
         const buttons = el.querySelectorAll<HTMLButtonElement>("button.box");
@@ -69,6 +91,7 @@ export function createAnswerBoard(el: HTMLElement): AnswerBoard {
         : "";
       el.innerHTML = shown =
         replayHtml +
+        (slots ? `<div class="slots" aria-label="Your answers so far">${slotsHtml}</div>` : "") +
         `<div class="boxes">` +
         boxes
           .map(

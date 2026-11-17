@@ -28,6 +28,7 @@
           <option value="ear">Ear training: scale degrees</option>
           <option value="earMelody">Ear training: melodies</option>
           <option value="earChords">Ear training: chord qualities</option>
+          <option value="earProgressions">Ear training: progressions</option>
         </select>
       </label>
       <button id="progressBtn" title="Your practice history, as charts" aria-pressed="false">Progress</button>
@@ -136,6 +137,20 @@
               <summary id="earChordFilterSummary"></summary>
               <div id="earChordFilterBody"></div>
             </details>
+          </div>
+          <div id="earProgOptions" hidden>
+            <label class="pick"
+              >Level
+              <select id="earProgLevel"></select>
+            </label>
+            <label class="pick"
+              >Key
+              <select id="earProgKey"></select>
+            </label>
+            <label class="pick"
+              >Chords
+              <select id="earProgLength"></select>
+            </label>
           </div>
           <div id="readingOptions" hidden>
             <label class="pick" id="readingPartPick"

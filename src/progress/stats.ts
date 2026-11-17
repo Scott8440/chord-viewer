@@ -191,7 +191,16 @@ export function dailyMedian<T extends { at: number }>(
 }
 
 /** In series order: a drill keeps its colour, so new ones go at the end */
-export const DRILLS: readonly DrillKind[] = ["notes", "chords", "progressions", "ear", "melody", "reading", "chordEar"];
+export const DRILLS: readonly DrillKind[] = [
+  "notes",
+  "chords",
+  "progressions",
+  "ear",
+  "melody",
+  "reading",
+  "chordEar",
+  "progressionEar",
+];
 
 /** Per day and drill: the share of prompts right first time (skips count against), and how many there were */
 export function drillsPerDay(
@@ -348,4 +357,40 @@ export function chordConfusions(records: readonly ProgressRecord[]): ChordConfus
     }))
     .filter(c => c.mistakenFor.length)
     .sort((a, b) => total(b) - total(a) || a.prompt.localeCompare(b.prompt));
+}
+
+/**
+ * Progression ear training: what each numeral was mistaken for, from the wrong answers ("vi>IV"), the numerals with
+ * the most wrong answers first (none: left out). `asked` counts every time the numeral was in a progression.
+ */
+export function numeralConfusions(records: readonly ProgressRecord[]): ChordConfusion[] {
+  const m = new Map<string, { asked: number; guesses: Map<string, number> }>();
+  const entry = (n: string) => {
+    const e = m.get(n) ?? { asked: 0, guesses: new Map<string, number>() };
+    m.set(n, e);
+    return e;
+  };
+  for (const d of drills(records)) {
+    if (d.drill !== "progressionEar" || typeof d.detail.numerals !== "string") continue;
+    for (const n of d.detail.numerals.split(",").filter(Boolean)) entry(n).asked++;
+    if (typeof d.detail.guesses !== "string") continue;
+    for (const g of d.detail.guesses.split(",").filter(Boolean)) {
+      const [played, answered] = g.split(">");
+      if (!played || !answered) continue;
+      const e = entry(played);
+      e.guesses.set(answered, (e.guesses.get(answered) ?? 0) + 1);
+    }
+  }
+  const total = (c: ChordConfusion) => c.mistakenFor.reduce((n, x) => n + x.n, 0);
+  return [...m]
+    .map(([n, e]) => ({
+      type: n,
+      prompt: n,
+      asked: e.asked,
+      mistakenFor: [...e.guesses]
+        .map(([t, k]) => ({ type: t, n: k }))
+        .sort((a, b) => b.n - a.n || a.type.localeCompare(b.type)),
+    }))
+    .filter(c => c.mistakenFor.length)
+    .sort((a, b) => total(b) - total(a) || a.type.localeCompare(b.type));
 }

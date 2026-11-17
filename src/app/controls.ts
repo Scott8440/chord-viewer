@@ -18,6 +18,7 @@ import {
   type CircleDirection,
 } from "../exercises/routines";
 import type { MinorForm, ScaleOctaves } from "../exercises/scales";
+import { PROGRESSION_LENGTHS, tonicName } from "../exercises/progressionEar";
 import type { ArpeggioInversion } from "../exercises/technique";
 import { levelsFor, type ReadingPart } from "../exercises/excerpts";
 import {
@@ -231,6 +232,23 @@ export function bindControls(store: AppStore) {
     s => (s.earChords.inversions ? "inversions" : "root"),
     v => ({ type: "setEarChordOptions", options: { inversions: v === "inversions" } }),
   );
+  // Ear training, progressions: the key (random, or a tonic: major or minor by the level) and chords per progression
+  $("earProgKey").append(new Option(`Random (new key every ${PROMPTS_PER_KEY})`, "random"));
+  for (let pc = 0; pc < 12; pc++)
+    $("earProgKey").append(
+      new Option(`${prettyAcc(tonicName(pc, "major"))} / ${prettyAcc(tonicName(pc, "minor"))}`, String(pc)),
+    );
+  bindSelect(
+    $("earProgKey"),
+    s => s.earProgressions.tonic,
+    tonic => ({ type: "setEarProgressionOptions", options: { tonic } }),
+  );
+  for (const n of PROGRESSION_LENGTHS) $("earProgLength").append(new Option(String(n), String(n)));
+  bindSelect(
+    $("earProgLength"),
+    s => String(s.earProgressions.length),
+    v => ({ type: "setEarProgressionOptions", options: { length: Number(v) } }),
+  );
   bindSelect(
     $("earChordSound"),
     s => s.earChords.sound,
@@ -396,6 +414,7 @@ export function showControls(state: AppState) {
   // Chord qualities has its Replay on the answer board instead
   $("practiceReplay").hidden = !ear;
   $("earChordOptions").hidden = id !== "earChords";
+  $("earProgOptions").hidden = id !== "earProgressions";
   // On the ladder its level decides the types and voicing; with free choice the player does
   $("earChordLevelPick").hidden = !s.earChords.ladder;
   $("earChordVoicingPick").hidden = $("earChordFilters").hidden = s.earChords.ladder;

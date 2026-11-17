@@ -4,6 +4,7 @@
 // clashes between devices), UTC epoch-ms times, a schema version per record, and the device that made it.
 // Pure: the builders take everything they need, including the record's id, time and device (see recorder.ts).
 import type { ChordEarPrompt } from "../exercises/chordEar";
+import { numeralsText, type ProgressionEarPrompt } from "../exercises/progressionEar";
 import type { ChordPrompt } from "../exercises/chordPrompt";
 import type { EarPrompt, MelodyPrompt } from "../exercises/earTraining";
 import type { ExerciseOptions, PrescriptiveId } from "../exercises/prescriptive";
@@ -96,7 +97,8 @@ export interface RoutineBody {
 
 /** "notes" is the old note practice (one note name, any octave), which sight reading replaced: nothing records it any
  *  more, but it stays a kind so older history still loads and shows */
-export type DrillKind = "reading" | "notes" | "chords" | "progressions" | "ear" | "melody" | "chordEar";
+export type DrillKind =
+  "reading" | "notes" | "chords" | "progressions" | "ear" | "melody" | "chordEar" | "progressionEar";
 
 /** One prompt of a drill (note, chord, progression practice or ear training), answered or skipped. */
 export interface DrillBody {
@@ -318,6 +320,34 @@ export function chordEarDrillBody(
       rootPc: p.rootPc,
       inversion: p.inversion,
       types: types.join(","),
+      guesses: guesses.join(","),
+    },
+    outcome: outcomeOf(answered, missed),
+    ms: Math.round(ms),
+  };
+}
+
+/**
+ * Ear training's progressions: the whole progression is one prompt, right first time only if every chord was, grouped
+ * by its numerals ("I–V–vi–IV"). `guesses` are the wrong answers, each "played>answered" ("vi>IV"), so the Progress
+ * page can say which numerals get mistaken for which.
+ */
+export function progressionEarDrillBody(
+  p: ProgressionEarPrompt,
+  level: number,
+  answered: boolean,
+  missed: boolean,
+  ms: number,
+  guesses: readonly string[] = [],
+): DrillBody {
+  return {
+    kind: "drill",
+    drill: "progressionEar",
+    prompt: numeralsText(p),
+    detail: {
+      numerals: p.chords.map(c => c.numeral).join(","),
+      key: p.keyValue,
+      level,
       guesses: guesses.join(","),
     },
     outcome: outcomeOf(answered, missed),

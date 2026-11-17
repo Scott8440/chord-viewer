@@ -11,7 +11,8 @@ import { chordSymbolHtml } from "../chordName";
 import { esc } from "../html";
 import { chordStepHtml, describeMiss, inversionName, romanHtml } from "./chords";
 import { stepHtml } from "./steps";
-import type { AnswerBox } from "../answerBoard";
+import type { AnswerBox, AnswerSlot } from "../answerBoard";
+import { chordsText, numeralLabel, numeralsText, type ProgressionEarState } from "../../exercises/progressionEar";
 import type { PracticeDisplay } from "./view";
 
 const scoreText = (s: { answered: number; firstTry: number }) =>
@@ -290,6 +291,75 @@ export function chordEarDisplay(
     promptHtml: "",
     size: "chord",
     sub: soundBlocked ? SOUND_WAITING : `Choose a box, or press its number · ${answerOrder(types).length} kinds`,
+    status: s.status,
+    feedback,
+    score: scoreText(s),
+    stopLabel: "Stop",
+  };
+}
+
+/**
+ * Ear training, progressions: a box per numeral on offer (number keys 1, 2 … in order); wrong answers for the chord
+ * being named are struck out until it's named.
+ */
+export function progressionEarAnswers(
+  s: ProgressionEarState,
+  numerals: readonly string[],
+  running: boolean,
+): AnswerBox[] {
+  return numerals.map((n, i) => {
+    const wrong = s.wrong.includes(n);
+    return {
+      id: n,
+      label: numeralLabel(n),
+      key: i < 9 ? i + 1 : undefined,
+      state: wrong ? "wrong" : "",
+      disabled: !running || s.status === "correct" || wrong,
+    };
+  });
+}
+
+/** A slot per chord: named (numeral and chord) once answered, "?" for the one being named, blank for the rest */
+export function progressionEarSlots(s: ProgressionEarState): AnswerSlot[] {
+  return s.prompt.chords.map((c, i) =>
+    i < s.index
+      ? { label: numeralLabel(c.numeral), detail: c.name, state: "done" }
+      : i === s.index
+        ? { label: "?", state: s.status === "wrong" ? "wrong" : "current" }
+        : { label: "", state: "todo" },
+  );
+}
+
+/** Ear training, progressions, the practice panel: the key, the instruction, feedback and score */
+export function progressionEarDisplay(
+  s: ProgressionEarState,
+  soundBlocked: boolean,
+  running: boolean,
+): PracticeDisplay {
+  const key = `${prettyAcc(s.prompt.tonic)} ${s.prompt.mode}`;
+  if (!running) {
+    return {
+      label: soundBlocked ? "Ready" : "Stopped",
+      promptHtml: "",
+      size: "chord",
+      sub: soundBlocked ? SOUND_WAITING : "Press Start to hear the progression again",
+      status: "waiting",
+      feedback: "",
+      score: scoreText(s),
+      stopLabel: "Start",
+    };
+  }
+  let feedback = "";
+  if (s.status === "correct") feedback = `✓ ${numeralsText(s.prompt)}: ${chordsText(s.prompt)}`;
+  else if (s.status === "wrong")
+    feedback = `✗ Chord ${s.index + 1} isn't ${numeralLabel(s.wrong[s.wrong.length - 1])}. Listen again`;
+  return {
+    label: `Name each chord in order · ${key}`,
+    promptHtml: "",
+    size: "chord",
+    sub: soundBlocked
+      ? SOUND_WAITING
+      : `The key is set up first, then ${s.prompt.chords.length} chords. Choose a box, or press its number`,
     status: s.status,
     feedback,
     score: scoreText(s),

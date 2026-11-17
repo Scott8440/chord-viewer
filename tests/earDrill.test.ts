@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TonePlayer } from "../src/audio/tones";
 import { ROUND_SIZE } from "../src/exercises/rounds";
 import { startEarChords } from "../src/modes/earChords";
+import { startEarProgressions } from "../src/modes/earProgressions";
 import { REPLAY_AFTER_MISS_MS } from "../src/modes/earDrill";
 import { startEarMelody } from "../src/modes/earMelody";
 import { startEarTraining } from "../src/modes/earTraining";
@@ -14,7 +15,7 @@ import type { Recorder } from "../src/progress/recorder";
 import type { DrillBody, RecordBody } from "../src/progress/records";
 import { createAppState, reduceApp } from "../src/state/app";
 import { createStore } from "../src/state/store";
-import type { AnswerBoard, AnswerBox } from "../src/views/answerBoard";
+import type { AnswerBoard, AnswerBox, AnswerSlot } from "../src/views/answerBoard";
 import type { PracticeDisplay } from "../src/views/practice";
 
 /** A seeded random number generator, so prompts differ but runs repeat */
@@ -75,7 +76,7 @@ function fakeBoard() {
   const answer = new Set<(id: string) => void>(),
     replay = new Set<() => void>(),
     next = new Set<() => void>();
-  const shown: { boxes?: readonly AnswerBox[]; next?: string }[] = [];
+  const shown: { boxes?: readonly AnswerBox[]; slots?: readonly AnswerSlot[]; next?: string }[] = [];
   const on =
     <T>(set: Set<T>) =>
     (l: T) => {
@@ -85,8 +86,8 @@ function fakeBoard() {
       };
     };
   const board: AnswerBoard = {
-    render: boxes => {
-      shown.push({ boxes });
+    render: (boxes, _replay, slots) => {
+      shown.push({ boxes, slots });
     },
     renderNext: label => {
       shown.push({ next: label });
@@ -149,6 +150,72 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+describe("progressions", () => {
+  function start() {
+    const t = setup();
+    const answers = fakeBoard();
+    const mode = startEarProgressions({
+      store: t.store,
+      views: { practice: t.practice, tones: t.tones, answers, roundViz: t.roundViz },
+      recorder: t.recorder,
+      rng: seeded(),
+    });
+    const board = () => answers.shown[answers.shown.length - 1];
+    return { ...t, answers, mode, board };
+  }
+
+  it("plays the cadence and then the chords; the board has the level's numerals and a slot per chord", () => {
+    const t = start();
+    const chords = t.tones.calls.filter(c => "play" in c);
+    // Four cadence chords and four progression chords, a bass and three notes each
+    expect(chords).toHaveLength(8 * 4);
+    expect(t.board().boxes!.map(b => b.label)).toEqual(["I", "IV", "V"]);
+    expect(t.board().slots).toHaveLength(4);
+    expect(t.board().slots!.map(x => x.state)).toEqual(["current", "todo", "todo", "todo"]);
+    expect(t.shown().label).toMatch(/^Name each chord in order · /);
+    t.mode.stop();
+  });
+
+  it("chord by chord: right answers fill the slots; a wrong one plays the chords up to it again; then it's recorded", async () => {
+    const t = start();
+    // Answer by trying each box in turn until the chord is named
+    const playedBefore = t.tones.calls.length;
+    let wrongs = 0;
+    for (let chord = 0; chord < 4; chord++) {
+      for (const box of t.board().boxes!.filter(b => !b.disabled)) {
+        const before = t.board().slots!.filter(x => x.state === "done").length;
+        t.answers.press(box.id);
+        const after = t.board().slots?.filter(x => x.state === "done").length ?? 4;
+        if (after > before || t.shown().status === "correct") break;
+        wrongs++;
+        // A second later, the chords up to this one again (not the cadence)
+        t.tones.calls.length = 0;
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(t.tones.calls.filter(c => "play" in c)).toHaveLength((chord + 1) * 4);
+      }
+    }
+    expect(playedBefore).toBeGreaterThan(0);
+    expect(t.shown().status).toBe("correct");
+    expect(t.shown().feedback).toMatch(/^✓ /);
+    const drills = t.records.filter((r): r is DrillBody => r.kind === "drill");
+    expect(drills).toHaveLength(1);
+    expect(drills[0]).toMatchObject({ drill: "progressionEar", outcome: wrongs ? "corrected" : "firstTry" });
+    expect(String(drills[0].detail.numerals).split(",")).toHaveLength(4);
+    expect(String(drills[0].detail.guesses).split(",").filter(Boolean)).toHaveLength(wrongs);
+    t.mode.stop();
+  });
+
+  it("the number keys answer, in the order of the boxes", () => {
+    const t = start();
+    const first = t.board().boxes![0].id;
+    window.dispatchEvent(Object.assign(new Event("keydown"), { key: "1" }));
+    const s = t.board();
+    // Either the first chord was named by key 1, or key 1 was a wrong answer for it
+    expect(s.slots![0].state === "done" || s.boxes!.find(b => b.id === first)!.state === "wrong").toBe(true);
+    t.mode.stop();
+  });
 });
 
 describe("chord qualities", () => {

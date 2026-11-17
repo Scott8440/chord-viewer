@@ -1,6 +1,7 @@
 // The reference section: a sidebar listing the pages (the open page's sections under it) beside the open page. A click
 // in the sidebar scrolls to that section; while reading, the sidebar marks the section in view. Clicking a table row
-// picks it out, fading the table's other rows. A page can have a key picker, showing only one key's rows.
+// picks it out, fading the table's other rows. A page can have a key picker, showing only one key's rows, and cells
+// that show something when clicked (`detail`).
 import type { ReferencePage } from "../reference/pages";
 import { esc } from "./html";
 
@@ -26,13 +27,61 @@ export function createReferenceView(el: HTMLElement, scroller: HTMLElement): Ref
     const article = el.querySelector("article");
     if (!article) return;
     article.classList.toggle("keyPicked", key !== "");
+    // An open detail belongs to a row that may now be hidden
+    for (const table of article.querySelectorAll("table")) closeDetail(table);
     for (const row of article.querySelectorAll<HTMLElement>("tr[data-key]"))
       row.hidden = key !== "" && row.dataset.key !== key;
   }
 
+  /** The detail row under a table's row, if one is open */
+  const openDetail = (table: Element) => table.querySelector<HTMLTableRowElement>("tr.refDetailRow");
+  /** Closes a table's detail row and unmarks its cell */
+  function closeDetail(table: Element) {
+    openDetail(table)?.remove();
+    for (const c of table.querySelectorAll(".shown")) c.classList.remove("shown");
+  }
+
+  /**
+   * A cell with something to show: toggles it (the cell shows its own short reveal), and opens what the page builds
+   * for it in a row just under the cell's row, closing any other open in that table
+   */
+  function toggleDetail(cell: HTMLElement) {
+    const page = pages.find(p => p.id === el.querySelector<HTMLElement>("article")?.dataset.page);
+    const row = cell.closest("tr");
+    const table = cell.closest("table");
+    if (!page?.detail || !row || !table) return;
+    const show = !cell.classList.contains("revealed");
+    cell.classList.toggle("revealed", show);
+    if (!show) {
+      if (cell.classList.contains("shown")) closeDetail(table);
+      return;
+    }
+    closeDetail(table);
+    cell.classList.add("shown");
+    const detail = document.createElement("tr");
+    detail.className = "refDetailRow";
+    // The box takes the table's width rather than widening it (its own width counts as nothing)
+    detail.innerHTML = `<td colspan="${row.cells.length}"><div class="refDetailBox">${page.detail(cell.dataset.detail!)}</div></td>`;
+    row.after(detail);
+  }
+  // Enter on a focused cell does what a click does (Space stays the pedal)
+  el.addEventListener("keydown", e => {
+    const cell = (e.target as HTMLElement).closest<HTMLElement>("[data-detail]");
+    if (cell && e.key === "Enter") {
+      e.preventDefault();
+      toggleDetail(cell);
+    }
+  });
+
   el.addEventListener("click", e => {
+    const cell = (e.target as HTMLElement).closest<HTMLElement>("[data-detail]");
+    if (cell) {
+      toggleDetail(cell);
+      return;
+    }
     // A table row: picks it out (the table's other rows fade); clicking it again puts the table back
     const row = (e.target as HTMLElement).closest<HTMLTableRowElement>(".refTable tbody tr");
+    if (row?.classList.contains("refDetailRow")) return;
     if (row) {
       const table = row.closest("table")!;
       const picked = !row.classList.contains("picked");

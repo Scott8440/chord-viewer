@@ -1749,6 +1749,65 @@ main:has(#referenceView:not([hidden])) {
   font-weight: 600;
   background: #f0ebdf; /* the row's label, set apart from the cells beside it */
 }
+/* Cells that show something when clicked (secondary dominants): the chord, and once clicked what leads to it */
+.refTable.refCells td.refCell {
+  cursor: pointer;
+  text-align: center;
+  min-width: 64px;
+}
+.refTable .refSub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+}
+.refTable.refCells th {
+  text-align: center;
+}
+.refCell .refCellMain {
+  display: block;
+  font-weight: 600;
+}
+.refCell .refCellReveal {
+  display: block;
+  font-size: 13px;
+  color: #a06b00;
+  visibility: hidden; /* takes its room from the start, so revealing doesn't shift the table */
+}
+.refCell.revealed .refCellReveal {
+  visibility: visible;
+}
+.refTable td.refCell.shown {
+  background: #f6e2b0;
+}
+@media (hover: hover) {
+  .refTable td.refCell:hover {
+    background: #fff;
+  }
+  .refTable td.refCell.shown:hover {
+    background: #f6e2b0;
+  }
+}
+.refTable tr.refDetailRow td {
+  background: var(--panel);
+  color: var(--text);
+  white-space: normal;
+  text-align: left;
+  padding: 12px 16px 4px;
+  cursor: default;
+}
+/* Sized by the table, not sizing it: the row doesn't widen the table, its keyboards wrap and shrink to fit */
+.refDetailBox {
+  width: 0;
+  min-width: 100%;
+}
+/* Keyboards in a detail: at their own size, side by side when they fit, one under the other when not */
+.refDetailBox .refFigure {
+  flex: 0 1 auto;
+}
+.refDetailBox p {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
 /* The summary's small keyboards: the chord's keys coloured, no labels (they'd be too small to read) */
 .refTable td.keys {
   padding-top: 4px;
@@ -1772,6 +1831,17 @@ main:has(#referenceView:not([hidden])) {
   }
   #referenceView article h1 {
     font-size: 26px;
+  }
+  /* Clickable chord cells: no minimum width and no "V7/…" under each heading, so a key's five chords fit a phone */
+  .refTable.refCells td.refCell {
+    min-width: 0;
+  }
+  .refTable.refCells th,
+  .refTable.refCells td {
+    padding: 7px 6px;
+  }
+  .refTable.refCells .refSub {
+    display: none;
   }
   /* Tighter columns, so a row of seven chords fits a phone */
   .refTable th,

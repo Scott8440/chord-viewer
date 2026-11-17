@@ -114,8 +114,38 @@ describe("the pages", () => {
     expect(new Set(REFERENCE_PAGES.map(p => p.id)).size).toBe(REFERENCE_PAGES.length);
   });
 
-  it("lists chord forms, scales, diatonic chords, then modes", () => {
-    expect(REFERENCE_PAGES.map(p => p.id)).toEqual(["chords", "scales", "diatonic", "modes"]);
+  it("lists chord forms, scales, diatonic chords, secondary dominants, then modes", () => {
+    expect(REFERENCE_PAGES.map(p => p.id)).toEqual(["chords", "scales", "diatonic", "secondary", "modes"]);
+  });
+
+  it("secondary dominants: each chord's cell holds its dominant seventh, a fifth above it", () => {
+    const page = REFERENCE_PAGES.find(p => p.id === "secondary")!;
+    const table = page.sections.find(s => s.id === "table")!.html;
+    const cells = (key: string) =>
+      [
+        ...(new RegExp(`<tr data-key="${key}">(.*?)</tr>`).exec(table)?.[1] ?? "").matchAll(
+          /<span class="refCellMain">(.*?)<\/span><span class="refCellReveal">from (.*?)<\/span>/g,
+        ),
+      ].map(m => `${m[2]}→${m[1]}`);
+    expect(cells("C")).toEqual(["A7→Dm", "B7→Em", "C7→F", "D7→G", "E7→Am"]);
+    expect(cells("Bb")).toEqual(["G7→Cm", "A7→Dm", "B♭7→E♭", "C7→F", "D7→Gm"]);
+    expect(table).toContain('data-detail="C/ii"');
+  });
+
+  it("secondary dominants: a clicked chord shows its dominant's notes, the note from outside the key, and both chords", () => {
+    const page = REFERENCE_PAGES.find(p => p.id === "secondary")!;
+    const ii = page.detail!("C/ii");
+    expect(ii).toContain("A7 (A–C♯–E–G) resolves to Dm");
+    expect(ii).toContain("C♯ is not in C major. C♯ is a half step below D, and leads up to it.");
+    expect(ii.match(/<svg class="piano"/g)).toHaveLength(2);
+    // V7/iii borrows two notes; V7/IV only its seventh
+    expect(page.detail!("C/iii")).toContain("D♯ and F♯ are not in C major");
+    expect(page.detail!("C/IV")).toContain("B♭ is not in C major. It pulls towards F.");
+    expect(page.detail!("Eb/V")).toContain(
+      "F7 (F–A–C–E♭) resolves to B♭. A is not in E♭ major. A is a half step below B♭",
+    );
+    expect(page.detail!("C/vii")).toBe("");
+    expect(page.detail!("H/ii")).toBe("");
   });
 
   it("the diatonic chord page has a row per key, every chord in the app's spelling", () => {

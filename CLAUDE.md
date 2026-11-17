@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 527 tests (54 voicings) should pass
+npm test           # Vitest: 529 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -144,11 +144,12 @@ Layers that only talk through data. Read the file before changing a layer; this 
   same in every transposition. Known limits: Roman numerals ignore inversions; "I6" is an added-6th chord; rootless
   voicings aren't recognized.
 - **Reference pages** (`src/reference/`, `src/views/referenceView.ts`; "Chord forms", "Major and minor scales",
-  "Diatonic chords", "Modes"): music theory to read, opened from the header like Progress (`AppState.page` "reference", a view started
+  "Diatonic chords", "Secondary dominants", "Modes"): music theory to read, opened from the header like Progress (`AppState.page` "reference", a view started
   like a mode; nothing plays). A page is an optional intro and sections of HTML, listed in `REFERENCE_PAGES`; the
   sidebar lists them and marks the section in view; clicking a table row picks it out and fades the rest;
   a page can put a key picker (`select[data-key-pick]`) in its intro, showing only rows tagged with that key
-  (`simpleTable`'s `rowKeys`) and hiding the sections' introductions. Diagrams come from `pianoSvg` (`src/views/piano.ts`), and chord
+  (`simpleTable`'s `rowKeys`) and hiding the sections' introductions; a cell with `data-detail` toggles a short
+  reveal in itself and a row under it holding what the page's `detail(id)` builds then (secondary dominants). Diagrams come from `pianoSvg` (`src/views/piano.ts`), and chord
   and scale facts from `chordFormula` (`src/theory/chordFormula.ts`, built on the chord templates) and `scaleFormula`
   (`src/theory/scaleFormula.ts`, tonal's scales and keys; drawn by `src/reference/scaleFigures.ts`), never typed in.
   Prose style: plain and factual, no hype or filler (the user's request).

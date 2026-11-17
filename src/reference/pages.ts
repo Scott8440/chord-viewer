@@ -4,6 +4,7 @@ import { CHORD_FORMATION } from "./chordFormation";
 import { DIATONIC_CHORDS } from "./diatonicChords";
 import { MODES_PAGE } from "./modes";
 import { SCALES } from "./scales";
+import { SECONDARY_DOMINANTS } from "./secondaryDominants";
 
 export interface ReferenceSection {
   /** Anchor, unique on its page */
@@ -18,7 +19,15 @@ export interface ReferencePage {
   title: string;
   /** HTML before the first section, if any */
   intro?: string;
+  /** What an element with `data-detail` shows when it's clicked (built then, not with the page), by that id */
+  detail?(id: string): string;
   sections: readonly ReferenceSection[];
 }
 
-export const REFERENCE_PAGES: readonly ReferencePage[] = [CHORD_FORMATION, SCALES, DIATONIC_CHORDS, MODES_PAGE];
+export const REFERENCE_PAGES: readonly ReferencePage[] = [
+  CHORD_FORMATION,
+  SCALES,
+  DIATONIC_CHORDS,
+  SECONDARY_DOMINANTS,
+  MODES_PAGE,
+];

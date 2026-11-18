@@ -12,6 +12,8 @@ import { esc } from "../html";
 import { chordStepHtml, describeMiss, inversionName, romanHtml } from "./chords";
 import { stepHtml } from "./steps";
 import type { AnswerBox, AnswerSlot } from "../answerBoard";
+import { midiNoteName } from "../../input/midiMap";
+import { stayCloseReach } from "../../exercises/chordPractice";
 import { intervalLabel, intervalNotes, intervalOrder, type IntervalEarState } from "../../exercises/intervalEar";
 import {
   chordsText,
@@ -183,7 +185,11 @@ export function earMelodyDisplay(
   };
 }
 
-export function chordPracticeDisplay(s: ChordPracticeState, key: KeyContext | null): PracticeDisplay {
+export function chordPracticeDisplay(
+  s: ChordPracticeState,
+  key: KeyContext | null,
+  stayClose = false,
+): PracticeDisplay {
   const t = requireTemplate(s.prompt.type);
   const roman = s.prompt.roman;
   // A Roman numeral prompt carries its own key (a random one when none is selected)
@@ -195,7 +201,19 @@ export function chordPracticeDisplay(s: ChordPracticeState, key: KeyContext | nu
   let feedback = "";
   if (s.status === "correct")
     feedback = roman ? `✓ ${prettyAcc(s.prompt.root + t.symbol + (slash ? "/" + slash : ""))}` : "✓ Correct";
+  // Stay close: how far the top note may move (a whole step, unless the chord has no tone that near)
+  const reach = stayClose && s.lastTop != null ? stayCloseReach(s.lastTop, s.prompt) : 2;
+  const within = reach > 2 ? `within ${reach} half steps` : "within a whole step";
+  if (s.status === "wrong" && s.attempt && s.jumped && s.lastTop != null)
+    feedback = `✗ Right chord, but the top note moved from ${midiNoteName(s.lastTop)} to ${midiNoteName(s.attempt[s.attempt.length - 1])}: keep it ${within}`;
   else if (s.status === "wrong" && s.attempt) feedback = "✗ " + describeMiss(s.prompt, s.attempt, promptKey);
+  // Stay close: where the top note has to be, from the last chord's
+  const closeText =
+    stayClose && s.lastTop != null
+      ? ` · top note ${within} of ${midiNoteName(s.lastTop)}`
+      : stayClose
+        ? " · the next chords stay close to this one"
+        : "";
   const invText = inv ? " · " + inversionName(inv.number) : "";
   // A chord name drawn from a key says which
   const keyText =
@@ -204,14 +222,18 @@ export function chordPracticeDisplay(s: ChordPracticeState, key: KeyContext | nu
         (s.prompt.inKey.filterIgnored ? " · no selected chord type is in this key, so any triad" : "")
       : "";
   return {
-    label: inv ? "Play this chord, with this note in the bass" : "Play this chord, any voicing or inversion",
+    label: inv
+      ? "Play this chord, with this note in the bass"
+      : stayClose && s.lastTop != null
+        ? "Play this chord, close to the last one"
+        : "Play this chord, any voicing or inversion",
     promptHtml: roman ? romanHtml(roman.numeral, inv?.number) : chordSymbolHtml(s.prompt.root, t.symbol, slash),
     size: "chord",
     sub:
-      roman && romanKey
+      (roman && romanKey
         ? `in ${prettyAcc(romanKey.label)}${invText}` +
           (roman.filterIgnored ? " · no selected chord type is in this key, so any triad" : "")
-        : prettyAcc(`${s.prompt.root} ${t.name}`) + invText + keyText,
+        : prettyAcc(`${s.prompt.root} ${t.name}`) + invText + keyText) + closeText,
     status: s.status,
     feedback,
     score: scoreText(s),

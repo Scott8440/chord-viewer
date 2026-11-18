@@ -49,6 +49,7 @@ export type AppAction =
   | { type: "setChordTypes"; types: readonly string[] }
   | { type: "setPromptStyle"; style: PromptStyle }
   | { type: "setInversions"; on: boolean }
+  | { type: "setStayClose"; on: boolean }
   | { type: "setPianoSound"; on: boolean }
   | { type: "setChordKey"; value: string }
   | { type: "setExerciseOptions"; options: Partial<ExerciseOptions> }
@@ -115,6 +116,8 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return withSettings(s, { promptStyle: a.style });
     case "setInversions":
       return withSettings(s, { inversions: a.on });
+    case "setStayClose":
+      return withSettings(s, { stayClose: a.on });
     case "setPianoSound":
       return withSettings(s, { pianoSound: a.on });
     case "setChordKey":

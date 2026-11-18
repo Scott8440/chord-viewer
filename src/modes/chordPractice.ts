@@ -60,17 +60,20 @@ export function startChordPractice({
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
   // Answered, or skipped before being answered (a new prompt from a settings change isn't a skip)
   const records = createPromptRecords<ChordPracticeState>(recorder, (s, answered, ms) =>
-    chordDrillBody(s.prompt, answered, s.missed, ms),
+    chordDrillBody(s.prompt, answered, s.missed, ms, settings().stayClose),
   );
   // The staff follows the prompt's key, if it has one
   const drawer = createPerformanceDrawer(store, views, () => promptKey(state.prompt));
 
+  const render = () =>
+    views.practice.render(chordPracticeDisplay(state, promptKey(state.prompt), settings().stayClose));
+
   function apply(action: ChordPracticeAction) {
     const prev = state;
-    state = reduceChordPractice(state, action);
+    state = reduceChordPractice(state, action, undefined, { stayClose: settings().stayClose });
     if (state === prev) return;
     records.changed(prev, state, action.type === "skip");
-    views.practice.render(chordPracticeDisplay(state, promptKey(state.prompt)));
+    render();
     if (state.prompt !== prev.prompt) drawer.schedule();
     clearTimeout(nextTimer);
     if (state.status === "correct") {
@@ -94,9 +97,9 @@ export function startChordPractice({
       (s.settings.chordTypes !== prev.settings.chordTypes && !s.settings.chordTypes.includes(state.prompt.type))
     ) {
       apply({ type: "next", prompt: newPrompt(state.prompt), held: heldNotes(s) });
-    }
+    } else if (s.settings.stayClose !== prev.settings.stayClose) render();
   });
-  views.practice.render(chordPracticeDisplay(state, promptKey(state.prompt)));
+  render();
 
   return {
     stop() {

@@ -139,6 +139,11 @@ export function bindControls(store: AppStore) {
     s => s.inversions,
     on => ({ type: "setInversions", on }),
   );
+  bindCheckbox(
+    $("optStayClose"),
+    s => s.stayClose,
+    on => ({ type: "setStayClose", on }),
+  );
   for (const k of CHORD_KEYS) {
     const label =
       k === "none"
@@ -420,7 +425,11 @@ export function showControls(state: AppState) {
   const ex = exercisesOf(s);
   // Chord names vs Roman numerals matters wherever chords are prompted
   $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));
-  $("inversionsOpt").hidden = $("chordFilters").hidden = $("chordKeyPick").hidden = id !== "chords";
+  $("inversionsOpt").hidden =
+    $("stayCloseOpt").hidden =
+    $("chordFilters").hidden =
+    $("chordKeyPick").hidden =
+      id !== "chords";
   // With no key, chord names are any chord, and Roman numerals get a key of their own each time
   $<HTMLSelectElement>("chordKey").options[0].text =
     s.promptStyle === "roman" ? "None (a new key every prompt)" : "None (any chord)";

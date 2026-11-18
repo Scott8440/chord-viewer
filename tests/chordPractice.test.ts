@@ -9,11 +9,12 @@ import {
   makeChordPrompt,
   reduceChordPractice,
   sanitizeChordTypes,
+  stayCloseReach,
 } from "../src/exercises/chordPractice";
 import type { ChordPrompt } from "../src/exercises/chordPrompt";
 import { createAppState, reduceApp } from "../src/state/app";
 import { chordPracticeDisplay } from "../src/views/practice";
-import { buildKey, templateById } from "../src/theory";
+import { buildKey, chordSemitones, templateById } from "../src/theory";
 
 const seq = (...values: number[]) => {
   let i = 0;
@@ -195,5 +196,73 @@ describe("chord feedback", () => {
     expect(wrongAfter({ rootPc: 1, root: "Db", type: "maj7" }, [49, 53, 56, 59])).toBe(
       "✗ That was D♭7. Replace B with C",
     );
+  });
+});
+
+describe("stay close", () => {
+  const C: ChordPrompt = { rootPc: 0, root: "C", type: "M" };
+  const F: ChordPrompt = { rootPc: 5, root: "F", type: "M" };
+  const close = { stayClose: true };
+  const step = (s: ChordPracticeState, a: ChordPracticeAction) => reduceChordPractice(s, a, undefined, close);
+  /** C major played C4 E4 G4, then on to F major */
+  const afterC = () => {
+    let s = step(initialChordPractice(C), held(60, 64, 67));
+    expect(s).toMatchObject({ status: "correct", lastTop: 67 });
+    s = step(s, held());
+    return step(s, { type: "next", prompt: F, held: [] });
+  };
+
+  it("the first chord can be played anywhere", () => {
+    expect(step(initialChordPractice(F), held(41, 45, 48)).status).toBe("correct");
+  });
+
+  it("the next chord's top note must be within a whole step of the last chord's", () => {
+    // F major with A4 or F4 on top is close to G4; root position F A C (top C5) is a fourth away
+    expect(step(afterC(), held(60, 65, 69)).status).toBe("correct");
+    expect(step(afterC(), held(57, 60, 65)).status).toBe("correct");
+    const far = step(step(afterC(), held(65, 69, 72)), held());
+    expect(far).toMatchObject({ status: "wrong", jumped: true });
+    // Without the rule, any voicing
+    expect(reduceChordPractice(afterC(), held(65, 69, 72)).status).toBe("correct");
+  });
+
+  it("a wrong chord is a wrong chord, not a jump; the top note is measured from the last chord played right", () => {
+    expect(step(step(afterC(), held(60, 64, 69)), held())).toMatchObject({ status: "wrong", jumped: false });
+    const s = step(step(afterC(), held(60, 65, 69)), held());
+    expect(s.lastTop).toBe(69);
+  });
+
+  it("the panel says where the top note has to be, and what went wrong", () => {
+    const s = afterC();
+    expect(chordPracticeDisplay(s, null, true).sub).toMatch(/top note within a whole step of G4$/);
+    const far = step(step(s, held(65, 69, 72)), held());
+    expect(chordPracticeDisplay(far, null, true).feedback).toBe(
+      "✗ Right chord, but the top note moved from G4 to C5: keep it within a whole step",
+    );
+  });
+
+  it("is always possible: a tone within a whole step, or (a diminished triad's tritone gap) the nearest tone", () => {
+    for (const type of CHORD_PRACTICE_TYPES)
+      for (let rootPc = 0; rootPc < 12; rootPc++)
+        for (let last = 60; last < 72; last++) {
+          const prompt: ChordPrompt = { rootPc, root: "", type };
+          const reach = stayCloseReach(last, prompt);
+          const pcs = chordSemitones(type).map(x => (rootPc + x) % 12);
+          const reachable = Array.from({ length: 2 * reach + 1 }, (_, i) => last - reach + i).some(n =>
+            pcs.includes(n % 12),
+          );
+          expect(reachable, `${type} on ${rootPc} from ${last}`).toBe(true);
+          // Only the diminished triad ever needs more than a whole step
+          if (type !== "dim") expect(reach, `${type} on ${rootPc} from ${last}`).toBe(2);
+        }
+  });
+
+  it("a diminished triad after a note in its tritone gap: its nearest tones are allowed", () => {
+    const Ebdim: ChordPrompt = { rootPc: 3, root: "Eb", type: "dim" };
+    expect(stayCloseReach(60, Ebdim)).toBe(3);
+    let s = step(initialChordPractice(C), held(55, 60));
+    s = step(step(s, held()), { type: "next", prompt: Ebdim, held: [] });
+    // E♭ G♭ A with A3 on top, three half steps below the C
+    expect(step(s, held(51, 54, 57)).status).toBe("correct");
   });
 });

@@ -46,6 +46,8 @@ export interface Settings {
   readonly promptStyle: PromptStyle;
   /** Chord practice asks for a specific inversion */
   readonly inversions: boolean;
+  /** Chord practice, Stay close: each chord's top note within a whole step of the last one's */
+  readonly stayClose: boolean;
   /** Chord practice's key: "none", "random" or a key value (see CHORD_KEYS) */
   readonly chordKey: string;
   /** Options shared by the prescriptive exercises (scales, diatonic chords), also the base for routine items */
@@ -112,6 +114,7 @@ export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> }
   },
   promptStyle: { storage: saved("promptStyle", "string"), sanitize: v => oneOf(PROMPT_STYLES, v, "names") },
   inversions: { storage: saved("inversions", "flag"), sanitize: v => v === true },
+  stayClose: { storage: saved("stayClose", "flag"), sanitize: v => v === true },
   chordKey: { storage: saved("chordKey", "string"), sanitize: sanitizeChordKey },
   exercise: {
     // Scale options saved by an earlier version ({key, minorForm, octaves}) are read if there are no exercise options

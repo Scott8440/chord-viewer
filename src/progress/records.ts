@@ -243,8 +243,15 @@ export function readingDrillBody(p: ReadingPrompt, answered: boolean, missed: bo
   };
 }
 
-export function chordDrillBody(p: ChordPrompt, answered: boolean, missed: boolean, ms: number): DrillBody {
+export function chordDrillBody(
+  p: ChordPrompt,
+  answered: boolean,
+  missed: boolean,
+  ms: number,
+  stayClose = false,
+): DrillBody {
   const detail: DrillBody["detail"] = { type: p.type, rootPc: p.rootPc, style: p.roman ? "roman" : "names" };
+  if (stayClose) detail.stayClose = true;
   if (p.inversion) detail.inversion = p.inversion.number;
   if (p.roman) {
     detail.numeral = p.roman.numeral;

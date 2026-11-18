@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 540 tests (54 voicings) should pass
+npm test           # Vitest: 546 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -85,6 +85,10 @@ Layers that only talk through data. Read the file before changing a layer; this 
   own). A new prompt from a settings change isn't a skip.
 - **Chord judging from held keys** (`src/exercises/chordAttempt.ts`, the only place): a match as soon as the held keys
   form the target; a miss only when keys were newly pressed and then all released. `chordMatch.ts` says what counts.
+- **Stay close** (chord practice option, setting `stayClose`; `src/exercises/chordPractice.ts`): each chord's top note
+  within a whole step of the last chord played right (`lastTop`, kept across prompts), so inversions are needed. A
+  diminished triad's tritone gap can leave no tone that near: `stayCloseReach` then allows its nearest tone. The
+  right chord played too far is a miss with its own feedback (`jumped`).
 - **Key rotation** (`src/exercises/keyRotation.ts`): the "Random" key option shared by drills, a new key every
   `PROMPTS_PER_KEY` (10); each drill's picker only says which keys it allows.
 - **Key progression** for exercises (the "Then" option, `src/exercises/keyOrder.ts` `nextKey`): after a run the mode

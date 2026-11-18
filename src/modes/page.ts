@@ -1,6 +1,6 @@
 // The page around each mode (and the Progress page): which panel it shows and which page-wide behaviours it turns on.
 // Data, so a behaviour is written once and any mode can opt into it.
-import type { AppState, ModeId } from "../state/app";
+import type { AppState, EarKind, ModeId } from "../state/app";
 
 export interface PageSetup {
   /** The right-hand panel: the chord name or the practice card, beside the staff; or the progress charts, in place
@@ -29,7 +29,18 @@ const PRACTICE: PageSetup = {
 /** Prescriptive exercises and routines of them: timed against the metronome when it's on */
 const TIMED: PageSetup = { ...PRACTICE, metronome: true };
 
-export const PAGE_SETUP: Record<ModeId, PageSetup> = {
+/** Ear training's types, as views of their own (each its own stage, start function and MIDI mappings): scale degrees
+ *  keep the mode's own id */
+export type EarView = "ear" | "earMelody" | "earIntervals" | "earChords" | "earProgressions";
+export const EAR_VIEWS: Readonly<Record<EarKind, EarView>> = {
+  degrees: "ear",
+  melodies: "earMelody",
+  intervals: "earIntervals",
+  chords: "earChords",
+  progressions: "earProgressions",
+};
+
+export const PAGE_SETUP: Record<ModeId | EarView, PageSetup> = {
   free: { panel: "chordName", stage: "staff", headerKey: true, fadeChordWhenIdle: true, metronome: false },
   reading: PRACTICE,
   chords: PRACTICE,
@@ -47,11 +58,12 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   earIntervals: { ...PRACTICE, stage: "answers" },
 };
 
-/** What's on screen: a practice mode, or the Progress or Reference page (opened from the header, apart from the
- *  modes) */
-export type View = ModeId | "progress" | "reference";
+/** What's on screen: a practice mode (ear training as its type), or the Progress or Reference page (opened from the
+ *  header, apart from the modes) */
+export type View = ModeId | EarView | "progress" | "reference";
 
-export const viewOf = (s: AppState): View => (s.page === "practice" ? s.settings.mode : s.page);
+export const viewOf = (s: AppState): View =>
+  s.page !== "practice" ? s.page : s.settings.mode === "ear" ? EAR_VIEWS[s.settings.earKind] : s.settings.mode;
 
 /** The Progress page: its charts in place of the staff and practice card, nothing running */
 const PROGRESS_PAGE: PageSetup = { ...PRACTICE, panel: "progress" };

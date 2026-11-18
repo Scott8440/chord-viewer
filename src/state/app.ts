@@ -1,6 +1,7 @@
 // Whole-app state: the performance, a history of recent input events, and user settings (see settings.ts).
 import type { PromptStyle } from "../exercises/chordPrompt";
 import type { ChordEarOptions } from "../exercises/chordEar";
+import type { EarKind } from "./settings";
 import type { ProgressionEarOptions } from "../exercises/progressionEar";
 import type { IntervalEarOptions } from "../exercises/intervalEar";
 import type { EarOptions } from "../exercises/earTraining";
@@ -22,7 +23,15 @@ import {
   type SettingSpec,
 } from "./settings";
 
-export { LATENCY_RANGE, MODES, type ModeId, type SavedSettings, type Settings } from "./settings";
+export {
+  EAR_KINDS,
+  LATENCY_RANGE,
+  MODES,
+  type EarKind,
+  type ModeId,
+  type SavedSettings,
+  type Settings,
+} from "./settings";
 
 export const HISTORY_LIMIT = 512;
 
@@ -58,6 +67,7 @@ export type AppAction =
   | { type: "setEarChordOptions"; options: Partial<ChordEarOptions> }
   | { type: "setEarProgressionOptions"; options: Partial<ProgressionEarOptions> }
   | { type: "setEarIntervalOptions"; options: Partial<IntervalEarOptions> }
+  | { type: "setEarKind"; kind: EarKind }
   | { type: "setReadingOptions"; options: Partial<ReadingOptions> }
   /** Calibrated or typed in: either way, the latency counts as dealt with */
   | { type: "setLatency"; ms: number }
@@ -128,6 +138,8 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return withSettings(s, { routine: merged(s.settings.routine, a.options, SETTINGS.routine) });
     case "setEarOptions":
       return withSettings(s, { ear: merged(s.settings.ear, a.options, SETTINGS.ear) });
+    case "setEarKind":
+      return withSettings(s, { earKind: a.kind });
     case "setEarIntervalOptions":
       return withSettings(s, {
         earIntervals: merged(s.settings.earIntervals, a.options, SETTINGS.earIntervals),

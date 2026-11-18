@@ -28,7 +28,8 @@ const savingStore = () => {
 /** Every saved setting away from its default */
 const changes: AppAction[] = [
   { type: "setKey", value: "Bb:minor" },
-  { type: "setMode", mode: "earChords" },
+  { type: "setMode", mode: "ear" },
+  { type: "setEarKind", kind: "chords" },
   { type: "setChordTypes", types: ["M", "m", "7"] },
   { type: "setPromptStyle", style: "roman" },
   { type: "setInversions", on: true },
@@ -59,7 +60,8 @@ describe("saved settings", () => {
     for (const a of changes) store.dispatch(a);
     expect(Object.fromEntries(items)).toMatchObject({
       "chordDisplay.key": "Bb:minor",
-      "chordDisplay.mode": "earChords",
+      "chordDisplay.mode": "ear",
+      "chordDisplay.earKind": "chords",
       "chordDisplay.chordTypes": JSON.stringify(store.getState().settings.chordTypes),
       "chordDisplay.promptStyle": "roman",
       "chordDisplay.inversions": "1",
@@ -167,6 +169,29 @@ describe("saving", () => {
   });
 });
 
+describe("one ear training mode", () => {
+  it("a mode saved as one of the old ear training modes opens Ear training on that type", () => {
+    for (const [mode, kind] of [
+      ["ear", "degrees"],
+      ["earMelody", "melodies"],
+      ["earIntervals", "intervals"],
+      ["earChords", "chords"],
+      ["earProgressions", "progressions"],
+    ] as const)
+      expect(createAppState({ mode }).settings, mode).toMatchObject({ mode: "ear", earKind: kind });
+    // A saved type wins, and another mode leaves it at its default
+    expect(createAppState({ mode: "earChords", earKind: "intervals" }).settings.earKind).toBe("intervals");
+    expect(createAppState({ mode: "scales" }).settings.earKind).toBe("degrees");
+  });
+
+  it("each type is a view of its own, so it keeps its own page and MIDI mappings", async () => {
+    const { viewOf } = await import("../src/modes/page");
+    const s = createAppState({ mode: "ear", earKind: "progressions" });
+    expect(viewOf(s)).toBe("earProgressions");
+    expect(viewOf(reduceApp(s, { type: "setEarKind", kind: "degrees" }))).toBe("ear");
+  });
+});
+
 describe("setters", () => {
   /** For each setter, an action that sets what's already there (TypeScript makes sure every setter is here) */
   const unchanged: Record<Exclude<AppAction["type"], "input">, (s: AppState) => AppAction> = {
@@ -184,6 +209,7 @@ describe("setters", () => {
     setEarOptions: s => ({ type: "setEarOptions", options: { degrees: [...s.settings.ear.degrees] } }),
     setEarChordOptions: s => ({ type: "setEarChordOptions", options: { types: [...s.settings.earChords.types] } }),
     setEarProgressionOptions: s => ({ type: "setEarProgressionOptions", options: { ...s.settings.earProgressions } }),
+    setEarKind: s => ({ type: "setEarKind", kind: s.settings.earKind }),
     setEarIntervalOptions: s => ({ type: "setEarIntervalOptions", options: { ...s.settings.earIntervals } }),
     setReadingOptions: s => ({ type: "setReadingOptions", options: { ...s.settings.reading } }),
     setLatency: s => ({ type: "setLatency", ms: s.settings.latencyMs }),
@@ -239,9 +265,11 @@ describe("sameSetting", () => {
 });
 
 describe("modes", () => {
-  it("has a start function for every mode and the Progress and Reference pages", async () => {
+  it("has a start function for every mode, each type of ear training, and the Progress and Reference pages", async () => {
     const { MODE_REGISTRY } = await import("../src/modes/registry");
-    expect(Object.keys(MODE_REGISTRY).sort()).toEqual([...MODES, "progress", "reference"].sort());
+    const { EAR_VIEWS } = await import("../src/modes/page");
+    const views = new Set([...MODES, ...Object.values(EAR_VIEWS), "progress", "reference"]);
+    expect(Object.keys(MODE_REGISTRY).sort()).toEqual([...views].sort());
     for (const start of Object.values(MODE_REGISTRY)) expect(typeof start).toBe("function");
   });
 });

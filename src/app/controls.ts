@@ -33,7 +33,7 @@ import {
 } from "../exercises/sightReading";
 import { pageSetup, viewOf } from "../modes/page";
 import type { AppStore } from "../modes/performance";
-import type { AppAction, AppState, ModeId, Settings } from "../state/app";
+import type { AppAction, AppState, EarKind, ModeId, Settings } from "../state/app";
 import type { Strictness, Subdivision } from "../timing/grid";
 import { prettyAcc, requireKey } from "../theory";
 import { createFilterView, type FilterGroup } from "../views/filter";
@@ -249,6 +249,12 @@ export function bindControls(store: AppStore) {
     v => ({ type: "setEarChordOptions", options: { inversions: v === "inversions" } }),
   );
   // Ear training, intervals: on the ladder or free choice, how the two notes are played, and the sound
+  // Ear training's type: each keeps its own options
+  bindSelect(
+    $("earKind"),
+    s => s.earKind,
+    v => ({ type: "setEarKind", kind: v as EarKind }),
+  );
   bindSelect(
     $("earIntervalLadder"),
     s => (s.earIntervals.ladder ? "ladder" : "free"),
@@ -454,21 +460,24 @@ export function showControls(state: AppState) {
   $("readingLengthPick").hidden = $("readingRangePick").hidden = s.reading.level !== 0;
   $("readingPartPick").hidden = s.reading.level === 0;
   // Both ear-training modes share their options; melodies have no drone, so the tonic is just the key
-  const ear = id === "ear" || id === "earMelody";
+  // Ear training: its type picker, and the options of the type it's on
+  const view = viewOf(state);
+  $("earKindPick").hidden = id !== "ear";
+  const ear = view === "ear" || view === "earMelody";
   $("earOptions").hidden = !ear;
   // Chord qualities has its Replay on the answer board instead
   $("practiceReplay").hidden = !ear;
-  $("earChordOptions").hidden = id !== "earChords";
-  $("earProgOptions").hidden = id !== "earProgressions";
-  $("earIntervalOptions").hidden = id !== "earIntervals";
+  $("earChordOptions").hidden = view !== "earChords";
+  $("earProgOptions").hidden = view !== "earProgressions";
+  $("earIntervalOptions").hidden = view !== "earIntervals";
   // On the ladder its level decides the intervals; with free choice the player does
   $("earIntervalLevelPick").hidden = !s.earIntervals.ladder;
   $("earIntervalFilters").hidden = s.earIntervals.ladder;
   // On the ladder its level decides the types and voicing; with free choice the player does
   $("earChordLevelPick").hidden = !s.earChords.ladder;
   $("earChordVoicingPick").hidden = $("earChordFilters").hidden = s.earChords.ladder;
-  $("melodyLengthPick").hidden = id !== "earMelody";
-  $("earTonicLabel").textContent = id === "earMelody" ? "Key" : "Drone";
+  $("melodyLengthPick").hidden = view !== "earMelody";
+  $("earTonicLabel").textContent = view === "earMelody" ? "Key" : "Drone";
   const used = new Set<ExerciseOption>(ex.ids.flatMap(e => PRESCRIPTIVE[e].options));
   // A routine sets each item's key and moves through them itself
   if (!ex.ownKey) {

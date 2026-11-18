@@ -24,11 +24,7 @@
           <option value="arpeggios">Arpeggios</option>
           <option value="brokenChords">Broken chords</option>
           <option value="routines">Routines</option>
-          <option value="ear">Ear training: scale degrees</option>
-          <option value="earMelody">Ear training: melodies</option>
-          <option value="earIntervals">Ear training: intervals</option>
-          <option value="earChords">Ear training: chord qualities</option>
-          <option value="earProgressions">Ear training: progressions</option>
+          <option value="ear">Ear training</option>
         </select>
       </label>
       <button id="progressBtn" title="Your practice history, as charts" aria-pressed="false">Progress</button>
@@ -86,6 +82,16 @@
               Skip
             </button>
           </div>
+          <label class="pick" id="earKindPick" hidden
+            >Type
+            <select id="earKind">
+              <option value="degrees">Scale degrees</option>
+              <option value="melodies">Melodies</option>
+              <option value="intervals">Intervals</option>
+              <option value="chords">Chord qualities</option>
+              <option value="progressions">Progressions</option>
+            </select>
+          </label>
           <div id="earOptions" hidden>
             <label class="pick"
               ><span id="earTonicLabel">Drone</span>

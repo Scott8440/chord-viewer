@@ -48,7 +48,8 @@ saveSettingsOnChange(store);
 const midiMapper = createMidiMapper({
   button: $<HTMLButtonElement>("midiMapBtn"),
   hint: $("midiMapHint"),
-  scope: () => (store.getState().page !== "practice" ? null : store.getState().settings.mode),
+  // Mappings are kept per view: each type of ear training has its own controls
+  scope: () => (store.getState().page !== "practice" ? null : viewOf(store.getState())),
 });
 const input = (event: InputEvent) => {
   if (!midiMapper.handle(event)) store.dispatch({ type: "input", event });

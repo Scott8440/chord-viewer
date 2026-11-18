@@ -23,12 +23,20 @@ export const MODES = [
   "brokenChords",
   "routines",
   "ear",
-  "earMelody",
-  "earChords",
-  "earProgressions",
-  "earIntervals",
 ] as const;
 export type ModeId = (typeof MODES)[number];
+
+/** Ear training's types, each a drill of its own within the one Ear training mode */
+export const EAR_KINDS = ["degrees", "melodies", "intervals", "chords", "progressions"] as const;
+export type EarKind = (typeof EAR_KINDS)[number];
+/** The mode ids the types had when each was a mode of its own, by type */
+const OLD_EAR_MODES: Readonly<Record<string, EarKind>> = {
+  ear: "degrees",
+  earMelody: "melodies",
+  earIntervals: "intervals",
+  earChords: "chords",
+  earProgressions: "progressions",
+};
 
 export interface Settings {
   /** Header key selector value, e.g. "C:major", or "" for none. Free play only; exercises never use it. */
@@ -59,6 +67,8 @@ export interface Settings {
   readonly earChords: ChordEarOptions;
   /** Ear training, progressions: the key (or random), chords per progression and the ladder level */
   readonly earProgressions: ProgressionEarOptions;
+  /** Which ear training drill the Ear training mode runs */
+  readonly earKind: EarKind;
   /** Ear training, intervals: the intervals (or the ladder level), how they're played, and the sound */
   readonly earIntervals: IntervalEarOptions;
   /** Sight reading (mode "reading"): how many notes, which staff, which key (or random) */
@@ -109,8 +119,20 @@ export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> }
   // Sight reading's mode id was "notes"; scales with both hands were a mode of their own, now a scale option
   mode: {
     storage: saved("mode", "string"),
+    // Old ids: sight reading was "notes"; scales with both hands and chromatic scales, and each type of ear training,
+    // were modes of their own
     sanitize: v =>
-      oneOf(MODES, v === "notes" ? "reading" : v === "handsTogether" || v === "chromatic" ? "scales" : v, "free"),
+      oneOf(
+        MODES,
+        v === "notes"
+          ? "reading"
+          : v === "handsTogether" || v === "chromatic"
+            ? "scales"
+            : typeof v === "string" && v in OLD_EAR_MODES
+              ? "ear"
+              : v,
+        "free",
+      ),
   },
   chordTypes: {
     storage: saved("chordTypes", "json"),
@@ -130,6 +152,12 @@ export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> }
   earChords: { storage: saved("earChords", "json"), sanitize: sanitizeChordEarOptions },
   earProgressions: { storage: saved("earProgressions", "json"), sanitize: sanitizeProgressionEarOptions },
   earIntervals: { storage: saved("earIntervals", "json"), sanitize: sanitizeIntervalEarOptions },
+  earKind: {
+    storage: saved("earKind", "string"),
+    // Saved before there was one Ear training mode: the type the saved mode was
+    sanitize: (v, all) =>
+      oneOf(EAR_KINDS, v, typeof all?.mode === "string" ? (OLD_EAR_MODES[all.mode] ?? "degrees") : "degrees"),
+  },
   reading: { storage: saved("reading", "json"), sanitize: sanitizeReadingOptions },
   latencyMs: { storage: saved("latency", "json"), sanitize: sanitizeLatency },
   latencyCalibrated: {

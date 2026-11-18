@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 559 tests (54 voicings) should pass
+npm test           # Vitest: 561 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -105,6 +105,11 @@ Layers that only talk through data. Read the file before changing a layer; this 
   direction). Built from `notes` steps (`src/exercises/sequence.ts`): exact notes together, octave set by the first
   step, done once all are held (keys still down from the step before are fine), a stray note a mistake at once. Runs
   report how far apart the hands landed (`handsApartMs`, the median).
+- **One Ear training mode** (mode `ear`, setting `earKind`): its types (degrees, melodies, intervals, chords,
+  progressions) are views of their own (`EAR_VIEWS` in `src/modes/page.ts`: "ear", "earMelody", "earIntervals",
+  "earChords", "earProgressions"), each with its own page setup, start function and MIDI-map scope (the mapper is
+  scoped by view). `viewOf` maps mode + type to the view, so changing the type restarts the drill. The old
+  per-type mode ids load as `ear` with that type.
 - **Shared ear-drill runner** (`src/modes/earDrill.ts` `createEarDrill`): owns answering, recording, rounds, replay
   after a miss, timers, Skip, Stop/Start and waiting for audio; scale degrees (`earTraining.ts`), melodies
   (`earMelody.ts`) and chord qualities (`earChords.ts`) only configure it. `tests/earDrill.test.ts` runs them against

@@ -1,5 +1,5 @@
 // Filter for practice modes (chord types, progressions): grouped checkboxes, with a summary of what is selected.
-import { prettyAcc } from "../theory";
+import { prettyText } from "../theory";
 
 export interface FilterGroup {
   label: string;
@@ -41,10 +41,10 @@ export function createFilterView(
         } // keep at least `min`
         onChange(selected);
       };
-      label.append(cb, document.createTextNode(prettyAcc(t.label)));
+      label.append(cb, document.createTextNode(prettyText(t.label)));
       row.append(label);
       boxes.set(t.id, { cb, label });
-      labelOf.set(t.id, prettyAcc(t.label));
+      labelOf.set(t.id, prettyText(t.label));
     }
     els.body.append(row);
   }

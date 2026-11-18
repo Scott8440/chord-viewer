@@ -57,3 +57,22 @@ export function spelledAs(midi: number, name: string): SpelledNote {
 export function prettyAcc(s: string): string {
   return s.replace(/##/g, "𝄪").replace(/bb/g, "𝄫").replace(/#/g, "♯").replace(/b/g, "♭");
 }
+
+/**
+ * Accidentals made pretty in free text, word by word, without touching ordinary words ("both" stays "both"): a note
+ * or chord's accidental after its letter ("Bbm7" is "B♭m7"), one before a number ("7b5", "b3" are "7♭5", "♭3") or a
+ * Roman numeral ("bVII" is "♭VII").
+ */
+export function prettyText(s: string): string {
+  return s.replace(/[^\s,·–()/:]+/g, word => {
+    // A note or chord: its letter, its accidental, then anything (the accidental is only one if what follows isn't a
+    // lower-case word: "Bb", "Bbm7", "Bbdim", "F#", but not "Both", "Bass")
+    const note = /^([A-G])(##|bb|#|b)(?=$|[mMad0-9+(ø°/s-]|aug|dim|maj|sus|add)(.*)$/.exec(word);
+    const head = note ? note[1] + prettyAcc(note[2]) : "";
+    const rest = note ? note[3] : word;
+    // Accidentals before a number or a Roman numeral
+    return (
+      head + rest.replace(/(^|[0-9(/])(##|bb|#|b)(?=[0-9]|[IV]+\b|[iv]+\b)/g, (_, pre, acc) => pre + prettyAcc(acc))
+    );
+  });
+}

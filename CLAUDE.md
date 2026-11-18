@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 561 tests (54 voicings) should pass
+npm test           # Vitest: 562 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -205,6 +205,8 @@ Layers that only talk through data. Read the file before changing a layer; this 
   `controls.ts`) so Space doesn't press them again and computer keys keep working.
 - **Exercises never use the header key**: a key is part of the prompt or chosen inside the exercise; the header Key
   picker shows in free play only.
+- **Accidentals in text:** `prettyAcc` turns every b into ♭, so use it only on note names; for labels and prose
+  use `prettyText` (`src/theory/spelling.ts`), which leaves words like "both" alone.
 - **Audio clicks:** cut a note off with `holdAt` (`cancelAndHoldAtTime`, `src/audio/tones.ts`), never
   `cancelScheduledValues` alone, which jumps back to the attack's peak and clicks.
 - **Audio waits for a gesture:** after a reload the ear modes open stopped ("Ready") and start once audio unlocks,

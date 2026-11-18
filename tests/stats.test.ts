@@ -288,3 +288,13 @@ describe("one drill on its own", () => {
     ]);
   });
 });
+
+describe("labels with accidentals", () => {
+  it("only accidentals become ♭ and ♯, never a b in a word", async () => {
+    const { prettyText } = await import("../src/theory");
+    expect(prettyText("Piano, both hands, level 1")).toBe("Piano, both hands, level 1");
+    expect(prettyText("Bb major broken chords, 1 octave")).toBe("B♭ major broken chords, 1 octave");
+    expect(prettyText("Bbm7b5 · Db7b9 · F#7/A# · C7#9")).toBe("B♭m7♭5 · D♭7♭9 · F♯7/A♯ · C7♯9");
+    expect(prettyText("I–bVII–IV–I · Degree b3 · Bass, level 2")).toBe("I–♭VII–IV–I · Degree ♭3 · Bass, level 2");
+  });
+});

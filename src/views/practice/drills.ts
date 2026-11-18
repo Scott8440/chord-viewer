@@ -6,7 +6,15 @@ import { answerOrder, qualityLabel, type ChordEarState } from "../../exercises/c
 import { degreeName, type EarState, type MelodyState } from "../../exercises/earTraining";
 import type { ProgressionState } from "../../exercises/progressions";
 import { noteName, READING_PARTS, READING_RANGES, type ReadingState } from "../../exercises/sightReading";
-import { chromaOf, prettyAcc, requireKey, requireTemplate, templateById, type KeyContext } from "../../theory";
+import {
+  chromaOf,
+  prettyAcc,
+  prettyText,
+  requireKey,
+  requireTemplate,
+  templateById,
+  type KeyContext,
+} from "../../theory";
 import { chordSymbolHtml } from "../chordName";
 import { esc } from "../html";
 import { chordStepHtml, describeMiss, inversionName, romanHtml } from "./chords";
@@ -233,7 +241,7 @@ export function chordPracticeDisplay(
       (roman && romanKey
         ? `in ${prettyAcc(romanKey.label)}${invText}` +
           (roman.filterIgnored ? " · no selected chord type is in this key, so any triad" : "")
-        : prettyAcc(`${s.prompt.root} ${t.name}`) + invText + keyText) + closeText,
+        : prettyText(`${s.prompt.root} ${t.name}`) + invText + keyText) + closeText,
     status: s.status,
     feedback,
     score: scoreText(s),

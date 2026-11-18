@@ -26,7 +26,7 @@ import {
   summary,
   weakestPrompts,
 } from "../progress/stats";
-import { prettyAcc } from "../theory";
+import { prettyText } from "../theory";
 import { mountChart, type ChartModel, type TimeRange } from "./charts";
 import { required } from "./dom";
 import { esc } from "./html";
@@ -231,7 +231,7 @@ export function createProgressView(
             return v == null ? [] : [{ at: r.at, value: v }];
           });
         exerciseCard = card(
-          prettyAcc(exercise.label),
+          prettyText(exercise.label),
           `${rs.length} run${rs.length === 1 ? "" : "s"} · each run a faint dot, the line the day's median`,
           `<div class="pvPair"><div>${chart(
             "pvExMistakes",
@@ -310,7 +310,7 @@ export function createProgressView(
                   weak
                     .map(
                       w =>
-                        `<tr><td>${esc(prettyAcc(w.prompt))}</td><td>${esc(DRILL_NAMES[w.drill])}</td><td>${w.asked}</td><td>${pct(w.firstTry)}</td><td>${(w.medianMs / 1000).toFixed(1)} s</td></tr>`,
+                        `<tr><td>${esc(prettyText(w.prompt))}</td><td>${esc(DRILL_NAMES[w.drill])}</td><td>${w.asked}</td><td>${pct(w.firstTry)}</td><td>${(w.medianMs / 1000).toFixed(1)} s</td></tr>`,
                     )
                     .join("") +
                   `</tbody></table>`
@@ -330,7 +330,11 @@ export function createProgressView(
         // Chord qualities and progressions: what each chord (or numeral) gets mistaken for
         const confusions =
           drill.kind === "chordEar"
-            ? { rows: chordConfusions(records), label: (t: string) => prettyAcc(qualityLabel(t)), what: "Chord played" }
+            ? {
+                rows: chordConfusions(records),
+                label: (t: string) => prettyText(qualityLabel(t)),
+                what: "Chord played",
+              }
             : drill.kind === "progressionEar"
               ? { rows: numeralConfusions(records), label: numeralLabel, what: "Numeral played" }
               : drill.kind === "intervalEar"
@@ -344,7 +348,7 @@ export function createProgressView(
                 confusions.rows
                   .map(
                     c =>
-                      `<tr><td>${esc(drill.kind === "chordEar" ? prettyAcc(c.prompt) : confusions.label(c.type))}</td><td>${c.mistakenFor.map(x => `${esc(confusions.label(x.type))} ×${x.n}`).join(", ")}</td><td>${c.asked}</td></tr>`,
+                      `<tr><td>${esc(drill.kind === "chordEar" ? prettyText(c.prompt) : confusions.label(c.type))}</td><td>${c.mistakenFor.map(x => `${esc(confusions.label(x.type))} ×${x.n}`).join(", ")}</td><td>${c.asked}</td></tr>`,
                   )
                   .join("") +
                 `</tbody></table>`
@@ -402,7 +406,7 @@ export function createProgressView(
             prompts
               .map(
                 p =>
-                  `<tr><td>${esc(prettyAcc(p.prompt))}</td><td>${p.asked}</td><td>${pct(p.firstTry)}</td><td>${seconds(p.medianMs)}</td><td>${p.skipped || ""}</td></tr>`,
+                  `<tr><td>${esc(prettyText(p.prompt))}</td><td>${p.asked}</td><td>${pct(p.firstTry)}</td><td>${seconds(p.medianMs)}</td><td>${p.skipped || ""}</td></tr>`,
               )
               .join("") +
             `</tbody></table>` +
@@ -432,7 +436,7 @@ export function createProgressView(
           ? `<label class="pick">Routine <select id="pvRoutine">${routines.map(r => option(r.id, r.name, r === routine)).join("")}</select></label>`
           : "") +
         (exercises.length
-          ? `<label class="pick">Exercise <select id="pvExercise">${exercises.map(x => option(x.exerciseId, prettyAcc(x.label), x === exercise)).join("")}</select></label>`
+          ? `<label class="pick">Exercise <select id="pvExercise">${exercises.map(x => option(x.exerciseId, prettyText(x.label), x === exercise)).join("")}</select></label>`
           : "") +
         (drillsDone.length
           ? `<label class="pick">Drill <select id="pvDrill">${drillsDone.map(d => option(d.kind, DRILL_NAMES[d.kind], d === drill)).join("")}</select></label>`

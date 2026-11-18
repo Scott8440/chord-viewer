@@ -9,7 +9,7 @@ import {
   routineSummary,
   type RoutineState,
 } from "../../exercises/routines";
-import { prettyAcc } from "../../theory";
+import { prettyText } from "../../theory";
 import { esc } from "../html";
 import { runText, sequenceDisplay, steadinessText } from "./sequence";
 import { stepHtml } from "./steps";
@@ -24,7 +24,7 @@ export function routineDisplay(r: RoutineState, style: PromptStyle): PracticeDis
     .map(g => {
       // In a mixed routine, the key in progress says which of its exercises is up
       const part = mixed ? (g.state === "current" ? esc(itemLabel(r, r.index).exercise) : "") : undefined;
-      return stepHtml(g.state, esc(prettyAcc(g.label)), part);
+      return stepHtml(g.state, esc(prettyText(g.label)), part);
     })
     .join("");
   const row = `<div class="routineRow">${overview}</div>`;
@@ -36,7 +36,7 @@ export function routineDisplay(r: RoutineState, style: PromptStyle): PracticeDis
       const what = w.result.mistakes
         ? `${w.result.mistakes} mistake${w.result.mistakes > 1 ? "s" : ""}`
         : steadinessText(w.result);
-      return `${prettyAcc(itemExercise(r.items[w.index], r.base).title)} (${what})`;
+      return `${prettyText(itemExercise(r.items[w.index], r.base).title)} (${what})`;
     });
     return {
       label: r.routine.name,

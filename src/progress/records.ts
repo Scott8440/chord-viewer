@@ -435,6 +435,9 @@ export function upgradeRecord(raw: unknown): ProgressRecord | null {
   // Newer than this app understands: keep out rather than misread
   if (v > RECORD_VERSION) return null;
   // Version 1 is current; upgrades from older versions go here as the schema changes
+  // Scales with both hands were briefly an exercise of their own ("handsTogether"); they're scale practice now
+  if (kind === "run" && raw.exercise === "handsTogether")
+    return { ...raw, exercise: "scales" } as unknown as ProgressRecord;
   return raw as unknown as ProgressRecord;
 }
 

@@ -46,9 +46,11 @@ export function scaleExercise(
   };
 }
 
-/** Hands together: the hands an octave apart moving the same way, or from one shared note moving apart and back */
-export const HAND_MOTIONS = ["parallel", "contrary"] as const;
-export type HandMotion = (typeof HAND_MOTIONS)[number];
+/** Scales with one hand, or both: the hands an octave apart moving the same way, or from one shared note moving
+ *  apart and back */
+export const SCALE_HANDS = ["one", "parallel", "contrary"] as const;
+export type ScaleHands = (typeof SCALE_HANDS)[number];
+export type HandMotion = Exclude<ScaleHands, "one">;
 
 /**
  * A scale with both hands together, as a run of notes played together (one per hand). Parallel: the left hand an

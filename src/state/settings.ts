@@ -17,7 +17,6 @@ export const MODES = [
   "chords",
   "progressions",
   "scales",
-  "handsTogether",
   "diatonic",
   "fiveFinger",
   "arpeggios",
@@ -108,7 +107,11 @@ export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> }
   // Not in localStorage: it comes from the footer checkbox, which the browser restores itself
   includeSustained: { sanitize: v => (typeof v === "boolean" ? v : true) },
   // Sight reading's mode id was "notes" (from the note practice it replaced), so a saved "notes" opens it
-  mode: { storage: saved("mode", "string"), sanitize: v => oneOf(MODES, v === "notes" ? "reading" : v, "free") },
+  // Sight reading's mode id was "notes"; scales with both hands were a mode of their own, now a scale option
+  mode: {
+    storage: saved("mode", "string"),
+    sanitize: v => oneOf(MODES, v === "notes" ? "reading" : v === "handsTogether" ? "scales" : v, "free"),
+  },
   chordTypes: {
     storage: saved("chordTypes", "json"),
     sanitize: v => sanitizeChordTypes(Array.isArray(v) ? v : DEFAULT_CHORD_TYPES),

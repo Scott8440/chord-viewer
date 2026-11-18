@@ -74,7 +74,6 @@ export const MODE_REGISTRY: Record<View, (deps: ModeDeps) => Mode> = {
   progressions: startProgressionPractice,
   // The prescriptive exercises share one runner
   scales: deps => startSequencePractice({ ...deps, id: "scales" }),
-  handsTogether: deps => startSequencePractice({ ...deps, id: "handsTogether" }),
   diatonic: deps => startSequencePractice({ ...deps, id: "diatonic" }),
   fiveFinger: deps => startSequencePractice({ ...deps, id: "fiveFinger" }),
   arpeggios: deps => startSequencePractice({ ...deps, id: "arpeggios" }),

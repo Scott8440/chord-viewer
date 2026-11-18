@@ -1,6 +1,9 @@
 // Scales with both hands together: the steps for each motion, and judging notes played together.
 import { describe, expect, it } from "vitest";
+import { DEFAULT_EXERCISE_OPTIONS, PRESCRIPTIVE } from "../src/exercises/prescriptive";
 import { handsTogetherExercise } from "../src/exercises/scales";
+import { upgradeRecord } from "../src/progress/records";
+import { createAppState } from "../src/state/app";
 import { initialSequence, reduceSequence, type SequenceAction, type SequenceState } from "../src/exercises/sequence";
 import { buildKey } from "../src/theory";
 
@@ -105,5 +108,23 @@ describe("judging notes played together", () => {
     let s = play(initialSequence(e), [48, 60], 0);
     s = reduceSequence(s, { type: "held", notes: [48, 50, 60, 62], time: 500 });
     expect(s.index).toBe(2);
+  });
+});
+
+describe("an option of scale practice", () => {
+  it("one hand by default; both hands, parallel or contrary, build the hands-together scale", () => {
+    const build = (hands: "one" | "parallel" | "contrary") =>
+      PRESCRIPTIVE.scales.build({ ...DEFAULT_EXERCISE_OPTIONS, hands });
+    expect(DEFAULT_EXERCISE_OPTIONS.hands).toBe("one");
+    expect(build("one").steps[0].kind).toBe("note");
+    expect(build("parallel").steps[0]).toMatchObject({ kind: "notes", offsets: [-12, 0] });
+    expect(build("contrary").steps[0]).toMatchObject({ kind: "notes", offsets: [0] });
+    expect(PRESCRIPTIVE.scales.options).toContain("hands");
+  });
+
+  it("the old separate mode opens scale practice, and its runs read back as scale practice", () => {
+    expect(createAppState({ mode: "handsTogether" }).settings.mode).toBe("scales");
+    const run = upgradeRecord({ id: "x", v: 1, at: 1, device: "d", kind: "run", exercise: "handsTogether" });
+    expect(run).toMatchObject({ exercise: "scales" });
   });
 });

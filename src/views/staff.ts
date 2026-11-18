@@ -70,8 +70,11 @@ export function staffCorner(row = false): StaffCorner {
  * red), out of `slots` steps. A note's `at` puts it at another step, fractions allowed (default its index). The held
  * notes are drawn at step `heldAt`, or nowhere when null (default: the step after the last note that isn't dim).
  * `duration` is the row's note value: "w" (whole notes, the default) or "q" (quarter notes, stems up or down by
- * position).
+ * position). `staves` puts each note on a staff (a hand's notes on its own), in the same order as `midi`; without
+ * it notes from middle C up go on the treble staff and the rest on the bass.
  */
+export type Clef = "treble" | "bass";
+
 export interface StaffRow {
   notes: readonly {
     midi: number | readonly number[];
@@ -79,6 +82,7 @@ export interface StaffRow {
     dim?: boolean;
     style?: "done" | "current" | "wrong";
     at?: number;
+    staves?: readonly Clef[];
   }[];
   slots: number;
   heldAt?: number | null;
@@ -114,10 +118,12 @@ export function createStaffView(el: HTMLElement): StaffView {
         return;
       }
       el.innerHTML = "";
-      const spelled: (SpelledNote & { grey: boolean; style?: keyof typeof ROW_STYLES })[] = notes.map(n => ({
-        ...spellNote(n, result, key),
-        grey: pedalOnly.has(n),
-      }));
+      const spelled: (SpelledNote & { grey: boolean; style?: keyof typeof ROW_STYLES; staff?: Clef })[] = notes.map(
+        n => ({
+          ...spellNote(n, result, key),
+          grey: pedalOnly.has(n),
+        }),
+      );
 
       const renderer = new VF.Renderer(el as HTMLDivElement, VF.Renderer.Backends.SVG);
       const staffW = row ? ROW_STAFF_W : STAFF_W,
@@ -149,7 +155,8 @@ export function createStaffView(el: HTMLElement): StaffView {
       new VF.StaveConnector(tStave, bStave).setType("singleLeft").setContext(ctx).draw();
       new VF.StaveConnector(tStave, bStave).setType("singleRight").setContext(ctx).draw();
 
-      /** Draws notes as one column at x (from the note start): treble from middle C up, bass below; grey ones greyed */
+      /** Draws notes as one column at x (from the note start): on their staff if set, else treble from middle C up and
+       *  bass below; grey ones greyed */
       const column = (list: typeof spelled, x: number, duration: "w" | "q" = "w") => {
         const tc = new VF.TickContext();
         const built: VF.StaveNote[] = [];
@@ -173,13 +180,14 @@ export function createStaffView(el: HTMLElement): StaffView {
           tc.addTickable(note);
           built.push(note);
         };
+        const staffOf = (n: (typeof list)[number]): Clef => n.staff ?? (n.midi >= 60 ? "treble" : "bass");
         makeChord(
-          list.filter(n => n.midi >= 60),
+          list.filter(n => staffOf(n) === "treble"),
           "treble",
           tStave,
         );
         makeChord(
-          list.filter(n => n.midi < 60),
+          list.filter(n => staffOf(n) === "bass"),
           "bass",
           bStave,
         );
@@ -201,6 +209,7 @@ export function createStaffView(el: HTMLElement): StaffView {
           ...(n.names?.[j] ? spelledAs(m, n.names[j]) : spellNote(m, null, key)),
           grey: !!n.dim,
           style: n.style,
+          staff: n.staves?.[j],
         }));
         column(list, ROW_PAD + (n.at ?? i) * step, row.duration);
       });

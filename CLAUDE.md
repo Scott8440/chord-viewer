@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 549 tests (54 voicings) should pass
+npm test           # Vitest: 550 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -106,7 +106,8 @@ Layers that only talk through data. Read the file before changing a layer; this 
   key's scale or chromatic, and routines always use the key's): scales with both hands, parallel an octave apart or contrary from a shared tonic (each hand's minor form by its
   direction). Built from `notes` steps (`src/exercises/sequence.ts`): exact notes together, octave set by the first
   step, done once all are held (keys still down from the step before are fine), a stray note a mistake at once. Runs
-  report how far apart the hands landed (`handsApartMs`, the median).
+  report how far apart the hands landed (`handsApartMs`, the median). On the staff (`exerciseRow`, `StaffRow` `staves`) the left hand's note is on the bass staff and the right's on the
+  treble whatever the octave (a shared note on both); a chord step stays on one staff; single notes split at middle C.
 - **One Ear training mode** (mode `ear`, setting `earKind`): its types (degrees, melodies, intervals, chords,
   progressions) are views of their own (`EAR_VIEWS` in `src/modes/page.ts`: "ear", "earMelody", "earIntervals",
   "earChords", "earProgressions"), each with its own page setup, start function and MIDI-map scope (the mapper is

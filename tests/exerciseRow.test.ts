@@ -1,7 +1,7 @@
 // The notes an exercise expects, drawn on the staff a page at a time.
 import { describe, expect, it } from "vitest";
 import { diatonicChordsExercise } from "../src/exercises/diatonicChords";
-import { scaleExercise } from "../src/exercises/scales";
+import { handsTogetherExercise, scaleExercise } from "../src/exercises/scales";
 import { initialSequence, reduceSequence } from "../src/exercises/sequence";
 import { chromaticExercise } from "../src/exercises/technique";
 import { buildKey } from "../src/theory";
@@ -55,5 +55,26 @@ describe("exerciseRow", () => {
     );
     expect(row.notes[0]).toMatchObject({ midi: [65, 69, 72], names: ["F", "A", "C"] });
     expect(row.notes[1]).toMatchObject({ midi: [67, 70, 74], names: ["G", "Bb", "D"] });
+  });
+
+  it("puts each hand on its own staff when both play, and keeps a chord on one staff", () => {
+    // Contrary motion from G: both hands start on the tonic, then the right climbs through middle C and the left falls
+    const contrary = exerciseRow(
+      initialSequence(handsTogetherExercise(buildKey("G:major")!, "natural", 1, "contrary")),
+    );
+    expect(contrary.notes[0]).toMatchObject({ midi: [55, 55], staves: ["bass", "treble"] });
+    expect(contrary.notes[1]).toMatchObject({ midi: [54, 57], staves: ["bass", "treble"] });
+    // Parallel, played an octave up: the left hand starts on middle C and stays on the bass staff
+    const parallel = exerciseRow({
+      ...initialSequence(handsTogetherExercise(buildKey("C:major")!, "natural", 1, "parallel")),
+      anchor: 72,
+    });
+    expect(parallel.notes[0]).toMatchObject({ midi: [60, 72], staves: ["bass", "treble"] });
+    // A chord across middle C isn't split: it goes on the staff most of it falls on
+    const chords = exerciseRow({
+      ...initialSequence(diatonicChordsExercise(buildKey("G:major")!, { sevenths: false, rootPosition: true })),
+      anchor: 55,
+    });
+    expect(chords.notes[0]).toMatchObject({ midi: [55, 59, 62], staves: ["bass", "bass", "bass"] });
   });
 });

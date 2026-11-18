@@ -1,10 +1,12 @@
 // The notes an exercise expects, for the staff: a page of steps at a time (the page with the step being played),
 // played steps green, the current one amber (red after a wrong attempt). Note steps sit in the octave the run is
 // played in once it's begun, else in one near the staves; chord steps in root position, close, above their root.
+// Staves: a hands-together step puts the left hand's note on the bass staff and the right hand's on the treble (a note
+// both hands share on both); a chord, played by one hand, stays on one staff; single notes split at middle C.
 import { Interval, Note } from "tonal";
 import type { SequenceState, SequenceStep } from "../exercises/sequence";
 import { templateById } from "../theory";
-import type { StaffRow } from "./staff";
+import type { Clef, StaffRow } from "./staff";
 
 /** Steps on the staff at once */
 export const PAGE_STEPS = 16;
@@ -26,16 +28,30 @@ function anchorOf(state: SequenceState): number {
   return anchor;
 }
 
-/** A step's notes: MIDI and spelled names */
-function stepNotes(step: SequenceStep, anchor: number, basePc: number): { midi: number[]; names: string[] } {
+/** A step's notes: MIDI, spelled names and, where it isn't the middle-C split, their staves */
+function stepNotes(
+  step: SequenceStep,
+  anchor: number,
+  basePc: number,
+): { midi: number[]; names: string[]; staves?: Clef[] } {
   if (step.kind === "note") return { midi: [anchor + step.offset], names: [step.name] };
-  if (step.kind === "notes") return { midi: step.offsets.map(o => anchor + o), names: [...step.names] };
+  if (step.kind === "notes") {
+    const midi = step.offsets.map(o => anchor + o);
+    // One note per hand, low to high: the left hand's on the bass staff, the right's on the treble
+    if (midi.length === 1)
+      return { midi: [midi[0], midi[0]], names: [step.names[0], step.names[0]], staves: ["bass", "treble"] };
+    return { midi, names: [...step.names], staves: midi.map((_, i) => (i === 0 ? "bass" : "treble")) };
+  }
   const { root, rootPc, type } = step.chord;
   const rootMidi = anchor + ((rootPc - basePc + 12) % 12);
   const intervals = (templateById(type)?.tones ?? "1P 3M 5P").replace(/[()]/g, "").split(/\s+/).filter(Boolean);
+  const midi = intervals.map(i => rootMidi + (Interval.semitones(i) ?? 0));
+  // One hand: the whole chord on the staff most of it falls on
+  const staff: Clef = midi.filter(m => m >= 60).length * 2 >= midi.length ? "treble" : "bass";
   return {
-    midi: intervals.map(i => rootMidi + (Interval.semitones(i) ?? 0)),
+    midi,
     names: intervals.map(i => Note.pitchClass(Note.transpose(root, i))),
+    staves: midi.map(() => staff),
   };
 }
 

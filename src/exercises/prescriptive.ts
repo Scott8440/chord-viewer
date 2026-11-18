@@ -4,7 +4,16 @@ import { requireKey, isKeyValue } from "../theory";
 import { KEY_PROGRESSIONS, type KeyProgression } from "./keyOrder";
 import { STRICTNESS, SUBDIVISIONS, type Strictness, type Subdivision } from "../timing/grid";
 import { diatonicChordsExercise, tonicTriadExercise } from "./diatonicChords";
-import { MINOR_FORMS, SCALE_OCTAVES, scaleExercise, type MinorForm, type ScaleOctaves } from "./scales";
+import {
+  HAND_MOTIONS,
+  handsTogetherExercise,
+  MINOR_FORMS,
+  SCALE_OCTAVES,
+  scaleExercise,
+  type HandMotion,
+  type MinorForm,
+  type ScaleOctaves,
+} from "./scales";
 import type { SequenceExercise } from "./sequence";
 import {
   ARPEGGIO_INVERSIONS,
@@ -26,6 +35,8 @@ export interface ExerciseOptions {
   minorForm: MinorForm;
   /** Scales, arpeggios, broken chords, chromatic: how many octaves */
   octaves: ScaleOctaves;
+  /** Hands together: an octave apart in the same direction, or contrary motion from a shared note */
+  motion: HandMotion;
   /** Arpeggios: start from the root, 3rd or 5th */
   inversion: ArpeggioInversion;
   /** Diatonic chords: seventh chords instead of triads */
@@ -51,6 +62,7 @@ export const DEFAULT_EXERCISE_OPTIONS: ExerciseOptions = {
   progression: "circle-sharps",
   minorForm: "natural",
   octaves: 1,
+  motion: "parallel",
   inversion: 0,
   sevenths: false,
   rootPosition: true,
@@ -71,6 +83,7 @@ export function sanitizeExerciseOptions(raw: unknown): ExerciseOptions {
       : d.progression,
     minorForm: (MINOR_FORMS as readonly unknown[]).includes(o.minorForm) ? (o.minorForm as MinorForm) : d.minorForm,
     octaves: (SCALE_OCTAVES as readonly unknown[]).includes(o.octaves) ? (o.octaves as ScaleOctaves) : d.octaves,
+    motion: (HAND_MOTIONS as readonly unknown[]).includes(o.motion) ? (o.motion as HandMotion) : d.motion,
     inversion: (ARPEGGIO_INVERSIONS as readonly unknown[]).includes(o.inversion)
       ? (o.inversion as ArpeggioInversion)
       : d.inversion,
@@ -106,6 +119,12 @@ export const PRESCRIPTIVE = {
     chords: false,
     build: o => scaleExercise(requireKey(o.key), o.minorForm, o.octaves),
     options: ["key", "progression", "octaves", "minorForm", "metronome"],
+  },
+  handsTogether: {
+    short: "hands together",
+    chords: false,
+    build: o => handsTogetherExercise(requireKey(o.key), o.minorForm, o.octaves, o.motion),
+    options: ["key", "progression", "motion", "octaves", "minorForm", "metronome"],
   },
   diatonic: {
     short: "chords",

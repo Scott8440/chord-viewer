@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 546 tests (54 voicings) should pass
+npm test           # Vitest: 553 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -99,6 +99,11 @@ Layers that only talk through data. Read the file before changing a layer; this 
   id and a menu item. Routines (`routines.ts` `ROUTINES`) are curated data pointing into `PRESCRIPTIVE`; items set only
   their key, every other option comes from the player's exercise settings. `PROGRESSIONS` (`progressions.ts`) is
   likewise a shared list with deliberately no user selector.
+- **Hands together** (`handsTogetherExercise` in `src/exercises/scales.ts`, mode `handsTogether`, option `motion`):
+  scales with both hands, parallel an octave apart or contrary from a shared tonic (each hand's minor form by its
+  direction). Built from `notes` steps (`src/exercises/sequence.ts`): exact notes together, octave set by the first
+  step, done once all are held (keys still down from the step before are fine), a stray note a mistake at once. Runs
+  report how far apart the hands landed (`handsApartMs`, the median).
 - **Shared ear-drill runner** (`src/modes/earDrill.ts` `createEarDrill`): owns answering, recording, rounds, replay
   after a miss, timers, Skip, Stop/Start and waiting for audio; scale degrees (`earTraining.ts`), melodies
   (`earMelody.ts`) and chord qualities (`earChords.ts`) only configure it. `tests/earDrill.test.ts` runs them against
@@ -213,7 +218,8 @@ Layers that only talk through data. Read the file before changing a layer; this 
 - **MIDI:** note-on with velocity 0 is a note-off; CC 120/123 clear notes; Esc and Clear do a full panic.
 
 ## Pending directions (agreed, not done)
-- Prescriptive exercises: cadences with set voicings, hands together, Hanon patterns, a tempo ladder, fingering
+- Prescriptive exercises: left-hand accompaniment patterns under a right-hand scale (with balance and articulation
+  options), polyrhythms, cadences with set voicings, Hanon patterns, a tempo ladder, fingering
   hints, keeping best runs. Moving through keys (Then) was a first step towards folding single exercises and routines
   together, which may be revisited.
 - Metronome: an external clock driver (Ableton MIDI clock via loopMIDI) updating the same transport.

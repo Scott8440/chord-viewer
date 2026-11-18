@@ -16,7 +16,9 @@ const BOTTOM = 55,
 function anchorOf(state: SequenceState): number {
   if (state.anchor != null) return state.anchor;
   const { basePc, steps } = state.exercise;
-  const offsets = steps.flatMap(s => (s.kind === "note" ? [s.offset] : []));
+  // Both hands: around middle C, the left hand below it and the right above
+  if (steps.some(s => s.kind === "notes")) return 60 + basePc - (basePc > 6 ? 12 : 0);
+  const offsets = steps.flatMap(s => (s.kind === "note" ? [s.offset] : s.kind === "notes" ? s.offsets : []));
   const high = offsets.length ? Math.max(...offsets) : 12;
   let anchor = 60 + basePc;
   if (anchor + high > TOP) anchor -= 12;
@@ -27,6 +29,7 @@ function anchorOf(state: SequenceState): number {
 /** A step's notes: MIDI and spelled names */
 function stepNotes(step: SequenceStep, anchor: number, basePc: number): { midi: number[]; names: string[] } {
   if (step.kind === "note") return { midi: [anchor + step.offset], names: [step.name] };
+  if (step.kind === "notes") return { midi: step.offsets.map(o => anchor + o), names: [...step.names] };
   const { root, rootPc, type } = step.chord;
   const rootMidi = anchor + ((rootPc - basePc + 12) % 12);
   const intervals = (templateById(type)?.tones ?? "1P 3M 5P").replace(/[()]/g, "").split(/\s+/).filter(Boolean);

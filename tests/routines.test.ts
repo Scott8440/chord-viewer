@@ -34,7 +34,10 @@ function playExercise(ex: SequenceExercise, gap = 200, mistakeAt = -1): RoutineA
     if (i === mistakeAt)
       out.push({ type: "noteOn", note: anchor + 1 + (st.kind === "note" ? st.offset : 0), time: (clock += gap) });
     if (st.kind === "note") out.push({ type: "noteOn", note: anchor + st.offset, time: (clock += gap) });
-    else {
+    else if (st.kind === "notes") {
+      const notes = st.offsets.map(o => anchor + o);
+      out.push({ type: "held", notes, time: (clock += gap) }, { type: "held", notes: [], time: (clock += 1) });
+    } else {
       const m = matchTemplate([], st.chord.rootPc, st.chord.type);
       const notes = [...m.missing, ...m.omitted].map(t => 48 + st.chord.rootPc + t.pc).sort((a, b) => a - b);
       out.push({ type: "held", notes, time: (clock += gap) }, { type: "held", notes: [], time: (clock += 1) });

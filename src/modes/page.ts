@@ -35,6 +35,7 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   chords: PRACTICE,
   progressions: PRACTICE,
   scales: TIMED,
+  handsTogether: TIMED,
   diatonic: TIMED,
   fiveFinger: TIMED,
   arpeggios: TIMED,

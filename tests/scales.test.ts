@@ -201,6 +201,7 @@ describe("exercise settings", () => {
       progression: "circle-sharps",
       minorForm: "natural",
       octaves: 1,
+      motion: "parallel",
       inversion: 0,
       sevenths: false,
       rootPosition: true,

@@ -22,7 +22,16 @@ export interface ChordStep {
   chord: ChordPrompt;
 }
 
-export type SequenceStep = NoteStep | ChordStep;
+/** Notes played together, each exactly (octave included): one per hand in hands-together exercises */
+export interface NotesStep {
+  kind: "notes";
+  /** Semitones above the base pitch class in the run's octave, low to high; one entry when the hands share a note */
+  offsets: readonly number[];
+  /** Spelled names, in the same order */
+  names: readonly string[];
+}
+
+export type SequenceStep = NoteStep | ChordStep | NotesStep;
 
 /** An exercise; `S` narrows the kind of steps (a scale is all note steps, diatonic chords all chord steps). */
 export interface SequenceExercise<S extends SequenceStep = SequenceStep> {
@@ -48,13 +57,18 @@ export interface RunResult {
   evenness: number;
   /** Timing against the metronome, when the run was played to one */
   timing: TimingSummary | null;
+  /** Steps of notes played together (hands together): how far apart the notes of a step were pressed, the median
+   *  (ms); null for other exercises */
+  handsApartMs?: number | null;
 }
 
 export type WrongStep =
   /** A wrong note; `expected` is null when the run's octave is not known yet */
   | { kind: "note"; expected: number | null; played: number }
   /** A chord attempt that never formed the chord */
-  | { kind: "chord"; notes: number[] };
+  | { kind: "chord"; notes: number[] }
+  /** A note that isn't one of the step's notes played together (`expected` null before the octave is known) */
+  | { kind: "notes"; expected: number[] | null; played: number };
 
 export interface SequenceState {
   exercise: SequenceExercise;
@@ -77,6 +91,10 @@ export interface SequenceState {
   grid: TimingGrid | null;
   /** Timing of each step of the current (or last) run, when there is a grid */
   timings: StepTiming[];
+  /** When each key was last pressed, to time the notes of a step played together against each other */
+  pressedAt: Readonly<Record<number, number>>;
+  /** Notes-together steps of the current run: how far apart their notes were pressed (ms) */
+  spreads: number[];
   /** Result of the last finished run */
   result: RunResult | null;
   /** All finished runs of this exercise, oldest first */
@@ -109,6 +127,8 @@ export function initialSequence(
     times: [],
     grid,
     timings: [],
+    pressedAt: {},
+    spreads: [],
     result: null,
     runs: [],
   };
@@ -117,7 +137,7 @@ export function initialSequence(
 /** The fields that put a run back to waiting for its first step */
 const ready = (): Pick<
   SequenceState,
-  "status" | "anchor" | "index" | "mistakes" | "lastWrong" | "startHint" | "times" | "timings"
+  "status" | "anchor" | "index" | "mistakes" | "lastWrong" | "startHint" | "times" | "timings" | "spreads"
 > => ({
   status: "ready",
   anchor: null,
@@ -127,6 +147,7 @@ const ready = (): Pick<
   startHint: false,
   times: [],
   timings: [],
+  spreads: [],
 });
 
 /** The step being waited for: the next one in a run, or the first one before a run starts. */
@@ -136,6 +157,8 @@ export function reduceSequence(s: SequenceState, a: SequenceAction): SequenceSta
   switch (a.type) {
     case "noteOn": {
       const step = currentStep(s);
+      if (step.kind === "notes")
+        return notesNoteOn({ ...s, pressedAt: { ...s.pressedAt, [a.note]: a.time } }, step, a.note);
       if (step.kind !== "note") return s; // chord steps are judged from the held keys
       const anchor = s.status === "playing" ? s.anchor : null;
       const ok =
@@ -159,6 +182,7 @@ export function reduceSequence(s: SequenceState, a: SequenceAction): SequenceSta
     }
     case "held": {
       const step = currentStep(s);
+      if (step.kind === "notes") return notesHeld(s, step, a.notes, a.time);
       // Keep the chord tracker in step with the keys even while note steps are being played
       if (step.kind !== "chord") return { ...s, tracker: freshAttempt(a.notes) };
       const { attempt: tracker, outcome } = trackAttempt(s.tracker, a.notes, notes => isChord(notes, step.chord));
@@ -182,8 +206,42 @@ export function reduceSequence(s: SequenceState, a: SequenceAction): SequenceSta
   }
 }
 
+/** Where a notes-together step's notes are, with the run's octave or, before it's known, from a note held: the
+ *  anchors that would make every one of the step's notes held */
+function notesAnchor(s: SequenceState, step: NotesStep, held: readonly number[]): number | null {
+  if (s.status === "playing" && s.anchor != null)
+    return step.offsets.every(o => held.includes(s.anchor! + o)) ? s.anchor : null;
+  for (const n of held) {
+    const anchor = n - step.offsets[0];
+    if ((anchor - s.exercise.basePc) % 12 !== 0) continue;
+    if (step.offsets.every(o => held.includes(anchor + o))) return anchor;
+  }
+  return null;
+}
+
+/** A key pressed during a notes-together step: a wrong note (not one of them) is a mistake at once */
+function notesNoteOn(s: SequenceState, step: NotesStep, note: number): SequenceState {
+  const known = s.status === "playing" && s.anchor != null;
+  const targets = known ? step.offsets.map(o => s.anchor! + o) : null;
+  const fits = targets ? targets.includes(note) : step.offsets.some(o => (note - o - s.exercise.basePc) % 12 === 0);
+  if (fits) return s;
+  if (s.status !== "playing") return s.startHint ? s : { ...s, startHint: true };
+  return { ...s, mistakes: s.mistakes + 1, lastWrong: { kind: "notes", expected: targets, played: note } };
+}
+
+/** The keys held during a notes-together step: done once every one of its notes is down (keys still held from the
+ *  step before are fine: legato) */
+function notesHeld(s: SequenceState, step: NotesStep, held: number[], time: number): SequenceState {
+  const anchor = notesAnchor(s, step, held);
+  if (anchor == null) return { ...s, tracker: freshAttempt(held) };
+  const presses = step.offsets.map(o => s.pressedAt[anchor + o] ?? time);
+  // A single note (the hands sharing it) has no spread
+  const spread = step.offsets.length > 1 ? Math.max(...presses) - Math.min(...presses) : null;
+  return advance({ ...s, tracker: freshAttempt(held) }, time, anchor, spread);
+}
+
 /** The current step was played at `time`: start a run, move on, or finish. */
-function advance(s: SequenceState, time: number, anchor: number | null): SequenceState {
+function advance(s: SequenceState, time: number, anchor: number | null, spread: number | null = null): SequenceState {
   const playing = s.status === "playing";
   const timing = s.grid && judgeTime(s.grid, time, playing ? (s.timings[s.timings.length - 1]?.slot ?? null) : null);
   const next: SequenceState = playing
@@ -194,6 +252,7 @@ function advance(s: SequenceState, time: number, anchor: number | null): Sequenc
         lastWrong: null,
         times: [...s.times, time],
         timings: timing ? [...s.timings, timing] : s.timings,
+        spreads: spread == null ? s.spreads : [...s.spreads, spread],
       }
     : // Start (or start again) with the first step
       {
@@ -206,12 +265,22 @@ function advance(s: SequenceState, time: number, anchor: number | null): Sequenc
         startHint: false,
         times: [time],
         timings: timing ? [timing] : [],
+        spreads: spread == null ? [] : [spread],
         result: null,
       };
   if (next.index < s.exercise.steps.length) return next;
-  const result = runResult(next.times, next.mistakes, next.grid && timingSummary(next.grid, next.timings));
+  const result: RunResult = {
+    ...runResult(next.times, next.mistakes, next.grid && timingSummary(next.grid, next.timings)),
+    ...(next.spreads.length ? { handsApartMs: median(next.spreads) } : {}),
+  };
   return { ...next, status: "done", result, runs: [...next.runs, result] };
 }
+
+const median = (xs: readonly number[]) => {
+  const v = [...xs].sort((a, b) => a - b),
+    m = Math.floor(v.length / 2);
+  return Math.round(v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2);
+};
 
 /** Tempo and evenness from the times of the steps of a run (and its timing, when played to the metronome). */
 export function runResult(times: readonly number[], mistakes: number, timing: TimingSummary | null = null): RunResult {

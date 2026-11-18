@@ -17,6 +17,7 @@ export const MODES = [
   "chords",
   "progressions",
   "scales",
+  "handsTogether",
   "diatonic",
   "fiveFinger",
   "arpeggios",

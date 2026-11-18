@@ -17,7 +17,7 @@ import {
   requireRoutine,
   type CircleDirection,
 } from "../exercises/routines";
-import type { MinorForm, ScaleOctaves } from "../exercises/scales";
+import type { HandMotion, MinorForm, ScaleOctaves } from "../exercises/scales";
 import { PROGRESSION_LENGTHS, tonicName } from "../exercises/progressionEar";
 import { INTERVAL_GROUPS, type IntervalPlay } from "../exercises/intervalEar";
 import type { ArpeggioInversion } from "../exercises/technique";
@@ -179,6 +179,11 @@ export function bindControls(store: AppStore) {
     $("exInversion"),
     s => String(s.exercise.inversion),
     v => setExercise({ inversion: Number(v) as ArpeggioInversion }),
+  );
+  bindSelect(
+    $("exMotion"),
+    s => s.exercise.motion,
+    v => setExercise({ motion: v as HandMotion }),
   );
   bindSelect(
     $("exMinorForm"),

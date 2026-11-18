@@ -32,9 +32,14 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
     const verdict = timing && s.grid ? timingVerdict(s.grid, timing) : "onTime";
     const extra = verdict === "onTime" ? "" : verdict;
     // Note steps are dots, not names: the exercise is to know the notes; chord steps name the chord to play
-    return st.kind === "note" ? stepHtml(state, "•", undefined, extra) : chordStepHtml(st.chord, style, state, extra);
+    return st.kind === "chord" ? chordStepHtml(st.chord, style, state, extra) : stepHtml(state, "•", undefined, extra);
   });
-  const stepText = (st: SequenceStep) => (st.kind === "note" ? prettyAcc(st.name) : chordPromptText(st.chord, style));
+  const stepText = (st: SequenceStep) =>
+    st.kind === "note"
+      ? prettyAcc(st.name)
+      : st.kind === "notes"
+        ? st.names.map(prettyAcc).join(" and ")
+        : chordPromptText(st.chord, style);
   const first = ex.steps[0];
   let feedback = "",
     status: PracticeDisplay["status"] = "waiting",
@@ -72,6 +77,10 @@ export function sequenceDisplay(s: SequenceState, style: PromptStyle): PracticeD
 /** What went wrong at a step: a wrong note (or the right note in the wrong octave), or a chord's corrections. */
 function describeWrongStep(step: SequenceStep, wrong: WrongStep, key: KeyContext | null): string {
   if (step.kind === "chord" && wrong.kind === "chord") return describeMiss(step.chord, wrong.notes, key);
+  if (step.kind === "notes" && wrong.kind === "notes") {
+    const expected = step.names.map(prettyAcc).join(" and ");
+    return `Expected ${expected} together, not ${prettyAcc(pcName(wrong.played % 12, key))}`;
+  }
   if (step.kind !== "note" || wrong.kind !== "note") return "Not quite";
   const expected = prettyAcc(step.name),
     { played } = wrong;
@@ -84,9 +93,11 @@ function describeWrongStep(step: SequenceStep, wrong: WrongStep, key: KeyContext
 /** How a run went: "132 BPM · 91% even", or against the metronome "92% on time · rushing 18 ms" (no duration) */
 /** How a run went, after " · " (or nothing for a one-step run, e.g. a single chord: it has no tempo or evenness) */
 export function runText(r: RunResult): string {
-  if (r.timing) return " · " + timingText(r.timing);
-  if (!r.bpm) return "";
-  return ` · ${Math.round(r.bpm)} BPM · ${Math.round(r.evenness * 100)}% even`;
+  // Hands together: how far apart the hands landed
+  const hands = r.handsApartMs != null ? ` · hands ${r.handsApartMs} ms apart` : "";
+  if (r.timing) return " · " + timingText(r.timing) + hands;
+  if (!r.bpm) return hands;
+  return ` · ${Math.round(r.bpm)} BPM · ${Math.round(r.evenness * 100)}% even` + hands;
 }
 
 /** How steady a run was, briefly: "92% on time" against the metronome, else "95% even" */

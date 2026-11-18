@@ -14,7 +14,9 @@ import { buildKey } from "../src/theory";
 
 const notes = (e: SequenceExercise) => e.steps.map(s => (s.kind === "note" ? s.offset : "chord"));
 const names = (e: SequenceExercise) =>
-  e.steps.map(s => (s.kind === "note" ? s.name : `${s.chord.root}${s.chord.type}`));
+  e.steps.map(s =>
+    s.kind === "note" ? s.name : s.kind === "notes" ? s.names.join("+") : `${s.chord.root}${s.chord.type}`,
+  );
 
 describe("five-finger patterns", () => {
   it("are the first five notes up and down, then the tonic chord in root position", () => {

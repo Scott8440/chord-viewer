@@ -57,6 +57,8 @@ export interface RunBody {
   bpm: number;
   evenness: number;
   timing: TimingSummary | null;
+  /** Hands together: how far apart the hands' notes were pressed, the median (ms) */
+  handsApartMs?: number;
   /** The routine session it was played in, if any */
   routineSession: string | null;
 }
@@ -157,6 +159,7 @@ export function runBody(
     bpm: result.bpm,
     evenness: result.evenness,
     timing: result.timing,
+    ...(result.handsApartMs != null ? { handsApartMs: result.handsApartMs } : {}),
     routineSession,
   };
 }

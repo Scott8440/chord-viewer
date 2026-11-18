@@ -186,19 +186,14 @@ header h1 {
 #modePicker::backdrop {
   background: rgba(8, 9, 11, 0.7);
 }
-#modePicker .mpHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-#modePicker h2 {
-  margin: 0;
-  font:
-    500 26px Georgia,
-    "Times New Roman",
-    serif;
+/* No heading: just the close button, in the corner */
+#modePicker {
+  position: relative;
 }
 #modePicker .mpClose {
+  position: absolute;
+  top: 8px;
+  right: 10px;
   border: none;
   font-size: 20px;
   color: var(--muted);
@@ -207,8 +202,10 @@ header h1 {
 #modePicker .mpTiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  /* Every row as tall as the tallest tile, so all tiles are the same size */
+  grid-auto-rows: 1fr;
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 22px;
 }
 #modePicker .mpGroup {
   font-size: 10px;
@@ -218,13 +215,14 @@ header h1 {
   color: var(--muted);
 }
 #modePicker .mpTile {
-  aspect-ratio: 1;
+  min-height: 190px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* From the top, so icons and names line up across a row */
+  justify-content: flex-start;
   gap: 10px;
-  padding: 14px;
+  padding: 18px 14px 14px;
   border-radius: 12px;
   border: 1px solid var(--line);
   background: var(--bg);
@@ -270,7 +268,6 @@ header h1 {
     gap: 8px;
   }
   #modePicker .mpTile {
-    aspect-ratio: auto;
     min-height: 104px;
     padding: 10px 6px;
     gap: 6px;

@@ -101,7 +101,7 @@ export function createModePicker(
   pick: (mode: ModeId) => void,
 ): ModePicker {
   dialog.innerHTML =
-    `<div class="mpHead"><h2>Choose a mode</h2><button class="mpClose" aria-label="Close">✕</button></div>` +
+    `<button class="mpClose" aria-label="Close">✕</button>` +
     `<div class="mpTiles">` +
     TILES.map(
       ({ mode: id, group }) =>

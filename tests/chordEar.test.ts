@@ -12,10 +12,10 @@ import {
   spreadVoicing,
   voiceChord,
   type ChordEarOptions,
+  DEFAULT_CHORD_EAR,
 } from "../src/exercises/chordEar";
 import { CHORD_EAR_LADDER } from "../src/exercises/ladders";
 import { chordEarDrillBody } from "../src/progress/records";
-import { createAppState, reduceApp } from "../src/state/app";
 import { analyze, chordSemitones } from "../src/theory";
 import { chordEarAnswers, chordEarDisplay } from "../src/views/practice";
 
@@ -184,23 +184,14 @@ describe("answers", () => {
 });
 
 describe("options", () => {
-  it("at least two known types, else major and minor; inversions and broken off unless set", () => {
-    expect(sanitizeChordEarOptions(undefined)).toEqual({
-      types: ["M", "m"],
-      inversions: false,
-      broken: false,
-      sound: "simple",
-      ladder: true,
-      level: 0,
-    });
-    expect(sanitizeChordEarOptions({ types: ["dim", "nonsense"] }).types).toEqual(["M", "m"]);
+  it("at least two known types, else the defaults; anything not saved at its default", () => {
+    expect(sanitizeChordEarOptions(undefined)).toEqual(DEFAULT_CHORD_EAR);
+    expect(sanitizeChordEarOptions({ types: ["dim", "nonsense"] }).types).toEqual(DEFAULT_CHORD_EAR.types);
     expect(sanitizeChordEarOptions({ types: ["dim", "aug", "x"], inversions: true, broken: true })).toEqual({
+      ...DEFAULT_CHORD_EAR,
       types: ["dim", "aug"],
       inversions: true,
       broken: true,
-      sound: "simple",
-      ladder: true,
-      level: 0,
     });
   });
 
@@ -221,14 +212,6 @@ describe("options", () => {
     expect(chordEarLadderTag(own)).toEqual({ id: CHORD_EAR_LADDER.id, level: 3 });
     expect(chordEarLadderTag({ ...own, broken: true })).toBeNull();
     expect(chordEarLadderTag({ ...own, ladder: false })).toBeNull();
-  });
-
-  it("saved in settings, changed one at a time", () => {
-    const s = createAppState({ earChords: { types: ["M", "m", "dim"] } });
-    expect(s.settings.earChords.types).toEqual(["M", "m", "dim"]);
-    const t = reduceApp(s, { type: "setEarChordOptions", options: { inversions: true } });
-    expect(t.settings.earChords).toMatchObject({ types: ["M", "m", "dim"], inversions: true });
-    expect(reduceApp(t, { type: "setEarChordOptions", options: { inversions: true } })).toBe(t);
   });
 
   it("each chord is a drill record, grouped by quality", () => {

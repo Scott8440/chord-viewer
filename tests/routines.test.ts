@@ -203,16 +203,11 @@ describe("routineDisplay", () => {
 });
 
 describe("routine settings", () => {
-  it("default to the first routine, sharps first, starting on C, and ignore bad values", () => {
-    expect(createAppState().settings.routine).toEqual({ id: "scales-circle", direction: "sharps", start: "C:major" });
-    expect(sanitizeRoutineOptions({ id: "nope", direction: "sideways" })).toEqual({
-      id: "scales-circle",
-      direction: "sharps",
-      start: "C:major",
-    });
-    const s = reduceApp(createAppState(), { type: "setRoutineOptions", options: { direction: "flats" } });
-    expect(s.settings.routine).toEqual({ id: "scales-circle", direction: "flats", start: "C:major" });
-    expect(reduceApp(s, { type: "setRoutineOptions", options: { direction: "flats" } })).toBe(s);
+  it("start at the same defaults whether nothing or nonsense is saved, on a routine that exists", () => {
+    const defaults = sanitizeRoutineOptions(undefined);
+    expect(createAppState().settings.routine).toEqual(defaults);
+    expect(sanitizeRoutineOptions({ id: "nope", direction: "sideways" })).toEqual(defaults);
+    expect(routineById(defaults.id)).toBeDefined();
   });
 });
 

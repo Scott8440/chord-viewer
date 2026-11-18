@@ -1,7 +1,6 @@
 // Judging a pitch class in any octave (used by ear training), and the mode setting.
 import { describe, expect, it } from "vitest";
 import { initialNotePractice, reduceNotePractice, type NotePrompt } from "../src/exercises/notePractice";
-import { createAppState, reduceApp } from "../src/state/app";
 
 const fSharp: NotePrompt = { pc: 6, name: "F#" };
 
@@ -45,15 +44,5 @@ describe("reduceNotePractice", () => {
     let s = reduceNotePractice(initialNotePractice(fSharp), { type: "play", note: 66 });
     s = reduceNotePractice(s, { type: "skip", prompt: { pc: 0, name: "C" } });
     expect(s).toMatchObject({ answered: 1, firstTry: 1 });
-  });
-});
-
-describe("mode setting", () => {
-  it("switches mode and ignores a switch to the same mode", () => {
-    const s = createAppState();
-    expect(s.settings.mode).toBe("free");
-    const t = reduceApp(s, { type: "setMode", mode: "reading" });
-    expect(t.settings.mode).toBe("reading");
-    expect(reduceApp(t, { type: "setMode", mode: "reading" })).toBe(t);
   });
 });

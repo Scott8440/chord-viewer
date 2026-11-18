@@ -1,6 +1,7 @@
 // Prescriptive exercises: the note-sequence matcher, run measurements, and the scale exercise.
 import { describe, expect, it } from "vitest";
 import { scaleExercise } from "../src/exercises/scales";
+import { DEFAULT_EXERCISE_OPTIONS, sanitizeExerciseOptions } from "../src/exercises/prescriptive";
 import {
   bestRun,
   initialSequence,
@@ -195,22 +196,12 @@ describe("sequenceDisplay", () => {
 });
 
 describe("exercise settings", () => {
-  it("default to C major, natural minor, one octave, arpeggios from the root, triads in root position, metronome off", () => {
-    expect(createAppState().settings.exercise).toEqual({
-      key: "C:major",
-      progression: "circle-sharps",
-      minorForm: "natural",
-      octaves: 1,
-      scale: "key",
-      hands: "one",
-      inversion: 0,
-      sevenths: false,
-      rootPosition: true,
-      metronome: false,
-      bpm: 80,
-      subdivision: 1,
-      strictness: "strict",
-    });
+  it("start at the defaults when nothing (or nonsense) is saved", () => {
+    expect(createAppState().settings.exercise).toEqual(DEFAULT_EXERCISE_OPTIONS);
+    expect(sanitizeExerciseOptions(undefined)).toEqual(DEFAULT_EXERCISE_OPTIONS);
+    expect(sanitizeExerciseOptions({ key: "H:major", octaves: 7, hands: "three", scale: "whole-tone" })).toEqual(
+      DEFAULT_EXERCISE_OPTIONS,
+    );
   });
 
   it("change one option at a time, keep the rest, and ignore invalid values", () => {

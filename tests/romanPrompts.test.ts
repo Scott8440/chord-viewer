@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { initialChordPractice, reduceChordPractice } from "../src/exercises/chordPractice";
 import type { ChordPrompt } from "../src/exercises/chordPrompt";
 import { diatonicChords, makeRomanPrompt } from "../src/exercises/romanPrompts";
-import { createAppState, reduceApp } from "../src/state/app";
 import { analyze, buildKey, KEY_MAJORS, KEY_MINORS, matchTemplate, prettyAcc, templateById } from "../src/theory";
 import { chordPracticeDisplay } from "../src/views/practice";
 
@@ -92,13 +91,5 @@ describe("Roman prompt display", () => {
     s = reduceChordPractice(s, { type: "held", notes: [48, 52, 55] }); // C major = IV in G
     s = reduceChordPractice(s, { type: "held", notes: [] });
     expect(chordPracticeDisplay(s, null).feedback).toMatch(/^✗ That was C \(IV\)\. /);
-  });
-
-  it("prompt style is a setting", () => {
-    const s = createAppState();
-    expect(s.settings.promptStyle).toBe("names");
-    const t = reduceApp(s, { type: "setPromptStyle", style: "roman" });
-    expect(t.settings.promptStyle).toBe("roman");
-    expect(reduceApp(t, { type: "setPromptStyle", style: "roman" })).toBe(t);
   });
 });

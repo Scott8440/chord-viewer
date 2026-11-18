@@ -14,6 +14,7 @@ import {
   sanitizeProgressionEarOptions,
   voiceLead,
   wrongNow,
+  DEFAULT_PROGRESSION_EAR,
 } from "../src/exercises/progressionEar";
 import { analyze } from "../src/theory";
 
@@ -45,16 +46,15 @@ describe("levels", () => {
 });
 
 describe("options", () => {
-  it("random key, four chords, the first level unless saved otherwise; kept to what's offered", () => {
-    expect(sanitizeProgressionEarOptions(undefined)).toEqual({ tonic: "random", length: 4, level: 0 });
+  it("the defaults unless saved otherwise; kept to what's offered", () => {
+    expect(sanitizeProgressionEarOptions(undefined)).toEqual(DEFAULT_PROGRESSION_EAR);
     expect(sanitizeProgressionEarOptions({ tonic: "7", length: 6, level: 3 })).toEqual({
       tonic: "7",
       length: 6,
       level: 3,
     });
     expect(sanitizeProgressionEarOptions({ tonic: "H", length: 7, level: 99 })).toEqual({
-      tonic: "random",
-      length: 4,
+      ...DEFAULT_PROGRESSION_EAR,
       level: PROGRESSION_EAR_LADDER.levels.length - 1,
     });
   });

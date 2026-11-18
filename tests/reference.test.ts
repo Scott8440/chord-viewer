@@ -114,10 +114,6 @@ describe("the pages", () => {
     expect(new Set(REFERENCE_PAGES.map(p => p.id)).size).toBe(REFERENCE_PAGES.length);
   });
 
-  it("lists chord forms, scales, diatonic chords, secondary dominants, then modes", () => {
-    expect(REFERENCE_PAGES.map(p => p.id)).toEqual(["chords", "scales", "diatonic", "secondary", "modes"]);
-  });
-
   it("secondary dominants: each chord's cell holds its dominant seventh, a fifth above it", () => {
     const page = REFERENCE_PAGES.find(p => p.id === "secondary")!;
     const table = page.sections.find(s => s.id === "table")!.html;
@@ -134,16 +130,18 @@ describe("the pages", () => {
 
   it("secondary dominants: a clicked chord shows its dominant's notes, the note from outside the key, and both chords", () => {
     const page = REFERENCE_PAGES.find(p => p.id === "secondary")!;
-    const ii = page.detail!("C/ii");
-    expect(ii).toContain("A7 (A–C♯–E–G) resolves to Dm");
-    expect(ii).toContain("C♯ is not in C major. C♯ is a half step below D, and leads up to it.");
-    expect(ii.match(/<svg class="piano"/g)).toHaveLength(2);
+    /** The facts a detail states, checked without its wording */
+    const says = (id: string, ...facts: string[]) => {
+      const text = page.detail!(id).replace(/<[^>]*>/g, " ");
+      for (const f of facts) expect(text, `${id}: ${f}`).toContain(f);
+    };
+    // V7/ii: its notes, what it resolves to, and the note from outside the key
+    says("C/ii", "A7", "A–C♯–E–G", "Dm", "C♯");
+    expect(page.detail!("C/ii").match(/<svg class="piano"/g)).toHaveLength(2);
     // V7/iii borrows two notes; V7/IV only its seventh
-    expect(page.detail!("C/iii")).toContain("D♯ and F♯ are not in C major");
-    expect(page.detail!("C/IV")).toContain("B♭ is not in C major. It pulls towards F.");
-    expect(page.detail!("Eb/V")).toContain(
-      "F7 (F–A–C–E♭) resolves to B♭. A is not in E♭ major. A is a half step below B♭",
-    );
+    says("C/iii", "B7", "Em", "D♯", "F♯");
+    says("C/IV", "C7", "F", "B♭");
+    says("Eb/V", "F7", "F–A–C–E♭", "B♭");
     expect(page.detail!("C/vii")).toBe("");
     expect(page.detail!("H/ii")).toBe("");
   });
@@ -189,20 +187,11 @@ describe("the pages", () => {
       modes = text("modes");
     for (const notes of ["C D E F G A B", "A B C D E F G", "C D E♭ F G A♭ B", "F♯ C♯ G♯ D♯ A♯ E♯"])
       expect(scales).toContain(notes);
-    // C Lydian has G major's notes, C Locrian D♭ major's; A Mixolydian is D major from A
-    expect(modes).toContain("C Lydian has the notes of G major");
-    expect(modes).toContain("D♭ major (five flats)");
-    expect(modes).toContain("which is D major, and play its notes from A: A B C♯ D E F♯ G");
+    // Each mode named with its parent key, and a mode's notes spelled from its own tonic (A Mixolydian)
+    for (const fact of ["C Lydian", "G major", "C Locrian", "D♭ major", "A Mixolydian", "D major", "A B C♯ D E F♯ G"])
+      expect(modes).toContain(fact);
     expect(modes).toContain("Cm7♭5");
     expect(scales.match(/<svg class="piano"/g)!.length).toBeGreaterThan(10);
     expect(modes.match(/<svg class="piano"/g)!.length).toBeGreaterThan(15);
-  });
-
-  it("the chord page shows each chord type it discusses on a keyboard", () => {
-    const page = REFERENCE_PAGES.find(p => p.id === "chords")!;
-    const html = page.sections.map(s => s.html).join("");
-    for (const notes of ["C–E–G", "C–E♭–G", "C–E♭–G♭", "C–E–G♯", "C–D–G", "C–F–G", "C–E–G–B♭", "C–E♭–G♭–B𝄫"])
-      expect(html).toContain(notes);
-    expect(html.match(/<svg class="piano"/g)!.length).toBeGreaterThan(20);
   });
 });

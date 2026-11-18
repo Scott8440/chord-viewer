@@ -15,7 +15,7 @@ import {
 } from "../src/exercises/earTraining";
 import { initialNotePractice, reduceNotePractice } from "../src/exercises/notePractice";
 import { earDrillBody, melodyDrillBody } from "../src/progress/records";
-import { createAppState, reduceApp } from "../src/state/app";
+import { createAppState } from "../src/state/app";
 import { KEY_MAJORS } from "../src/theory";
 
 const seq = (...values: number[]) => {
@@ -102,9 +102,11 @@ describe("degreeNote", () => {
 });
 
 describe("options", () => {
-  it("defaults to a random tonic, degrees 1 and 5, and 3-note melodies", () => {
-    expect(sanitizeEarOptions(undefined)).toEqual({ tonic: "random", degrees: ["1", "5"], melodyLength: 3 });
-    expect(createAppState().settings.ear).toEqual({ tonic: "random", degrees: ["1", "5"], melodyLength: 3 });
+  it("start at the same defaults whether nothing or nonsense is saved", () => {
+    const defaults = sanitizeEarOptions(undefined);
+    expect(createAppState().settings.ear).toEqual(defaults);
+    expect(sanitizeEarOptions({ tonic: "H", degrees: ["9"], melodyLength: 99 })).toEqual(defaults);
+    expect(defaults.degrees.length).toBeGreaterThan(0);
   });
 
   it("keeps known degrees in scale order and rejects unknown tonics and lengths", () => {
@@ -118,18 +120,6 @@ describe("options", () => {
       degrees: ["1", "5"],
       melodyLength: 5,
     });
-  });
-
-  it("is set through the app reducer, ignoring no-op changes", () => {
-    const s = reduceApp(createAppState(), { type: "setEarOptions", options: { degrees: ["1", "3", "5"] } });
-    expect(s.settings.ear.degrees).toEqual(["1", "3", "5"]);
-    expect(reduceApp(s, { type: "setEarOptions", options: { degrees: ["5", "3", "1"] } })).toBe(s);
-    expect(createAppState({ ear: { tonic: "Bb", degrees: ["1", "4"] } }).settings.ear).toEqual({
-      tonic: "Bb",
-      degrees: ["1", "4"],
-      melodyLength: 3,
-    });
-    expect(reduceApp(s, { type: "setEarOptions", options: { melodyLength: 6 } }).settings.ear.melodyLength).toBe(6);
   });
 });
 

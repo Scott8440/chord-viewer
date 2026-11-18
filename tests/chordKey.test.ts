@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CHORD_KEYS, pickChordKey, sanitizeChordKey } from "../src/exercises/chordPractice";
 import { diatonicChords, makeDiatonicNamePrompt } from "../src/exercises/romanPrompts";
 import { chordDrillBody } from "../src/progress/records";
-import { createAppState, reduceApp } from "../src/state/app";
+import { createAppState } from "../src/state/app";
 import { buildKey } from "../src/theory";
 
 const seq = (...values: number[]) => {
@@ -19,12 +19,6 @@ describe("chord key option", () => {
     expect(sanitizeChordKey("F#:minor")).toBe("F#:minor");
     expect(createAppState().settings.chordKey).toBe("none");
     expect(createAppState({ chordKey: "random" }).settings.chordKey).toBe("random");
-  });
-
-  it("is set through the app reducer, ignoring no-op changes", () => {
-    const s = reduceApp(createAppState(), { type: "setChordKey", value: "Eb:major" });
-    expect(s.settings.chordKey).toBe("Eb:major");
-    expect(reduceApp(s, { type: "setChordKey", value: "Eb:major" })).toBe(s);
   });
 
   it("picks no key for none, the chosen key, or a random key other than the last", () => {

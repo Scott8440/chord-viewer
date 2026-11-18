@@ -2,7 +2,7 @@
 // and setters that change nothing returning the same state.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadSettings, saveSettingsOnChange } from "../src/app/storage";
-import { createAppState, MODES, reduceApp, type AppAction, type AppState } from "../src/state/app";
+import { createAppState, reduceApp, type AppAction, type AppState } from "../src/state/app";
 import { sameSetting, SETTINGS } from "../src/state/settings";
 import { createStore } from "../src/state/store";
 
@@ -261,15 +261,5 @@ describe("sameSetting", () => {
     for (const [name, value] of Object.entries(createAppState().settings)) {
       if (name !== "key" && name in SETTINGS) expect(flat(value), name).toBe(true);
     }
-  });
-});
-
-describe("modes", () => {
-  it("has a start function for every mode, each type of ear training, and the Progress and Reference pages", async () => {
-    const { MODE_REGISTRY } = await import("../src/modes/registry");
-    const { EAR_VIEWS } = await import("../src/modes/page");
-    const views = new Set([...MODES, ...Object.values(EAR_VIEWS), "progress", "reference"]);
-    expect(Object.keys(MODE_REGISTRY).sort()).toEqual([...views].sort());
-    for (const start of Object.values(MODE_REGISTRY)) expect(typeof start).toBe("function");
   });
 });

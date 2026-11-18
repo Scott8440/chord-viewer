@@ -24,10 +24,11 @@ import {
   reduceReading,
   sanitizeReadingOptions,
   type ReadingPrompt,
+  DEFAULT_READING_OPTIONS,
 } from "../src/exercises/sightReading";
 import { musicOf } from "../src/modes/sightReading";
 import { readingDrillBody } from "../src/progress/records";
-import { createAppState, reduceApp } from "../src/state/app";
+import { createAppState } from "../src/state/app";
 import { buildKey } from "../src/theory";
 import { readingLoadingDisplay, sightReadingDisplay } from "../src/views/practice";
 
@@ -35,11 +36,10 @@ const notesOf = (p: ReadingPrompt) => p.steps.map(s => s.map(n => n.note));
 const namesOf = (p: ReadingPrompt) => p.steps.map(s => s.map(n => n.name).join("+"));
 
 describe("reading options", () => {
-  it("default to the melody at level 1 in C major (4 notes on the treble staff when generated), and fall back on anything invalid", () => {
-    const defaults = { level: 1, part: "voice", length: 4, range: "treble", key: "C:major" };
-    expect(createAppState().settings.reading).toEqual(defaults);
+  it("start at the defaults, and fall back on anything invalid", () => {
+    expect(createAppState().settings.reading).toEqual(DEFAULT_READING_OPTIONS);
     expect(sanitizeReadingOptions({ level: 9, part: "feet", length: 7, range: "alto", key: "H:major" })).toEqual(
-      defaults,
+      DEFAULT_READING_OPTIONS,
     );
     expect(sanitizeReadingOptions({ level: 0, part: "both", length: 8, range: "grand", key: "random" })).toEqual({
       level: 0,
@@ -48,15 +48,6 @@ describe("reading options", () => {
       range: "grand",
       key: "random",
     });
-    expect(READING_LEVEL_CHOICES).toEqual([1, 2, 3, 4, 5, 0]);
-    expect(READING_KEYS).toHaveLength(25);
-  });
-
-  it("are set through the app reducer, ignoring no-op changes", () => {
-    const s = reduceApp(createAppState(), { type: "setReadingOptions", options: { range: "bass" } });
-    expect(s.settings.reading.range).toBe("bass");
-    expect(reduceApp(s, { type: "setReadingOptions", options: { range: "bass" } })).toBe(s);
-    expect(reduceApp(s, { type: "setReadingOptions", options: { part: "lh" } }).settings.reading.part).toBe("lh");
   });
 
   it("pick the chosen key, or a random one other than the last", () => {

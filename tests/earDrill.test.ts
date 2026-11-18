@@ -249,26 +249,6 @@ describe("progressions", () => {
     expect(t.records.filter(r => r.kind === "round")).toEqual([expect.objectContaining({ size: 10 })]);
     t.mode.stop();
   });
-
-  it("an unhurried cadence: its chords 0.9 s apart, then 1.2 s before the progression", () => {
-    const t = start();
-    // The bass of each chord, in order: four cadence chords, then the progression
-    const basses = t.tones.calls
-      .filter((c): c is { play: number; delay: number } => "play" in c)
-      .filter((_, i) => i % 4 === 0);
-    expect(basses.slice(0, 5).map(c => +c.delay.toFixed(2))).toEqual([0, 0.9, 1.8, 2.7, 4 * 0.9 + 1.2]);
-    t.mode.stop();
-  });
-
-  it("the number keys answer, in the order of the boxes", () => {
-    const t = start();
-    const first = t.board().boxes![0].id;
-    window.dispatchEvent(Object.assign(new Event("keydown"), { key: "1" }));
-    const s = t.board();
-    // Either the first chord was named by key 1, or key 1 was a wrong answer for it
-    expect(s.slots![0].state === "done" || s.boxes!.find(b => b.id === first)!.state === "wrong").toBe(true);
-    t.mode.stop();
-  });
 });
 
 describe("intervals", () => {

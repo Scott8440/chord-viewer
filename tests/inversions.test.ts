@@ -10,7 +10,6 @@ import {
 import type { ChordPrompt } from "../src/exercises/chordPrompt";
 import { inversionTones, withInversion } from "../src/exercises/inversions";
 import { makeRomanPrompt } from "../src/exercises/romanPrompts";
-import { createAppState, reduceApp } from "../src/state/app";
 import { buildKey } from "../src/theory";
 import { chordPracticeDisplay, inversionFigures } from "../src/views/practice";
 
@@ -105,11 +104,5 @@ describe("inversion display and feedback", () => {
     );
     const done = run(initialChordPractice(inv(V7inG, 1)), held(42, 50, 57, 60)); // F# D A C
     expect(chordPracticeDisplay(done, null).feedback).toBe("✓ D7/F♯");
-  });
-
-  it("is a setting", () => {
-    const s = createAppState();
-    expect(s.settings.inversions).toBe(false);
-    expect(reduceApp(s, { type: "setInversions", on: true }).settings.inversions).toBe(true);
   });
 });

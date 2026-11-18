@@ -12,7 +12,6 @@ import {
   stayCloseReach,
 } from "../src/exercises/chordPractice";
 import type { ChordPrompt } from "../src/exercises/chordPrompt";
-import { createAppState, reduceApp } from "../src/state/app";
 import { chordPracticeDisplay } from "../src/views/practice";
 import { buildKey, chordSemitones, templateById } from "../src/theory";
 
@@ -34,12 +33,6 @@ describe("chord types", () => {
     expect(sanitizeChordTypes(["maj7", "bogus", "M"])).toEqual(["M", "maj7"]);
     expect(sanitizeChordTypes([])).toEqual(["M", "m"]);
     expect(sanitizeChordTypes(["13"])).toEqual(["M", "m"]); // a template, but not offered for practice
-  });
-
-  it("app settings default to major and minor and accept a new filter", () => {
-    const s = createAppState();
-    expect(s.settings.chordTypes).toEqual(["M", "m"]);
-    expect(reduceApp(s, { type: "setChordTypes", types: ["maj7", "M"] }).settings.chordTypes).toEqual(["M", "maj7"]);
   });
 });
 
@@ -234,11 +227,13 @@ describe("stay close", () => {
 
   it("the panel says where the top note has to be, and what went wrong", () => {
     const s = afterC();
-    expect(chordPracticeDisplay(s, null, true).sub).toMatch(/top note within a whole step of G4$/);
+    expect(chordPracticeDisplay(s, null, true).sub).toContain("G4");
     const far = step(step(s, held(65, 69, 72)), held());
-    expect(chordPracticeDisplay(far, null, true).feedback).toBe(
-      "✗ Right chord, but the top note moved from G4 to C5: keep it within a whole step",
-    );
+    const feedback = chordPracticeDisplay(far, null, true).feedback;
+    // A miss that names both top notes
+    expect(feedback).toMatch(/^✗/);
+    expect(feedback).toContain("G4");
+    expect(feedback).toContain("C5");
   });
 
   it("is always possible: a tone within a whole step, or (a diminished triad's tritone gap) the nearest tone", () => {

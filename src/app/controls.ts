@@ -119,11 +119,6 @@ export function bindControls(store: AppStore) {
     s => s.keyValue,
     value => ({ type: "setKey", value }),
   );
-  bindSelect(
-    $("modeSel"),
-    s => s.mode,
-    mode => ({ type: "setMode", mode: mode as ModeId }),
-  );
   bindCheckbox(
     $("optPedal"),
     s => s.includeSustained,

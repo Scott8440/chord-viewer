@@ -78,6 +78,8 @@ Layers that only talk through data. Read the file before changing a layer; this 
   in `Settings`, an entry in `SETTINGS`, an action. `src/app/storage.ts` saves each setting only when it changes;
   `sameSetting` is the equality used. Controls are bound in `src/app/controls.ts`; exercise options are tagged
   `data-option` and shown only when the exercise lists them.
+- **Mode picker** (`src/views/modePicker.ts`): the header's Mode button opens a dialog of tiles; `MODE_INFO` (name,
+  one line, 24×24 SVG icon) is typed by mode id, so a new mode needs a tile.
 - **Mode registry and page setup:** `src/modes/registry.ts`, `src/modes/page.ts`. The Progress page is a view, not a
   mode (`AppState.page`, not saved; `viewOf`), started like a mode so the running mode stops.
 - **Prompt recording** (`src/modes/promptRecords.ts`): times each drill prompt from when it's shown and records it

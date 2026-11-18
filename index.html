@@ -11,22 +11,7 @@
       <h1>Chord Display</h1>
       <div id="status"><span class="dot" id="statusDot"></span><span id="statusText">Starting…</span></div>
       <div id="inputs"></div>
-      <label class="pick"
-        >Mode
-        <select id="modeSel">
-          <option value="free">Free play</option>
-          <option value="reading">Sight reading</option>
-          <option value="chords">Chord practice</option>
-          <option value="progressions">Progression practice</option>
-          <option value="scales">Scale practice</option>
-          <option value="diatonic">Diatonic chords</option>
-          <option value="fiveFinger">Five-finger patterns</option>
-          <option value="arpeggios">Arpeggios</option>
-          <option value="brokenChords">Broken chords</option>
-          <option value="routines">Routines</option>
-          <option value="ear">Ear training</option>
-        </select>
-      </label>
+      <button id="modeBtn" class="modeBtn" title="Choose a mode"></button>
       <button id="progressBtn" title="Your practice history, as charts" aria-pressed="false">Progress</button>
       <button id="referenceBtn" title="Music theory reference" aria-pressed="false">Reference</button>
       <label class="pick" id="keyPick" title="Key for free play"
@@ -371,5 +356,6 @@
         <span id="historyNote"></span
       ></span>
     </footer>
+    <dialog id="modePicker" aria-label="Choose a mode"></dialog>
   </body>
 </html>

@@ -30,6 +30,7 @@ import { createCircleView } from "./views/circleOfFifths";
 import { createAnswerBoard } from "./views/answerBoard";
 import { createRoundVizView } from "./views/roundViz";
 import { createLadderPick } from "./views/ladderPick";
+import { createModePicker } from "./views/modePicker";
 import { createDegreePad } from "./views/degreePad";
 import { createDegreeCircle } from "./views/degreeCircle";
 import { createHeaderView } from "./views/header";
@@ -79,6 +80,12 @@ const degreeCircle = createDegreeCircle($("degreeCircle"));
 const answerBoard = createAnswerBoard($("answerBoard"));
 const roundViz = createRoundVizView($("roundViz"));
 const ladderPick = createLadderPick($<HTMLSelectElement>("earChordLevel"));
+// The mode picker: the header's Mode button and its panel of tiles
+const modePicker = createModePicker($<HTMLDialogElement>("modePicker"), $("modeBtn"), mode =>
+  store.dispatch({ type: "setMode", mode }),
+);
+modePicker.render(store.getState().settings.mode);
+store.subscribe(s => modePicker.render(s.settings.mode));
 const progressionLadderPick = createLadderPick($<HTMLSelectElement>("earProgLevel"));
 const intervalLadderPick = createLadderPick($<HTMLSelectElement>("earIntervalLevel"));
 // Its taps are answers, never MIDI-mapped keys, so they skip the mapper

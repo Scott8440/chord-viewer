@@ -155,6 +155,139 @@ header h1 {
 #beat .b.lit {
   background: var(--accent);
 }
+/* The Mode button and its picker (src/views/modePicker.ts) */
+.modeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  padding: 6px 12px;
+}
+.modeBtn .modeIcon {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+}
+.modeBtn .mpCaret {
+  color: var(--muted);
+  font-size: 12px;
+}
+#modePicker {
+  width: min(1120px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  margin: auto;
+  padding: 20px 28px 28px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--text);
+  overflow-y: auto;
+}
+#modePicker::backdrop {
+  background: rgba(8, 9, 11, 0.7);
+}
+#modePicker .mpHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#modePicker h2 {
+  margin: 0;
+  font:
+    500 26px Georgia,
+    "Times New Roman",
+    serif;
+}
+#modePicker .mpClose {
+  border: none;
+  font-size: 20px;
+  color: var(--muted);
+  padding: 4px 10px;
+}
+#modePicker .mpTiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+#modePicker .mpGroup {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+#modePicker .mpTile {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+  cursor: pointer;
+}
+#modePicker .mpTile .modeIcon {
+  width: 44px;
+  height: 44px;
+  color: var(--accent);
+}
+#modePicker .mpName {
+  font-size: 15px;
+  font-weight: 600;
+}
+#modePicker .mpAbout {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+#modePicker .mpTile.current {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+@media (hover: hover) {
+  #modePicker .mpTile:hover {
+    border-color: var(--muted);
+    background: #1a1d22;
+  }
+}
+#modePicker .mpTile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 760px) {
+  #modePicker {
+    padding: 16px;
+  }
+  /* Three to a row, not square, names only */
+  #modePicker .mpTiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  #modePicker .mpTile {
+    aspect-ratio: auto;
+    min-height: 104px;
+    padding: 10px 6px;
+    gap: 6px;
+  }
+  #modePicker .mpTile .modeIcon {
+    width: 30px;
+    height: 30px;
+  }
+  #modePicker .mpName {
+    font-size: 13px;
+  }
+  #modePicker .mpAbout,
+  #modePicker .mpGroup {
+    display: none;
+  }
+}
+
 /* Latency calibration dialog */
 #calibration {
   width: min(460px, calc(100vw - 32px));

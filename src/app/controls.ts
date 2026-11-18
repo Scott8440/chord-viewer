@@ -17,7 +17,7 @@ import {
   requireRoutine,
   type CircleDirection,
 } from "../exercises/routines";
-import type { MinorForm, ScaleHands, ScaleOctaves } from "../exercises/scales";
+import type { MinorForm, ScaleHands, ScaleKind, ScaleOctaves } from "../exercises/scales";
 import { PROGRESSION_LENGTHS, tonicName } from "../exercises/progressionEar";
 import { INTERVAL_GROUPS, type IntervalPlay } from "../exercises/intervalEar";
 import type { ArpeggioInversion } from "../exercises/technique";
@@ -179,6 +179,11 @@ export function bindControls(store: AppStore) {
     $("exInversion"),
     s => String(s.exercise.inversion),
     v => setExercise({ inversion: Number(v) as ArpeggioInversion }),
+  );
+  bindSelect(
+    $("exScale"),
+    s => s.exercise.scale,
+    v => setExercise({ scale: v as ScaleKind }),
   );
   bindSelect(
     $("exHands"),
@@ -473,7 +478,11 @@ export function showControls(state: AppState) {
   $("exerciseOptions").hidden = !used.size;
   for (const el of document.querySelectorAll<HTMLElement>("#exerciseOptions [data-option]")) {
     const option = el.dataset.option as ExerciseOption;
-    el.hidden = !used.has(option) || (option === "minorForm" && !ex.keys.some(k => k.endsWith(":minor")));
+    // The minor form matters only for the key's own scale in a minor key
+    el.hidden =
+      !used.has(option) ||
+      (option === "minorForm" &&
+        (!ex.keys.some(k => k.endsWith(":minor")) || (ex.ownKey && s.exercise.scale === "chromatic")));
   }
   $("metronomeDetails").hidden = !s.exercise.metronome;
 }

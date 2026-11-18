@@ -23,7 +23,6 @@
           <option value="fiveFinger">Five-finger patterns</option>
           <option value="arpeggios">Arpeggios</option>
           <option value="brokenChords">Broken chords</option>
-          <option value="chromatic">Chromatic scale</option>
           <option value="routines">Routines</option>
           <option value="ear">Ear training: scale degrees</option>
           <option value="earMelody">Ear training: melodies</option>
@@ -271,6 +270,13 @@
                 <option value="0">Root (root position)</option>
                 <option value="1">3rd (first inversion)</option>
                 <option value="2">5th (second inversion)</option>
+              </select>
+            </label>
+            <label class="pick" data-option="scale"
+              >Scale
+              <select id="exScale">
+                <option value="key">The key's scale</option>
+                <option value="chromatic">Chromatic, from the key's note</option>
               </select>
             </label>
             <label class="pick" data-option="hands"

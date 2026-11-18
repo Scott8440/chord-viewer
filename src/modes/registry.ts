@@ -78,7 +78,6 @@ export const MODE_REGISTRY: Record<View, (deps: ModeDeps) => Mode> = {
   fiveFinger: deps => startSequencePractice({ ...deps, id: "fiveFinger" }),
   arpeggios: deps => startSequencePractice({ ...deps, id: "arpeggios" }),
   brokenChords: deps => startSequencePractice({ ...deps, id: "brokenChords" }),
-  chromatic: deps => startSequencePractice({ ...deps, id: "chromatic" }),
   routines: startRoutinePractice,
   ear: startEarTraining,
   earMelody: startEarMelody,

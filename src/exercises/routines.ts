@@ -139,9 +139,10 @@ export function requireRoutine(id: string): Routine {
   return r;
 }
 
-/** The playable exercise for an item: the item's own options over the player's settings. */
+/** The playable exercise for an item: the item's own options over the player's settings. A routine's scales are always
+ *  the key's own scale (its name says which), whatever scale practice is set to. */
 export function itemExercise(item: RoutineItem, base: ExerciseOptions): SequenceExercise {
-  return PRESCRIPTIVE[item.exercise].build(sanitizeExerciseOptions({ ...base, ...item.options }));
+  return PRESCRIPTIVE[item.exercise].build(sanitizeExerciseOptions({ ...base, scale: "key", ...item.options }));
 }
 
 /** An item's outcome: its run's result, or "skipped" */

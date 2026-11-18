@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_EXERCISE_OPTIONS, PRESCRIPTIVE } from "../src/exercises/prescriptive";
 import { handsTogetherExercise } from "../src/exercises/scales";
 import { upgradeRecord } from "../src/progress/records";
+import { exerciseLabel } from "../src/progress/stats";
 import { createAppState } from "../src/state/app";
 import { initialSequence, reduceSequence, type SequenceAction, type SequenceState } from "../src/exercises/sequence";
 import { buildKey } from "../src/theory";
@@ -126,5 +127,54 @@ describe("an option of scale practice", () => {
     expect(createAppState({ mode: "handsTogether" }).settings.mode).toBe("scales");
     const run = upgradeRecord({ id: "x", v: 1, at: 1, device: "d", kind: "run", exercise: "handsTogether" });
     expect(run).toMatchObject({ exercise: "scales" });
+  });
+});
+
+describe("the chromatic scale, an option of scale practice", () => {
+  const build = (o: Partial<typeof DEFAULT_EXERCISE_OPTIONS>) =>
+    PRESCRIPTIVE.scales.build({ ...DEFAULT_EXERCISE_OPTIONS, ...o });
+
+  it("one hand: every half step from the key's note, up and back down", () => {
+    const e = build({ key: "E:major", scale: "chromatic" });
+    expect(e.id).toBe("chromatic:E:1");
+    expect(e.steps).toHaveLength(25);
+  });
+
+  it("both hands: parallel or contrary, sharps going up and flats coming down", () => {
+    const parallel = build({ scale: "chromatic", hands: "parallel" });
+    expect(parallel.steps).toHaveLength(25);
+    expect(parallel.steps.slice(0, 3).map(s => (s.kind === "notes" ? s.names.join("+") : ""))).toEqual([
+      "C+C",
+      "C#+C#",
+      "D+D",
+    ]);
+    const contrary = build({ scale: "chromatic", hands: "contrary" });
+    // Out: right hand up in sharps, left hand down in flats
+    expect(contrary.steps.slice(0, 3).map(s => (s.kind === "notes" ? s.names.join("+") : ""))).toEqual([
+      "C",
+      "B+C#",
+      "Bb+D",
+    ]);
+    expect(contrary.title).toBe("C chromatic scale, contrary motion");
+  });
+
+  it("the old chromatic mode opens scale practice; its runs read back as scale practice, labelled as before", () => {
+    expect(createAppState({ mode: "chromatic" }).settings.mode).toBe("scales");
+    const run = upgradeRecord({ id: "x", v: 1, at: 1, device: "d", kind: "run", exercise: "chromatic" });
+    expect(run).toMatchObject({ exercise: "scales" });
+    expect(
+      exerciseLabel({ exercise: "scales", exerciseId: "hands:C:major::2:contrary", title: "C major, contrary motion" }),
+    ).toBe("C major, contrary motion, 2 octaves");
+    expect(exerciseLabel({ exercise: "scales", exerciseId: "scale:C:major::1", title: "C major" })).toBe(
+      "C major scale, 1 octave",
+    );
+  });
+});
+
+describe("routines", () => {
+  it("play the key's own scale even with scale practice set to chromatic", async () => {
+    const { itemExercise, routineById } = await import("../src/exercises/routines");
+    const item = routineById("scales-chromatic")!.items("sharps")[0];
+    expect(itemExercise(item, { ...DEFAULT_EXERCISE_OPTIONS, scale: "chromatic" }).id).toMatch(/^scale:/);
   });
 });

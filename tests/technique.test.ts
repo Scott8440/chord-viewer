@@ -102,7 +102,8 @@ describe("as prescriptive exercises", () => {
     expect(
       exerciseLabel({ exercise: "arpeggios", exerciseId: "arpeggio:G:major:1:2", title: "G major arpeggio" }),
     ).toBe("G major arpeggio, first inversion, 2 octaves");
-    expect(exerciseLabel({ exercise: "chromatic", exerciseId: "chromatic:C:1", title: "Chromatic scale from C" })).toBe(
+    // Chromatic scales are scale practice now (old runs are read back as such)
+    expect(exerciseLabel({ exercise: "scales", exerciseId: "chromatic:C:1", title: "Chromatic scale from C" })).toBe(
       "Chromatic scale from C, 1 octave",
     );
     const items = routineById("technique-circle")!.items("sharps");

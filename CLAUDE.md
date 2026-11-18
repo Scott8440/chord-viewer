@@ -27,7 +27,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 555 tests (54 voicings) should pass
+npm test           # Vitest: 559 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -100,7 +100,8 @@ Layers that only talk through data. Read the file before changing a layer; this 
   their key, every other option comes from the player's exercise settings. `PROGRESSIONS` (`progressions.ts`) is
   likewise a shared list with deliberately no user selector.
 - **Hands together** (`handsTogetherExercise` in `src/exercises/scales.ts`; scale practice's `hands` option, "one" by
-  default; the old `handsTogether` mode id and run records map to scales): scales with both hands, parallel an octave apart or contrary from a shared tonic (each hand's minor form by its
+  default; the old `handsTogether` and `chromatic` mode ids and run records map to scales; option `scale` picks the
+  key's scale or chromatic, and routines always use the key's): scales with both hands, parallel an octave apart or contrary from a shared tonic (each hand's minor form by its
   direction). Built from `notes` steps (`src/exercises/sequence.ts`): exact notes together, octave set by the first
   step, done once all are held (keys still down from the step before are fine), a stray note a mistake at once. Runs
   report how far apart the hands landed (`handsApartMs`, the median).

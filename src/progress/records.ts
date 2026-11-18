@@ -436,7 +436,8 @@ export function upgradeRecord(raw: unknown): ProgressRecord | null {
   if (v > RECORD_VERSION) return null;
   // Version 1 is current; upgrades from older versions go here as the schema changes
   // Scales with both hands were briefly an exercise of their own ("handsTogether"); they're scale practice now
-  if (kind === "run" && raw.exercise === "handsTogether")
+  // and the chromatic scale too ("chromatic")
+  if (kind === "run" && (raw.exercise === "handsTogether" || raw.exercise === "chromatic"))
     return { ...raw, exercise: "scales" } as unknown as ProgressRecord;
   return raw as unknown as ProgressRecord;
 }

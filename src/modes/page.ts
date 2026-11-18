@@ -39,7 +39,6 @@ export const PAGE_SETUP: Record<ModeId, PageSetup> = {
   fiveFinger: TIMED,
   arpeggios: TIMED,
   brokenChords: TIMED,
-  chromatic: TIMED,
   routines: TIMED,
   ear: { ...PRACTICE, stage: "degrees" },
   earMelody: PRACTICE,

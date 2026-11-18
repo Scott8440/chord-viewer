@@ -7,11 +7,13 @@ import { diatonicChordsExercise, tonicTriadExercise } from "./diatonicChords";
 import {
   handsTogetherExercise,
   SCALE_HANDS,
+  SCALE_KINDS,
   MINOR_FORMS,
   SCALE_OCTAVES,
   scaleExercise,
   type MinorForm,
   type ScaleHands,
+  type ScaleKind,
   type ScaleOctaves,
 } from "./scales";
 import type { SequenceExercise } from "./sequence";
@@ -35,6 +37,8 @@ export interface ExerciseOptions {
   minorForm: MinorForm;
   /** Scales, arpeggios, broken chords, chromatic: how many octaves */
   octaves: ScaleOctaves;
+  /** Scales: the key's scale, or the chromatic scale from its tonic */
+  scale: ScaleKind;
   /** Scales: one hand, or both together (an octave apart in the same direction, or contrary motion from a shared note) */
   hands: ScaleHands;
   /** Arpeggios: start from the root, 3rd or 5th */
@@ -62,6 +66,7 @@ export const DEFAULT_EXERCISE_OPTIONS: ExerciseOptions = {
   progression: "circle-sharps",
   minorForm: "natural",
   octaves: 1,
+  scale: "key",
   hands: "one",
   inversion: 0,
   sevenths: false,
@@ -83,6 +88,7 @@ export function sanitizeExerciseOptions(raw: unknown): ExerciseOptions {
       : d.progression,
     minorForm: (MINOR_FORMS as readonly unknown[]).includes(o.minorForm) ? (o.minorForm as MinorForm) : d.minorForm,
     octaves: (SCALE_OCTAVES as readonly unknown[]).includes(o.octaves) ? (o.octaves as ScaleOctaves) : d.octaves,
+    scale: (SCALE_KINDS as readonly unknown[]).includes(o.scale) ? (o.scale as ScaleKind) : d.scale,
     hands: (SCALE_HANDS as readonly unknown[]).includes(o.hands) ? (o.hands as ScaleHands) : d.hands,
     inversion: (ARPEGGIO_INVERSIONS as readonly unknown[]).includes(o.inversion)
       ? (o.inversion as ArpeggioInversion)
@@ -118,10 +124,12 @@ export const PRESCRIPTIVE = {
     short: "scale",
     chords: false,
     build: o =>
-      o.hands === "one"
-        ? scaleExercise(requireKey(o.key), o.minorForm, o.octaves)
-        : handsTogetherExercise(requireKey(o.key), o.minorForm, o.octaves, o.hands),
-    options: ["key", "progression", "hands", "octaves", "minorForm", "metronome"],
+      o.hands !== "one"
+        ? handsTogetherExercise(requireKey(o.key), o.minorForm, o.octaves, o.hands, o.scale)
+        : o.scale === "chromatic"
+          ? chromaticExercise(requireKey(o.key), o.octaves)
+          : scaleExercise(requireKey(o.key), o.minorForm, o.octaves),
+    options: ["key", "progression", "scale", "hands", "octaves", "minorForm", "metronome"],
   },
   diatonic: {
     short: "chords",
@@ -153,12 +161,6 @@ export const PRESCRIPTIVE = {
     chords: true,
     build: o => tonicTriadExercise(requireKey(o.key), o.rootPosition),
     options: ["rootPosition", "metronome"],
-  },
-  chromatic: {
-    short: "chromatic",
-    chords: false,
-    build: o => chromaticExercise(requireKey(o.key), o.octaves),
-    options: ["key", "progression", "octaves", "metronome"],
   },
 } satisfies Record<string, PrescriptiveExercise>;
 

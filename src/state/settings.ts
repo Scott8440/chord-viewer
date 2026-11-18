@@ -21,7 +21,6 @@ export const MODES = [
   "fiveFinger",
   "arpeggios",
   "brokenChords",
-  "chromatic",
   "routines",
   "ear",
   "earMelody",
@@ -110,7 +109,8 @@ export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> }
   // Sight reading's mode id was "notes"; scales with both hands were a mode of their own, now a scale option
   mode: {
     storage: saved("mode", "string"),
-    sanitize: v => oneOf(MODES, v === "notes" ? "reading" : v === "handsTogether" ? "scales" : v, "free"),
+    sanitize: v =>
+      oneOf(MODES, v === "notes" ? "reading" : v === "handsTogether" || v === "chromatic" ? "scales" : v, "free"),
   },
   chordTypes: {
     storage: saved("chordTypes", "json"),

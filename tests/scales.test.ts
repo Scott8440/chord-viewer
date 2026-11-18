@@ -201,6 +201,7 @@ describe("exercise settings", () => {
       progression: "circle-sharps",
       minorForm: "natural",
       octaves: 1,
+      scale: "key",
       hands: "one",
       inversion: 0,
       sevenths: false,

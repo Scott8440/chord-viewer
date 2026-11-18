@@ -52,6 +52,19 @@ export const SCALE_HANDS = ["one", "parallel", "contrary"] as const;
 export type ScaleHands = (typeof SCALE_HANDS)[number];
 export type HandMotion = Exclude<ScaleHands, "one">;
 
+/** Which scale: the key's own (major, or the chosen minor form), or the chromatic scale from the key's tonic */
+export const SCALE_KINDS = ["key", "chromatic"] as const;
+export type ScaleKind = (typeof SCALE_KINDS)[number];
+
+/** The chromatic scale's notes: sharps going up, flats coming down */
+const SHARPS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const FLATS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+/** The twelve notes from a tonic, spelled one way, the tonic as written */
+const chromaticFrom = (tonic: string, names: readonly string[]) => {
+  const t = chromaOf(tonic);
+  return Array.from({ length: 12 }, (_, i) => (i === 0 ? tonic : names[(t + i) % 12]));
+};
+
 /**
  * A scale with both hands together, as a run of notes played together (one per hand). Parallel: the left hand an
  * octave below the right, up and back down. Contrary: both thumbs on the tonic, the right hand going up while the left
@@ -62,10 +75,14 @@ export function handsTogetherExercise(
   minorForm: MinorForm,
   octaves: ScaleOctaves,
   motion: HandMotion,
+  kind: ScaleKind = "key",
 ): SequenceExercise<NotesStep> {
   const tonic = key.tonic;
   let up: readonly string[], down: readonly string[];
-  if (key.mode === "major") {
+  if (kind === "chromatic") {
+    up = chromaticFrom(tonic, SHARPS);
+    down = chromaticFrom(tonic, FLATS);
+  } else if (key.mode === "major") {
     up = down = Key.majorKey(tonic).scale;
   } else {
     const k = Key.minorKey(tonic);
@@ -102,10 +119,13 @@ export function handsTogetherExercise(
     rhOut.forEach((n, i) => steps.push(together(n, lhOut[i])));
     rhBack.forEach((n, i) => i > 0 && steps.push(together(n, lhBack[i])));
   }
-  const form = key.mode === "major" ? "major" : `${minorForm} minor`;
+  const form = kind === "chromatic" ? "chromatic scale" : key.mode === "major" ? "major" : `${minorForm} minor`;
   const span = octaves === 1 ? "one octave" : "two octaves";
   return {
-    id: `hands:${tonic}:${key.mode}:${key.mode === "minor" ? minorForm : ""}:${octaves}:${motion}`,
+    id:
+      kind === "chromatic"
+        ? `hands:${tonic}:chromatic::${octaves}:${motion}`
+        : `hands:${tonic}:${key.mode}:${key.mode === "minor" ? minorForm : ""}:${octaves}:${motion}`,
     title: `${tonic} ${form}, ${motion === "parallel" ? "hands together" : "contrary motion"}`,
     instruction:
       motion === "parallel"

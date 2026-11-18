@@ -114,8 +114,11 @@ export interface ExerciseOption {
 export function exerciseLabel(r: Pick<RunBody, "exercise" | "exerciseId" | "title">): string {
   const parts = r.exerciseId.split(":");
   if (r.exercise === "scales") {
-    const octaves = Number(parts[parts.length - 1]) || 1;
-    return `${r.title} scale, ${octaves} octave${octaves > 1 ? "s" : ""}`;
+    // Scale practice runs: one hand ("scale:"), both ("hands:", ending in the motion) or chromatic ("chromatic:")
+    const hands = parts[0] === "hands";
+    const n = Number(parts[parts.length - (hands ? 2 : 1)]) || 1;
+    const span = `${n} octave${n > 1 ? "s" : ""}`;
+    return parts[0] === "scale" ? `${r.title} scale, ${span}` : `${r.title}, ${span}`;
   }
   if (r.exercise === "diatonic") return `${r.title}${parts[parts.length - 1] === "any" ? ", any voicing" : ""}`;
   const octaves = (n: string) => `${n} octave${n === "2" ? "s" : ""}`;
@@ -124,8 +127,7 @@ export function exerciseLabel(r: Pick<RunBody, "exercise" | "exerciseId" | "titl
     return `${r.title}${inversion ? `, ${INVERSION_NAMES[inversion]}` : ""}, ${octaves(parts[4])}`;
   }
   if (r.exercise === "triad") return `${r.title}${parts[parts.length - 1] === "any" ? ", any voicing" : ""}`;
-  if (r.exercise === "brokenChords" || r.exercise === "chromatic")
-    return `${r.title}, ${octaves(parts[parts.length - 1])}`;
+  if (r.exercise === "brokenChords") return `${r.title}, ${octaves(parts[parts.length - 1])}`;
   return r.title;
 }
 

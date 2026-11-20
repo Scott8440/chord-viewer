@@ -1,11 +1,5 @@
 // Presenters for the theory quiz: key signatures (the panel's text, and the board of keys to answer from).
-import {
-  keySigChoices,
-  signatureOf,
-  signatureText,
-  type KeySigOptions,
-  type KeySigState,
-} from "../../exercises/keySignatures";
+import { signatureOf, signatureText, type KeySigState } from "../../exercises/keySignatures";
 import { prettyAcc, prettyText } from "../../theory";
 import type { AnswerBox } from "../answerBoard";
 import type { PracticeDisplay } from "./view";
@@ -26,9 +20,9 @@ const boxLabel = (keyValue: string) => {
 /** The signature in words, with ♯ and ♭ */
 const sigText = (keyValue: string) => prettyText(signatureText(signatureOf(keyValue)));
 
-/** The keys to answer from: the prompt's mode, up to the chosen number of sharps or flats */
-export function keySigAnswers(s: KeySigState, o: KeySigOptions): AnswerBox[] {
-  return keySigChoices(s.prompt.mode, o.most).map(k => ({
+/** The keys to answer from, in the prompt's (random) order */
+export function keySigAnswers(s: KeySigState): AnswerBox[] {
+  return s.prompt.choices.map(k => ({
     id: k,
     label: boxLabel(k),
     state: s.status === "correct" && k === s.prompt.keyValue ? "right" : s.tried.includes(k) ? "wrong" : "",

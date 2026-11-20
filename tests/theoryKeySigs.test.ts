@@ -109,7 +109,12 @@ describe("theory quiz: key signatures", () => {
     const t = start();
     t.store.dispatch({ type: "setKeySigOptions", options: { keys: "minor", most: 3 } });
     expect(t.shown().label).toBe("Which minor key has this key signature?");
-    expect(t.board().map(b => b.label)).toEqual(["Am", "Em", "Bm", "F♯m", "Dm", "Gm", "Cm"]);
+    expect(
+      t
+        .board()
+        .map(b => b.label)
+        .sort(),
+    ).toEqual(["Am", "Bm", "Cm", "Dm", "Em", "F♯m", "Gm"]);
     expect(t.records).toEqual([]); // a new signature from a settings change isn't a skip
     t.mode.stop();
   });

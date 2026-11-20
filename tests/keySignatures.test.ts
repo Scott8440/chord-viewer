@@ -56,14 +56,27 @@ describe("key signatures", () => {
     expect(makeKeySigPrompt(rng, { keys: "minor", most: 7 }).mode).toBe("minor");
   });
 
+  it("offers every key on offer, in a new random order each time, so the order gives nothing away", () => {
+    const rng = seeded(9);
+    const orders = new Set<string>();
+    let p = makeKeySigPrompt(rng, { keys: "major", most: 7 });
+    for (let i = 0; i < 10; i++) {
+      expect([...p.choices].sort()).toEqual(keySigChoices("major", 7).sort());
+      orders.add(p.choices.join());
+      p = makeKeySigPrompt(rng, { keys: "major", most: 7 }, p);
+    }
+    expect(orders.size).toBeGreaterThan(5);
+    expect(orders.has(keySigChoices("major", 7).join())).toBe(false);
+  });
+
   it("is answered by the key or by playing its tonic in any octave; a wrong key counts once", () => {
-    let s = initialKeySig({ keyValue: "Eb:major", mode: "major" });
+    let s = initialKeySig({ keyValue: "Eb:major", mode: "major", choices: [] });
     s = reduceKeySig(s, { type: "answer", keyValue: "Bb:major" });
     s = reduceKeySig(s, { type: "answer", keyValue: "Bb:major" });
     expect(s).toMatchObject({ status: "wrong", missed: true, tried: ["Bb:major"] });
     s = reduceKeySig(s, { type: "play", note: 39 }); // E♭2
     expect(s).toMatchObject({ status: "correct", answered: 1, firstTry: 0 });
-    s = reduceKeySig(s, { type: "next", prompt: { keyValue: "E:minor", mode: "minor" } });
+    s = reduceKeySig(s, { type: "next", prompt: { keyValue: "E:minor", mode: "minor", choices: [] } });
     expect(s).toMatchObject({ status: "waiting", tried: [] });
     s = reduceKeySig(s, { type: "answer", keyValue: "E:minor" });
     expect(s).toMatchObject({ status: "correct", answered: 2, firstTry: 1 });

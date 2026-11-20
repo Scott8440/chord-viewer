@@ -3,7 +3,7 @@
 // or by playing the key's tonic in any octave. Pure.
 import { chromaOf } from "../theory";
 import { answeredRight, answeredWrong, movedOn, type Judged, type MoveOn } from "./judging";
-import { pick, type Rng } from "./random";
+import { pick, shuffled, type Rng } from "./random";
 
 /** The 15 major keys by signature: no accidentals, 1 to 7 sharps, then 1 to 7 flats */
 export const SIG_MAJORS = ["C", "G", "D", "A", "E", "B", "F#", "C#", "F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb"] as const;
@@ -60,9 +60,12 @@ export interface KeySigPrompt {
   /** The key whose signature is shown, e.g. "Eb:major" */
   keyValue: string;
   mode: "major" | "minor";
+  /** The keys to answer from, in a random order (in signature order they'd give the answer away), fixed for the
+   *  prompt so the board doesn't move while it's answered */
+  choices: readonly string[];
 }
 
-/** A key to show: its mode as chosen (either, for both), and not the signature just shown */
+/** A key to show: its mode as chosen (either, for both), and not the signature just shown; the keys on offer shuffled */
 export function makeKeySigPrompt(rng: Rng, o: KeySigOptions, previous?: KeySigPrompt): KeySigPrompt {
   const mode = o.keys === "both" ? pick(rng, ["major", "minor"] as const) : o.keys;
   const before = previous ? signatureOf(previous.keyValue) : null;
@@ -70,7 +73,7 @@ export function makeKeySigPrompt(rng: Rng, o: KeySigOptions, previous?: KeySigPr
     const sig = signatureOf(k);
     return !before || sig.count !== before.count || sig.accidental !== before.accidental;
   });
-  return { keyValue: pick(rng, choices), mode };
+  return { keyValue: pick(rng, choices), mode, choices: shuffled(rng, keySigChoices(mode, o.most)) };
 }
 
 export interface KeySigState extends Judged<KeySigPrompt> {

@@ -34,7 +34,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 561 tests (54 voicings) should pass
+npm test           # Vitest: 562 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -142,8 +142,8 @@ Layers that only talk through data. Read the file before changing a layer; this 
   pulled back to the highest unlocked once history is read; after an unlocking round, Next round moves up.
 - **Theory quiz** (mode `theory`, for theory knowledge rather than playing): one quiz so far, key signatures
   (`src/exercises/keySignatures.ts` pure, `src/modes/theoryKeySigs.ts`). The staff shows a signature and nothing else
-  (stage `staffAnswers`: the staff with a board of smaller boxes under it); the player names the key from the board or
-  plays its tonic in any octave. Options (setting `keySig`): major, minor or both (each prompt says which: a signature
+  (stage `staffAnswers`: the staff with a board of smaller boxes under it); the player names the key from the board (its
+  keys shuffled per prompt, `choices`: in signature order they'd give the answer away) or plays its tonic in any octave. Options (setting `keySig`): major, minor or both (each prompt says which: a signature
   is shared by relative keys) and up to 3, 5 or all 7 sharps or flats. Records are drill `keySig`, guesses kept. The
   panel's Quiz picker (`#theoryKind`) has one entry and isn't bound yet: a second quiz would add a setting, and views
   per quiz as ear training does.

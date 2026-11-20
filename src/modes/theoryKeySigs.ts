@@ -43,7 +43,7 @@ export function startTheoryKeySigs({
 
   function render() {
     views.practice.render(keySigDisplay(state));
-    views.answers.render(keySigAnswers(state, options()));
+    views.answers.render(keySigAnswers(state));
   }
 
   function apply(action: KeySigAction) {

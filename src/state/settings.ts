@@ -10,6 +10,7 @@ import { sanitizeRoutineOptions, type RoutineOptions } from "../exercises/routin
 import { isKeyValue, type KeyContext } from "../theory";
 import { sanitizeProgressionEarOptions, type ProgressionEarOptions } from "../exercises/progressionEar";
 import { sanitizeIntervalEarOptions, type IntervalEarOptions } from "../exercises/intervalEar";
+import { sanitizeKeySigOptions, type KeySigOptions } from "../exercises/keySignatures";
 
 export const MODES = [
   "free",
@@ -23,6 +24,7 @@ export const MODES = [
   "brokenChords",
   "routines",
   "ear",
+  "theory",
 ] as const;
 export type ModeId = (typeof MODES)[number];
 
@@ -73,6 +75,8 @@ export interface Settings {
   readonly earIntervals: IntervalEarOptions;
   /** Sight reading (mode "reading"): how many notes, which staff, which key (or random) */
   readonly reading: ReadingOptions;
+  /** Theory quiz, key signatures: major keys, minor or both, and up to how many sharps or flats */
+  readonly keySig: KeySigOptions;
   /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
   readonly latencyMs: number;
   /** The latency has been dealt with: calibrated, set by hand, or calibration declined. Until it is, starting the
@@ -159,6 +163,7 @@ export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> }
       oneOf(EAR_KINDS, v, typeof all?.mode === "string" ? (OLD_EAR_MODES[all.mode] ?? "degrees") : "degrees"),
   },
   reading: { storage: saved("reading", "json"), sanitize: sanitizeReadingOptions },
+  keySig: { storage: saved("keySig", "json"), sanitize: sanitizeKeySigOptions },
   latencyMs: { storage: saved("latency", "json"), sanitize: sanitizeLatency },
   latencyCalibrated: {
     storage: saved("latencyCalibrated", "json"),

@@ -212,6 +212,7 @@ describe("setters", () => {
     setEarKind: s => ({ type: "setEarKind", kind: s.settings.earKind }),
     setEarIntervalOptions: s => ({ type: "setEarIntervalOptions", options: { ...s.settings.earIntervals } }),
     setReadingOptions: s => ({ type: "setReadingOptions", options: { ...s.settings.reading } }),
+    setKeySigOptions: s => ({ type: "setKeySigOptions", options: { ...s.settings.keySig } }),
     setLatency: s => ({ type: "setLatency", ms: s.settings.latencyMs }),
     setLatencyCalibrated: () => ({ type: "setLatencyCalibrated" }),
     setTransport: s => ({ type: "setTransport", transport: s.transport }),

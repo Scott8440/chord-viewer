@@ -4,6 +4,7 @@ import type { ChordEarOptions } from "../exercises/chordEar";
 import type { EarKind } from "./settings";
 import type { ProgressionEarOptions } from "../exercises/progressionEar";
 import type { IntervalEarOptions } from "../exercises/intervalEar";
+import type { KeySigOptions } from "../exercises/keySignatures";
 import type { EarOptions } from "../exercises/earTraining";
 import type { ReadingOptions } from "../exercises/sightReading";
 import type { ExerciseOptions } from "../exercises/prescriptive";
@@ -69,6 +70,7 @@ export type AppAction =
   | { type: "setEarIntervalOptions"; options: Partial<IntervalEarOptions> }
   | { type: "setEarKind"; kind: EarKind }
   | { type: "setReadingOptions"; options: Partial<ReadingOptions> }
+  | { type: "setKeySigOptions"; options: Partial<KeySigOptions> }
   /** Calibrated or typed in: either way, the latency counts as dealt with */
   | { type: "setLatency"; ms: number }
   /** Calibration declined */
@@ -140,6 +142,8 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return withSettings(s, { ear: merged(s.settings.ear, a.options, SETTINGS.ear) });
     case "setEarKind":
       return withSettings(s, { earKind: a.kind });
+    case "setKeySigOptions":
+      return withSettings(s, { keySig: merged(s.settings.keySig, a.options, SETTINGS.keySig) });
     case "setEarIntervalOptions":
       return withSettings(s, {
         earIntervals: merged(s.settings.earIntervals, a.options, SETTINGS.earIntervals),

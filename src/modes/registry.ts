@@ -24,6 +24,7 @@ import { startEarChords } from "./earChords";
 import { startEarProgressions } from "./earProgressions";
 import { startEarIntervals } from "./earIntervals";
 import { startEarMelody } from "./earMelody";
+import { startTheoryKeySigs } from "./theoryKeySigs";
 import { startEarTraining } from "./earTraining";
 import { startFreePlay } from "./freePlay";
 import type { View } from "./page";
@@ -84,6 +85,7 @@ export const MODE_REGISTRY: Record<View, (deps: ModeDeps) => Mode> = {
   earChords: startEarChords,
   earProgressions: startEarProgressions,
   earIntervals: startEarIntervals,
+  theory: startTheoryKeySigs,
   progress: startProgress,
   reference: startReference,
 };

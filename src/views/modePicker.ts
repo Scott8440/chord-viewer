@@ -64,6 +64,11 @@ export const MODE_INFO: Readonly<Record<ModeId, ModeInfo>> = {
     about: "Several exercises in a row, through the keys",
     icon: '<path d="M4 7l1.5 1.5L8 6M4 12.5l1.5 1.5L8 11.5M4 18l1.5 1.5L8 17"/><path d="M11 7.5h9M11 13h9M11 18.5h6"/>',
   },
+  theory: {
+    name: "Theory quiz",
+    about: "Name keys from their signatures, and more to come",
+    icon: '<path d="M2 7h20M2 11h20M2 15h20M2 19h20" opacity=".45"/><path d="M8.5 5.5v11M11.5 4.5v11M6.5 9.8l7-2.3M6.5 14.3l7-2.3" stroke-width="1.5"/><path d="M17 8.5c0-2 3-2.4 3-.3 0 1.4-1.6 1.9-1.6 3.3M18.4 14v.3"/>',
+  },
   ear: {
     name: "Ear training",
     about: "Degrees, melodies, intervals, chords and progressions by ear",
@@ -78,6 +83,7 @@ const TILES: readonly { mode: ModeId; group: string }[] = [
   { mode: "chords", group: "Practice" },
   { mode: "progressions", group: "Practice" },
   { mode: "ear", group: "Ear" },
+  { mode: "theory", group: "Theory" },
   { mode: "scales", group: "Technique" },
   { mode: "diatonic", group: "Technique" },
   { mode: "fiveFinger", group: "Technique" },

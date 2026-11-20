@@ -203,6 +203,7 @@ export const DRILLS: readonly DrillKind[] = [
   "chordEar",
   "progressionEar",
   "intervalEar",
+  "keySig",
 ];
 
 /** Per day and drill: the share of prompts right first time (skips count against), and how many there were */

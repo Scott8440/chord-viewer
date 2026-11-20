@@ -101,7 +101,16 @@ export interface RoutineBody {
 /** "notes" is the old note practice (one note name, any octave), which sight reading replaced: nothing records it any
  *  more, but it stays a kind so older history still loads and shows */
 export type DrillKind =
-  "reading" | "notes" | "chords" | "progressions" | "ear" | "melody" | "chordEar" | "progressionEar" | "intervalEar";
+  | "reading"
+  | "notes"
+  | "chords"
+  | "progressions"
+  | "ear"
+  | "melody"
+  | "chordEar"
+  | "progressionEar"
+  | "intervalEar"
+  | "keySig";
 
 /** One prompt of a drill (note, chord, progression practice or ear training), answered or skipped. */
 export interface DrillBody {
@@ -370,6 +379,28 @@ export function progressionEarDrillBody(
  * Ear training's intervals: grouped by the interval ("Minor 3rd"). `guesses` are the wrong answers given first, in order
  * (interval ids, comma-separated), so the Progress page can say what each interval gets mistaken for.
  */
+/**
+ * Theory quiz, key signatures: grouped by the key ("E♭ major"). `guesses` are the wrong answers, in order (key values,
+ * or "note:<pitch class>" for a wrong tonic played).
+ */
+export function keySigDrillBody(
+  keyValue: string,
+  label: string,
+  answered: boolean,
+  missed: boolean,
+  ms: number,
+  guesses: readonly string[] = [],
+): DrillBody {
+  return {
+    kind: "drill",
+    drill: "keySig",
+    prompt: label,
+    detail: { key: keyValue, guesses: guesses.join(",") },
+    outcome: outcomeOf(answered, missed),
+    ms: Math.round(ms),
+  };
+}
+
 export function intervalEarDrillBody(
   p: IntervalEarPrompt,
   intervals: readonly string[],

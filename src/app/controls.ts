@@ -20,6 +20,7 @@ import {
 import type { MinorForm, ScaleHands, ScaleKind, ScaleOctaves } from "../exercises/scales";
 import { PROGRESSION_LENGTHS, tonicName } from "../exercises/progressionEar";
 import { INTERVAL_GROUPS, type IntervalPlay } from "../exercises/intervalEar";
+import type { KeySigModes, KeySigMost } from "../exercises/keySignatures";
 import type { ArpeggioInversion } from "../exercises/technique";
 import { levelsFor, type ReadingPart } from "../exercises/excerpts";
 import {
@@ -297,6 +298,17 @@ export function bindControls(store: AppStore) {
     s => s.ear.melodySound,
     v => ({ type: "setEarOptions", options: { melodySound: v === "simple" ? "simple" : "piano" } }),
   );
+  // Theory quiz, key signatures
+  bindSelect(
+    $("keySigKeys"),
+    s => s.keySig.keys,
+    v => ({ type: "setKeySigOptions", options: { keys: v as KeySigModes } }),
+  );
+  bindSelect(
+    $("keySigMost"),
+    s => String(s.keySig.most),
+    v => ({ type: "setKeySigOptions", options: { most: Number(v) as KeySigMost } }),
+  );
   for (const n of MELODY_LENGTHS) $("melodyLength").append(new Option(String(n), String(n)));
   bindSelect(
     $("melodyLength"),
@@ -435,9 +447,10 @@ export function showControls(state: AppState) {
   $("referenceView").hidden = page.panel !== "reference";
   $("referenceBtn").classList.toggle("on", state.page === "reference");
   $("referenceBtn").setAttribute("aria-pressed", String(state.page === "reference"));
-  $("staff").hidden = page.stage !== "staff";
+  $("staff").hidden = page.stage !== "staff" && page.stage !== "staffAnswers";
   $("degreeCircle").hidden = page.stage !== "degrees";
-  $("answerBoard").hidden = page.stage !== "answers";
+  $("answerBoard").hidden = page.stage !== "answers" && page.stage !== "staffAnswers";
+  $("theoryOptions").hidden = id !== "theory";
   const ex = exercisesOf(s);
   // Chord names vs Roman numerals matters wherever chords are prompted
   $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));

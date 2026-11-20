@@ -1056,6 +1056,30 @@ body.midiMapping [data-midi-map].midiWaiting {
 #answerBoard .box:disabled {
   cursor: default;
 }
+/* The theory quiz: the staff (a key signature) with a board of smaller boxes under it */
+#staffCard:has(> #staff:not([hidden])) > #answerBoard:not([hidden]) {
+  padding: 4px 8px 8px;
+}
+#staffCard:has(> #answerBoard:not([hidden])) > #staff {
+  height: auto;
+}
+#staffCard:has(> #answerBoard:not([hidden])) > #staff svg {
+  max-height: 46vh;
+}
+#staffCard:has(> #staff:not([hidden])) > #answerBoard .boxes {
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 84px));
+  justify-content: center;
+}
+#staffCard:has(> #staff:not([hidden])) > #answerBoard .box {
+  min-height: 58px;
+  padding: 8px 6px;
+  gap: 2px;
+  font-size: 20px;
+}
+#staffCard:has(> #staff:not([hidden])) > #answerBoard .boxDetail {
+  font-size: 11px;
+}
 /* Between rounds: one large Next round in place of everything else */
 #answerBoard .next {
   min-width: min(100%, 360px);
@@ -1260,7 +1284,8 @@ body.midiMapping [data-midi-map].midiWaiting {
 #exerciseOptions,
 #routineOptions,
 #earOptions,
-#readingOptions {
+#readingOptions,
+#theoryOptions {
   margin-top: 22px;
   display: flex;
   flex-wrap: wrap;
@@ -1434,7 +1459,7 @@ body.polished .settingsHead {
   color: var(--muted);
 }
 body.polished :is(#chordOptions, #exerciseOptions, #routineOptions, #earOptions, #readingOptions),
-body.polished :is(#earChordOptions, #earIntervalOptions, #earProgOptions) {
+body.polished :is(#earChordOptions, #earIntervalOptions, #earProgOptions, #theoryOptions) {
   margin-top: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
@@ -1701,6 +1726,18 @@ body.polished #calibrate {
   justify-self: start;
 }
 
+/* Phones: the theory quiz's staff is smaller, so the keys to answer from are on screen with it */
+@media (max-width: 760px) {
+  #staffCard:has(> #answerBoard:not([hidden])) > #staff svg {
+    max-height: 30vh;
+  }
+  #staffCard:has(> #staff:not([hidden])) > #answerBoard .boxes {
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  }
+  #staffCard:has(> #staff:not([hidden])) > #answerBoard .box {
+    min-height: 52px;
+  }
+}
 /* Phones: a row of many choices wraps rather than cutting its names short */
 @media (max-width: 760px) {
   body.polished .seg {

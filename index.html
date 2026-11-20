@@ -185,6 +185,30 @@
                 <select id="earProgLength"></select>
               </label>
             </div>
+            <div id="theoryOptions" hidden>
+              <label class="pick"
+                >Quiz
+                <select id="theoryKind" data-seg="wide">
+                  <option value="keySignatures">Key signatures</option>
+                </select>
+              </label>
+              <label class="pick"
+                >Keys
+                <select id="keySigKeys" data-seg>
+                  <option value="major">Major</option>
+                  <option value="minor">Minor</option>
+                  <option value="both">Both</option>
+                </select>
+              </label>
+              <label class="pick"
+                >Sharps or flats
+                <select id="keySigMost" data-seg>
+                  <option value="3">Up to 3</option>
+                  <option value="5">Up to 5</option>
+                  <option value="7">All 7</option>
+                </select>
+              </label>
+            </div>
             <div id="readingOptions" hidden>
               <label class="pick" id="readingPartPick"
                 >Read

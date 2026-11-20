@@ -3,7 +3,7 @@
 ## What this is
 Started as an offline replacement for Chordie: it listens to MIDI from any input, shows the notes on a grand staff
 and names the most likely chord. It has grown into a music theory practice app: free play, chord and progression
-practice, sight reading, prescriptive exercises (scales, diatonic chords, technique) and routines of them, three
+practice, sight reading, prescriptive exercises (scales, diatonic chords, technique) and routines of them,
 ear training, a theory quiz (naming keys from their signatures), a metronome, and a practice history with a
 Progress page.
 

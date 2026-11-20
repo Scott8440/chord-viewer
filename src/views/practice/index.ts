@@ -22,7 +22,7 @@ export {
   circleQuizDisplay,
   circleQuizModel,
   keyName,
-  ringKeyName,
+  placeName,
   keySigAnswers,
   keySigDisplay,
 } from "./theory";

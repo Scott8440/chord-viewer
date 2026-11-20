@@ -34,7 +34,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 573 tests (54 voicings) should pass
+npm test           # Vitest: 577 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -147,13 +147,17 @@ Layers that only talk through data. Read the file before changing a layer; this 
     signature and nothing else (stage `staffAnswers`: the staff with a board of smaller boxes under it); the player
     names the key from the board (shuffled per prompt, `choices`: in signature order they'd give the answer away) or
     plays its tonic. Options (setting `keySig`): major, minor or both, up to 3, 5 or 7 sharps or flats. Drill `keySig`.
-  - **Circle of fifths** (`src/exercises/circleQuiz.ts` pure, `src/modes/theoryCircle.ts`, `src/views/circleQuiz.ts`):
-    a round gives one key at a random place (clockwise is still a fifth up, but C needn't be at the top) and fills in
-    the other eleven one prompt at a time: "where does X go?" (picked on the circle) or "which key goes in the marked
-    place?" (from the shuffled board under it, or its tonic played). Skip reveals the place; a full circle starts a
-    new round. Stage `circleAnswers` (the board keeps its room when empty, so the circle doesn't jump). Options
-    (setting `circleQuiz`): major or minor ring, both kinds of question or one. The key opposite C/A is named both ways
-    (F♯/G♭, D♯/E♭m). Drill `circleFifths`, with how many fifths from the given key and the guesses.
+  - **Key relationships on the circle of fifths** (`src/exercises/circleQuiz.ts` pure, `src/modes/theoryCircle.ts`,
+    `src/views/circleQuiz.ts`; the Quiz picker calls it "Circle of fifths"): each question stands alone (an earlier
+    version filled the circle in round by round, which got easier as it filled and tested a diagram more than music).
+    Both rings (major outside, relative minors inside), turned to a random angle, blank but for what the question
+    gives. Kinds (setting `circleQuiz.asks`, or all at random): a key's diatonic neighbour by numeral (V, IV, vi, ii,
+    iii; for minor v, iv, III, VI, VII: `DEGREES`); its five closely related keys (the relative shares all seven notes,
+    the others six); the key of a signature (a treble staff above the circle, C major given); a chain of dominants to a
+    major tonic, named in order from a board of sevenths (wrong guesses reset after each chord found, since one tried
+    early may be the next). Answered on the circle, from the board, or by playing the tonic or root. Stage
+    `circleAnswers`; the signature strip and the board keep their room only while those kinds can come up. Drill
+    `circleFifths`, `detail.kind`, guesses kept.
 - **Melody ear training** (`src/modes/earMelody.ts`): plays on the sampled piano by default (`ear.melodySound`,
   Piano or Simple; the samples load first, as for intervals). The staff row draws held keys only after a wrong note.
 - **Interval ear training** (`src/exercises/intervalEar.ts` pure, `src/modes/earIntervals.ts`): two notes (up, down,

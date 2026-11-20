@@ -1,35 +1,36 @@
-// Theory quiz, the circle of fifths: one key is given at a random place on the circle and the rest are filled in
-// one prompt at a time, asked as "where does this key go?" (picked on the circle) or "which key goes here?" (picked
-// from the board under it, or its tonic played). A right answer moves on after a moment; a full circle a little
-// later, to a new round. Skip reveals the place and moves on. Each prompt is recorded once, answered or skipped.
+// Theory quiz, key relationships on the circle of fifths: one question at a time, each on its own (nothing fills in
+// from one to the next): a key's dominant, subdominant, relative or other diatonic neighbour, its closely related keys,
+// the key of a signature, or the chords of a chain of dominants. Answered on the circle, from the board of chords
+// (chains), or by playing the tonic or root. A right answer moves on after a moment; Skip at once. Each question is
+// recorded once, answered or skipped.
 import {
-  fifthsFromAnchor,
+  answersOf,
   initialCircleQuiz,
-  keyAt,
   makeCirclePrompt,
-  newCircleRound,
   reduceCircleQuiz,
+  ringKeys,
   type CircleQuizAction,
   type CircleQuizState,
+  type Place,
 } from "../exercises/circleQuiz";
 import type { Rng } from "../exercises/random";
 import { noRecorder, type Recorder } from "../progress/recorder";
 import { circleDrillBody } from "../progress/records";
 import type { AnswerBoard } from "../views/answerBoard";
 import type { CircleQuizView } from "../views/circleQuiz";
-import {
-  circleQuizAnswers,
-  circleQuizDisplay,
-  circleQuizModel,
-  ringKeyName,
-  type PracticeView,
-} from "../views/practice";
+import { circleQuizAnswers, circleQuizDisplay, circleQuizModel, placeName, type PracticeView } from "../views/practice";
 import { onPlayerInput, type AppStore, type Mode } from "./performance";
 import { createPromptRecords } from "./promptRecords";
 
-/** How long a right answer stays up before the next prompt, and a completed circle before the next round */
-export const CIRCLE_NEXT_MS = 1100;
-export const CIRCLE_ROUND_MS = 2200;
+/** How long a right answer stays up before the next question (a chain or a set of five a little longer) */
+export const CIRCLE_NEXT_MS = 1300;
+export const CIRCLE_LONG_MS = 2200;
+
+const fromId = (id: string): Place => {
+  const [ring, key] = id.split(":");
+  return { ring: ring as Place["ring"], key: Number(key) };
+};
+const seventh = (key: number) => `${ringKeys("major")[key]}7`;
 
 export function startTheoryCircle({
   store,
@@ -43,42 +44,38 @@ export function startTheoryCircle({
   rng?: Rng;
 }): Mode {
   const options = () => store.getState().settings.circleQuiz;
-  const first = newCircleRound(rng, options().ring);
-  let state: CircleQuizState = initialCircleQuiz(makeCirclePrompt(rng, options(), first, [first.anchorSpot]));
+  let state: CircleQuizState = initialCircleQuiz(makeCirclePrompt(rng, options()));
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
 
-  /** The answer's key name, and wrong answers as key names (a wrong place: the key that belongs there) */
   const records = createPromptRecords<CircleQuizState>(recorder, (s, answered, ms) => {
-    const { round, ask, spot } = s.prompt;
-    const guesses = s.tried.map(t => ringKeyName(round.ring, ask === "where" ? keyAt(round, t) : t));
-    return circleDrillBody(
-      ringKeyName(round.ring, keyAt(round, spot)),
-      {
-        ask,
-        ring: round.ring,
-        fifths: fifthsFromAnchor(round, spot),
-      },
-      answered,
-      s.missed,
-      ms,
-      guesses,
-    );
+    const p = s.prompt;
+    const name = (id: string) => (p.kind === "chain" ? seventh(fromId(id).key) : placeName(fromId(id)));
+    const guesses = s.tried.map(name);
+    const [label, detail]: [string, Record<string, string | number>] =
+      p.kind === "degree"
+        ? [`${p.degree} of ${placeName(p.ref)}`, { kind: p.kind, degree: p.degree, ref: placeName(p.ref) }]
+        : p.kind === "related"
+          ? [`Related to ${placeName(p.ref)}`, { kind: p.kind, ref: placeName(p.ref) }]
+          : p.kind === "signature"
+            ? [placeName(p.answer), { kind: p.kind }]
+            : [
+                `${seventh(p.chords[0])} → ${ringKeys("major")[p.chords[p.chords.length - 1]]}`,
+                { kind: p.kind, length: p.chords.length },
+              ];
+    return circleDrillBody(label, detail, answered, s.missed, ms, guesses);
   });
 
   function render() {
+    const asks = options().asks;
     views.practice.render(circleQuizDisplay(state));
-    views.circleQuiz.render(circleQuizModel(state));
+    views.circleQuiz.render(
+      circleQuizModel(state, {
+        sigRow: asks === "mixed" || asks === "signature",
+        board: asks === "mixed" || asks === "chain",
+      }),
+    );
     views.answers.render(circleQuizAnswers(state));
   }
-
-  /** The prompt after this one: in this round, with this prompt's place filled in (a new round once all are) */
-  const nextPrompt = (s: CircleQuizState) =>
-    makeCirclePrompt(
-      rng,
-      options(),
-      s.prompt.round,
-      s.filled.includes(s.prompt.spot) ? s.filled : [...s.filled, s.prompt.spot],
-    );
 
   function apply(action: CircleQuizAction) {
     const prev = state;
@@ -89,18 +86,18 @@ export function startTheoryCircle({
     clearTimeout(nextTimer);
     if (state.status === "correct")
       nextTimer = setTimeout(
-        () => apply({ type: "next", prompt: nextPrompt(state) }),
-        state.filled.length >= 12 ? CIRCLE_ROUND_MS : CIRCLE_NEXT_MS,
+        () => apply({ type: "next", prompt: makeCirclePrompt(rng, options(), state.prompt) }),
+        answersOf(state.prompt).length > 1 ? CIRCLE_LONG_MS : CIRCLE_NEXT_MS,
       );
   }
 
-  const offSpot = views.circleQuiz.onSpot(spot => apply({ type: "spot", spot }));
-  const offAnswer = views.answers.onAnswer(id => apply({ type: "key", key: Number(id) }));
+  const offSpot = views.circleQuiz.onSpot(id => apply({ type: "place", place: fromId(id) }));
+  const offAnswer = views.answers.onAnswer(id => apply({ type: "chord", key: Number(id) }));
   const offInput = onPlayerInput(store, { noteOn: note => apply({ type: "play", note }) });
-  // New options: a new question to fit them (a new round for the other ring); not a skip
+  // New options: a question to fit them (not a skip)
   const offSettings = store.subscribe((s, prev) => {
     if (s.settings.circleQuiz !== prev.settings.circleQuiz)
-      apply({ type: "next", prompt: makeCirclePrompt(rng, s.settings.circleQuiz, state.prompt.round, state.filled) });
+      apply({ type: "next", prompt: makeCirclePrompt(rng, s.settings.circleQuiz, state.prompt) });
   });
   render();
 
@@ -113,7 +110,7 @@ export function startTheoryCircle({
       clearTimeout(nextTimer);
     },
     skip() {
-      apply({ type: "skip", prompt: nextPrompt(state) });
+      apply({ type: "skip", prompt: makeCirclePrompt(rng, options(), state.prompt) });
     },
   };
 }

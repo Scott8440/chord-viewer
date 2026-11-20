@@ -21,7 +21,7 @@ import type { MinorForm, ScaleHands, ScaleKind, ScaleOctaves } from "../exercise
 import { PROGRESSION_LENGTHS, tonicName } from "../exercises/progressionEar";
 import { INTERVAL_GROUPS, type IntervalPlay } from "../exercises/intervalEar";
 import type { KeySigModes, KeySigMost } from "../exercises/keySignatures";
-import type { CircleAsks, CircleRing } from "../exercises/circleQuiz";
+import type { CircleAsks } from "../exercises/circleQuiz";
 import type { ArpeggioInversion } from "../exercises/technique";
 import { levelsFor, type ReadingPart } from "../exercises/excerpts";
 import {
@@ -304,11 +304,6 @@ export function bindControls(store: AppStore) {
     $("theoryKind"),
     s => s.theoryKind,
     v => ({ type: "setTheoryKind", kind: v as TheoryKind }),
-  );
-  bindSelect(
-    $("circleRing"),
-    s => s.circleQuiz.ring,
-    v => ({ type: "setCircleQuizOptions", options: { ring: v as CircleRing } }),
   );
   bindSelect(
     $("circleAsks"),

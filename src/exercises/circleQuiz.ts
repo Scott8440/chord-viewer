@@ -1,107 +1,145 @@
-// Theory quiz, the circle of fifths: a round starts with the circle empty but for one key, placed at a random spot
-// (clockwise is a fifth up, as always, but C needn't be at the top, so it's worked out from that key). Each prompt
-// asks for one more of the twelve: where a key goes (the player picks the spot) or which key goes at a marked spot
-// (picked from a board of keys, or its tonic played). A right answer, or a skip, fills that spot in; when all
-// twelve are in, the next prompt starts a new round. Pure.
+// Theory quiz, key relationships on the circle of fifths: each question stands alone, on a circle of both rings (major
+// keys outside, their relative minors inside) turned to a random angle, so it's worked out from the key shown rather
+// than from C at the top. Clockwise is a fifth up, as always. Four kinds of question:
+// - degree: one key shown; pick its dominant, subdominant, relative minor or major, or another diatonic key
+// - related: one key shown; pick all five closely related keys (its relative shares all seven of its notes, the
+//   other four six)
+// - signature: a key signature on a staff, C major shown on the circle; pick the key (major or minor, as asked)
+// - chain: a chain of dominants resolving by fifths (E7 A7 D7 G7 C): name each chord between the first and the tonic
+// Answered on the circle (degree, related, signature) or from a board of chords (chain); or by playing the tonic or
+// root. Pure.
 import { CIRCLE_OF_FIFTHS_MAJOR, CIRCLE_OF_FIFTHS_MINOR, chromaOf } from "../theory";
 import { answeredRight, answeredWrong, type Judged } from "./judging";
 import { pick, randomInt, shuffled, type Rng } from "./random";
 
-export type CircleRing = "major" | "minor";
-export const CIRCLE_RINGS: readonly CircleRing[] = ["major", "minor"];
-/** Which questions: both kinds at random, or only one */
-export type CircleAsks = "mixed" | "where" | "which";
-export const CIRCLE_ASKS: readonly CircleAsks[] = ["mixed", "where", "which"];
+export type CircleKind = "degree" | "related" | "signature" | "chain";
+export const CIRCLE_KINDS: readonly CircleKind[] = ["degree", "related", "signature", "chain"];
+/** Which questions: all kinds at random, or one */
+export type CircleAsks = "mixed" | CircleKind;
+export const CIRCLE_ASKS: readonly CircleAsks[] = ["mixed", ...CIRCLE_KINDS];
 
 export interface CircleQuizOptions {
-  ring: CircleRing;
   asks: CircleAsks;
 }
-export const DEFAULT_CIRCLE_QUIZ: CircleQuizOptions = { ring: "major", asks: "mixed" };
+export const DEFAULT_CIRCLE_QUIZ: CircleQuizOptions = { asks: "mixed" };
 
 export function sanitizeCircleQuizOptions(raw: unknown): CircleQuizOptions {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-  return {
-    ring: CIRCLE_RINGS.includes(o.ring as CircleRing) ? (o.ring as CircleRing) : DEFAULT_CIRCLE_QUIZ.ring,
-    asks: CIRCLE_ASKS.includes(o.asks as CircleAsks) ? (o.asks as CircleAsks) : DEFAULT_CIRCLE_QUIZ.asks,
-  };
+  return { asks: CIRCLE_ASKS.includes(o.asks as CircleAsks) ? (o.asks as CircleAsks) : DEFAULT_CIRCLE_QUIZ.asks };
 }
 
+export type CircleRing = "major" | "minor";
 /** The twelve keys of a ring in circle order (C or A first), spelled as the app's circle spells them */
 export const ringKeys = (ring: CircleRing): readonly string[] =>
   ring === "minor" ? CIRCLE_OF_FIFTHS_MINOR : CIRCLE_OF_FIFTHS_MAJOR;
 
-/** A round: which key (its place in circle order) sits at which spot (0 = top, clockwise) */
-export interface CircleRound {
-  ring: CircleRing;
-  anchorSpot: number;
-  anchorKey: number;
-}
-
 const mod12 = (n: number) => ((n % 12) + 12) % 12;
-/** The key (its place in circle order) that belongs at a spot */
-export const keyAt = (r: CircleRound, spot: number) => mod12(r.anchorKey + spot - r.anchorSpot);
-/** The spot a key (its place in circle order) belongs at */
-export const spotOf = (r: CircleRound, key: number) => mod12(r.anchorSpot + key - r.anchorKey);
-/** How many fifths a spot is from the round's given key: + clockwise (sharps), − anticlockwise, −5 to 6 */
-export const fifthsFromAnchor = (r: CircleRound, spot: number) => {
-  const d = mod12(spot - r.anchorSpot);
-  return d > 6 ? d - 12 : d;
-};
 
-export interface CirclePrompt {
-  round: CircleRound;
-  /** where: the key is named, the player finds its spot; which: the spot is marked, the player names its key */
-  ask: "where" | "which";
-  /** The spot asked about (for where, the answer) */
-  spot: number;
-  /** For which: the keys to answer from (places in circle order), shuffled for this prompt */
-  choices: readonly number[];
+/** A key on the circle: its ring, and its place in circle order (the minor at k is the relative of the major at k) */
+export interface Place {
+  ring: CircleRing;
+  key: number;
+}
+export const placeId = (p: Place) => `${p.ring}:${p.key}`;
+export const samePlace = (a: Place, b: Place) => a.ring === b.ring && a.key === b.key;
+/** Where a key is drawn: its slot (0 = top, clockwise) once the circle is turned by `rotation` */
+export const slotOf = (key: number, rotation: number) => mod12(key + rotation);
+/** The key drawn at a slot */
+export const keyAtSlot = (slot: number, rotation: number) => mod12(slot - rotation);
+
+/** A key's diatonic neighbours on the circle, by Roman numeral: for a major key its V, IV, vi, ii and iii; for a minor
+ *  key its v, iv, III, VI and VII (natural minor) */
+export type DegreeId = "V" | "IV" | "vi" | "ii" | "iii" | "v" | "iv" | "III" | "VI" | "VII";
+export const DEGREES: Readonly<
+  Record<CircleRing, readonly { id: DegreeId; name: string; at: (k: number) => Place }[]>
+> = {
+  major: [
+    { id: "V", name: "dominant (V)", at: k => ({ ring: "major", key: mod12(k + 1) }) },
+    { id: "IV", name: "subdominant (IV)", at: k => ({ ring: "major", key: mod12(k - 1) }) },
+    { id: "vi", name: "relative minor (vi)", at: k => ({ ring: "minor", key: k }) },
+    { id: "ii", name: "ii", at: k => ({ ring: "minor", key: mod12(k - 1) }) },
+    { id: "iii", name: "iii", at: k => ({ ring: "minor", key: mod12(k + 1) }) },
+  ],
+  minor: [
+    { id: "v", name: "dominant (v)", at: k => ({ ring: "minor", key: mod12(k + 1) }) },
+    { id: "iv", name: "subdominant (iv)", at: k => ({ ring: "minor", key: mod12(k - 1) }) },
+    { id: "III", name: "relative major (III)", at: k => ({ ring: "major", key: k }) },
+    { id: "VI", name: "VI", at: k => ({ ring: "major", key: mod12(k - 1) }) },
+    { id: "VII", name: "VII", at: k => ({ ring: "major", key: mod12(k + 1) }) },
+  ],
+};
+/** The degree's place for a key */
+export const degreePlace = (ref: Place, id: DegreeId): Place => DEGREES[ref.ring].find(d => d.id === id)!.at(ref.key);
+
+export type CirclePrompt =
+  | { kind: "degree"; rotation: number; ref: Place; degree: DegreeId }
+  | { kind: "related"; rotation: number; ref: Place }
+  | { kind: "signature"; rotation: number; answer: Place }
+  /** `chords`: the chain's roots in order (places in circle order, each a fifth below the one before), the last the
+   *  tonic; `choices`: the twelve dominant sevenths to answer from, shuffled */
+  | { kind: "chain"; rotation: number; chords: readonly number[]; choices: readonly number[] };
+
+/** What the player has to find: the places, in order (one for degree and signature, five for related, the chords
+ *  between the first and the tonic for chain) */
+export function answersOf(p: CirclePrompt): Place[] {
+  switch (p.kind) {
+    case "degree":
+      return [degreePlace(p.ref, p.degree)];
+    case "related":
+      return DEGREES[p.ref.ring].map(d => d.at(p.ref.key));
+    case "signature":
+      return [p.answer];
+    case "chain":
+      return p.chords.slice(1, -1).map(key => ({ ring: "major" as const, key }));
+  }
 }
 
-export const newCircleRound = (rng: Rng, ring: CircleRing): CircleRound => ({
-  ring,
-  anchorSpot: randomInt(rng, 12),
-  anchorKey: randomInt(rng, 12),
-});
-
-/** The next prompt: a spot not yet filled in this round (or, with all filled, a new round) */
-export function makeCirclePrompt(
-  rng: Rng,
-  o: CircleQuizOptions,
-  round: CircleRound,
-  filled: readonly number[],
-): CirclePrompt {
-  const fresh = filled.length >= 12 || round.ring !== o.ring;
-  const r = fresh ? newCircleRound(rng, o.ring) : round;
-  const open = Array.from({ length: 12 }, (_, s) => s).filter(
-    s => s !== r.anchorSpot && (fresh || !filled.includes(s)),
-  );
-  const ask = o.asks === "mixed" ? pick(rng, ["where", "which"] as const) : o.asks;
-  return {
-    round: r,
-    ask,
-    spot: pick(rng, open),
-    choices: shuffled(
-      rng,
-      Array.from({ length: 12 }, (_, k) => k),
-    ),
-  };
+/** The next question: the kind chosen (any, for mixed); not the same key or chain as the one before */
+export function makeCirclePrompt(rng: Rng, o: CircleQuizOptions, previous?: CirclePrompt): CirclePrompt {
+  const kind = o.asks === "mixed" ? pick(rng, CIRCLE_KINDS) : o.asks;
+  const rotation = randomInt(rng, 12);
+  const place = (): Place => ({ ring: pick(rng, ["major", "minor"] as const), key: randomInt(rng, 12) });
+  const before = previous ? answersOf(previous).concat("ref" in previous ? [previous.ref] : []) : [];
+  const fresh = (p: Place) => !before.some(b => samePlace(b, p));
+  let ref = place();
+  for (let i = 0; i < 20 && !fresh(ref); i++) ref = place();
+  switch (kind) {
+    case "degree":
+      return { kind, rotation, ref, degree: pick(rng, DEGREES[ref.ring]).id };
+    case "related":
+      return { kind, rotation, ref };
+    case "signature":
+      return { kind, rotation, answer: ref };
+    case "chain": {
+      // Three to five chords before the tonic, ending on a major tonic
+      const length = 4 + randomInt(rng, 3);
+      const tonic = ref.key;
+      const chords = Array.from({ length }, (_, i) => mod12(tonic + length - 1 - i));
+      return {
+        kind,
+        rotation,
+        chords,
+        choices: shuffled(
+          rng,
+          Array.from({ length: 12 }, (_, k) => k),
+        ),
+      };
+    }
+  }
 }
 
 export interface CircleQuizState extends Judged<CirclePrompt> {
-  /** Spots filled in this round: the given key's, then each answered (or skipped) one, in order */
-  filled: number[];
-  /** Spots filled by a skip: shown, but not found */
-  revealed: number[];
-  /** Wrong answers to this prompt, in order: spots (where) or keys (which, as places in circle order) */
-  tried: number[];
+  /** Answers found so far for this question (place ids) */
+  found: string[];
+  /** Wrong answers to this question, in order (place ids) */
+  tried: string[];
 }
 
 export type CircleQuizAction =
-  | { type: "spot"; spot: number }
-  | { type: "key"; key: number }
-  /** A note played: the key whose tonic it is */
+  | { type: "place"; place: Place }
+  /** A chord on the board (chain): its root, as a place in circle order */
+  | { type: "chord"; key: number }
+  /** A note played: the tonic (or chord root) it is */
   | { type: "play"; note: number }
   | { type: "next"; prompt: CirclePrompt }
   | { type: "skip"; prompt: CirclePrompt };
@@ -112,49 +150,62 @@ export const initialCircleQuiz = (prompt: CirclePrompt): CircleQuizState => ({
   missed: false,
   answered: 0,
   firstTry: 0,
-  filled: [prompt.round.anchorSpot],
-  revealed: [],
+  found: [],
   tried: [],
 });
 
-/** The key whose tonic is this note, as a place in circle order */
-const keyOfNote = (ring: CircleRing, note: number) => ringKeys(ring).findIndex(k => chromaOf(k) === mod12(note));
+/** The place a played note names: among the answers still to find, the one whose tonic it is */
+function placeOfNote(s: CircleQuizState, note: number): Place {
+  const pc = mod12(note);
+  const open = answersOf(s.prompt).filter(p => !s.found.includes(placeId(p)));
+  const hit = open.find(p => chromaOf(ringKeys(p.ring)[p.key]) === pc);
+  if (hit) return hit;
+  // Not an answer: the major key with that tonic, so it counts as a wrong answer once
+  const key = ringKeys("major").findIndex(k => chromaOf(k) === pc);
+  return { ring: "major", key };
+}
 
 export function reduceCircleQuiz(s: CircleQuizState, a: CircleQuizAction): CircleQuizState {
   if (a.type === "next" || a.type === "skip") {
-    // A skip fills the spot in as shown, not found (unless it was already answered)
     const skipped = a.type === "skip" && s.status !== "correct";
-    const filled = skipped ? [...s.filled, s.prompt.spot] : s.filled;
-    const revealed = skipped ? [...s.revealed, s.prompt.spot] : s.revealed;
-    const fresh = a.prompt.round !== s.prompt.round;
     return {
       ...s,
       prompt: a.prompt,
       status: "waiting",
       missed: false,
       answered: skipped ? s.answered + 1 : s.answered,
-      filled: fresh ? [a.prompt.round.anchorSpot] : filled,
-      revealed: fresh ? [] : revealed,
+      found: [],
       tried: [],
     };
   }
   if (s.status === "correct") return s;
   const p = s.prompt;
-  const right = keyAt(p.round, p.spot);
-  let answer: number;
-  if (p.ask === "where") {
-    if (a.type !== "spot") return s;
-    if (s.filled.includes(a.spot)) return s; // a spot already filled in isn't an answer
-    answer = a.spot;
-    if (answer === p.spot) return answeredRight(s, { filled: [...s.filled, p.spot] });
+  const answers = answersOf(p);
+  let place: Place;
+  if (p.kind === "chain") {
+    if (a.type === "place") return s; // a chain is named from the board
+    place = a.type === "chord" ? { ring: "major", key: a.key } : placeOfNote(s, a.note);
+    // In order: the chord after the last one named
+    const next = answers[s.found.length];
+    if (samePlace(place, next)) {
+      // Wrong guesses are for this chord: one tried too early may be the next one
+      const found = [...s.found, placeId(next)];
+      return found.length === answers.length
+        ? answeredRight(s, { found, tried: [] })
+        : { ...s, found, tried: [], status: "waiting" };
+    }
   } else {
-    if (a.type === "spot") return s;
-    answer = a.type === "key" ? a.key : keyOfNote(p.round.ring, a.note);
-    if (answer === right) return answeredRight(s, { filled: [...s.filled, p.spot] });
+    if (a.type === "chord") return s;
+    place = a.type === "place" ? a.place : placeOfNote(s, a.note);
+    if (p.kind !== "signature" && samePlace(place, p.ref)) return s; // the key shown isn't an answer
+    const id = placeId(place);
+    if (s.found.includes(id)) return s;
+    if (answers.some(x => samePlace(x, place))) {
+      const found = [...s.found, id];
+      return found.length === answers.length ? answeredRight(s, { found }) : { ...s, found, status: "waiting" };
+    }
   }
-  if (s.tried.includes(answer)) return s;
-  return answeredWrong(s, { tried: [...s.tried, answer] });
+  const id = placeId(place);
+  if (s.tried.includes(id)) return s;
+  return answeredWrong(s, { tried: [...s.tried, id] });
 }
-
-/** Whether the round is complete: every spot filled */
-export const roundDone = (s: CircleQuizState) => s.filled.length >= 12;

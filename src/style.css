@@ -1086,19 +1086,38 @@ body.midiMapping [data-midi-map].midiWaiting {
 #circleQuiz {
   width: 100%;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+#circleQuiz .cqRing {
+  width: 100%;
+  display: flex;
   justify-content: center;
 }
-#circleQuiz svg {
-  width: min(100%, 50vh);
+#circleQuiz .cqRing svg {
+  width: min(100%, 48vh);
   height: auto;
 }
-/* The board under it is empty for a "where" question: its room is kept, so the circle doesn't jump */
-#staffCard:has(> #circleQuiz:not([hidden])) > #answerBoard {
+/* The signature questions' staff: its room kept while they can come up, so the circle doesn't jump */
+#circleQuiz .cqSig {
+  width: min(100%, 240px);
+  height: 110px;
+}
+#circleQuiz .cqSig svg {
+  width: 100%;
+  height: 100%;
+}
+#staffCard:has(> #circleQuiz:not([hidden])) {
+  align-content: flex-start;
+}
+/* The board of chords under it is only for chains: its room kept while they can come up */
+#staffCard:has(> #circleQuiz[data-board="true"]:not([hidden])) > #answerBoard {
   min-height: 144px;
   justify-content: flex-start;
 }
 @media (max-width: 760px) {
-  #staffCard:has(> #circleQuiz:not([hidden])) > #answerBoard {
+  #staffCard:has(> #circleQuiz[data-board="true"]:not([hidden])) > #answerBoard {
     min-height: 196px;
   }
 }
@@ -1111,10 +1130,16 @@ body.midiMapping [data-midi-map].midiWaiting {
 .cqSpot text {
   text-anchor: middle;
   font:
-    600 16px system-ui,
+    600 14px system-ui,
     sans-serif;
   fill: var(--ink);
   pointer-events: none;
+}
+.cqSpot.minor text {
+  font-size: 11px;
+}
+.cqSpot.minor.open path {
+  fill: #e6e0d2;
 }
 .cqSpot.given path {
   fill: var(--accent);

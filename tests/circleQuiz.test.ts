@@ -1,108 +1,140 @@
-// Theory quiz, the circle of fifths: filling in the circle from one given key.
+// Theory quiz, key relationships on the circle of fifths: questions on a key's neighbours, signatures and chains of
+// dominants.
 import { describe, expect, it } from "vitest";
 import {
+  answersOf,
   DEFAULT_CIRCLE_QUIZ,
-  fifthsFromAnchor,
+  degreePlace,
   initialCircleQuiz,
-  keyAt,
+  keyAtSlot,
   makeCirclePrompt,
-  newCircleRound,
+  placeId,
   reduceCircleQuiz,
   ringKeys,
-  roundDone,
   sanitizeCircleQuizOptions,
-  spotOf,
-  type CircleQuizState,
-  type CircleRound,
+  slotOf,
+  type CirclePrompt,
+  type Place,
 } from "../src/exercises/circleQuiz";
-import { chromaOf } from "../src/theory";
+import { buildKey, chromaOf, keySignature } from "../src/theory";
 
 const seeded =
   (seed = 1) =>
   () =>
     ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
-/** G major given at the bottom (spot 6) */
-const round: CircleRound = { ring: "major", anchorSpot: 6, anchorKey: 1 };
-const prompt = (ask: "where" | "which", spot: number) => ({ round, ask, spot, choices: [] });
+const name = (p: Place) => ringKeys(p.ring)[p.key] + (p.ring === "minor" ? "m" : "");
+const major = (tonic: string): Place => ({ ring: "major", key: ringKeys("major").indexOf(tonic) });
+const minor = (tonic: string): Place => ({ ring: "minor", key: ringKeys("minor").indexOf(tonic) });
 
-describe("circle of fifths quiz", () => {
-  it("places the keys clockwise a fifth apart from the given one, wherever it is", () => {
-    expect(ringKeys("major")[keyAt(round, 6)]).toBe("G");
-    expect(ringKeys("major")[keyAt(round, 7)]).toBe("D"); // a fifth up, clockwise
-    expect(ringKeys("major")[keyAt(round, 5)]).toBe("C"); // a fifth down, anticlockwise
-    expect(ringKeys("major")[keyAt(round, 0)]).toBe("Db"); // opposite G
-    for (let s = 0; s < 12; s++) expect(spotOf(round, keyAt(round, s))).toBe(s);
-    expect(fifthsFromAnchor(round, 8)).toBe(2);
-    expect(fifthsFromAnchor(round, 1)).toBe(-5);
+describe("key relationships on the circle of fifths", () => {
+  it("knows each key's diatonic neighbours", () => {
+    const bb = major("Bb");
+    expect(name(degreePlace(bb, "V"))).toBe("F");
+    expect(name(degreePlace(bb, "IV"))).toBe("Eb");
+    expect(name(degreePlace(bb, "vi"))).toBe("Gm");
+    expect(name(degreePlace(bb, "ii"))).toBe("Cm");
+    expect(name(degreePlace(bb, "iii"))).toBe("Dm");
+    const e = minor("E");
+    expect(name(degreePlace(e, "v"))).toBe("Bm");
+    expect(name(degreePlace(e, "iv"))).toBe("Am");
+    expect(name(degreePlace(e, "III"))).toBe("G");
+    expect(name(degreePlace(e, "VI"))).toBe("C");
+    expect(name(degreePlace(e, "VII"))).toBe("D");
   });
 
-  it("where: a wrong spot is kept once, the right one fills it in; filled spots aren't answers", () => {
-    let s = initialCircleQuiz(prompt("where", 9)); // where does E go? three fifths up from G
-    s = reduceCircleQuiz(s, { type: "spot", spot: 6 }); // the given key's spot: not an answer
+  it("closely related keys: the five that share six or all seven of the key's notes", () => {
+    const p: CirclePrompt = { kind: "related", rotation: 0, ref: major("D") };
+    expect(answersOf(p).map(name).sort()).toEqual(["A", "Bm", "Em", "F#m", "G"]);
+    const scale = (pl: Place) => new Set(buildKey(`${ringKeys(pl.ring)[pl.key]}:${pl.ring}`)!.scale.map(chromaOf));
+    const d = scale(major("D"));
+    const shared = answersOf(p).map(k => [...scale(k)].filter(n => d.has(n)).length);
+    expect(shared.sort()).toEqual([6, 6, 6, 6, 7]); // the relative minor has all seven
+  });
+
+  it("degree: a wrong key counts once, the key shown isn't an answer, the right one (or its tonic played) is", () => {
+    let s = initialCircleQuiz({ kind: "degree", rotation: 3, ref: major("Bb"), degree: "V" });
+    s = reduceCircleQuiz(s, { type: "place", place: major("Bb") });
     expect(s.status).toBe("waiting");
-    s = reduceCircleQuiz(s, { type: "spot", spot: 8 });
-    s = reduceCircleQuiz(s, { type: "spot", spot: 8 });
-    expect(s).toMatchObject({ status: "wrong", tried: [8] });
-    s = reduceCircleQuiz(s, { type: "key", key: 4 }); // a key isn't an answer to where
-    expect(s.tried).toEqual([8]);
-    s = reduceCircleQuiz(s, { type: "spot", spot: 9 });
-    expect(s).toMatchObject({ status: "correct", filled: [6, 9], answered: 1, firstTry: 0 });
+    s = reduceCircleQuiz(s, { type: "place", place: major("Eb") });
+    s = reduceCircleQuiz(s, { type: "place", place: major("Eb") });
+    expect(s).toMatchObject({ status: "wrong", tried: [placeId(major("Eb"))] });
+    s = reduceCircleQuiz(s, { type: "play", note: 53 }); // F3
+    expect(s).toMatchObject({ status: "correct", firstTry: 0, answered: 1 });
   });
 
-  it("which: answered from the board or by playing the tonic in any octave", () => {
-    let s = initialCircleQuiz(prompt("which", 4)); // two fifths below G: F
-    s = reduceCircleQuiz(s, { type: "key", key: 0 }); // C
-    expect(s).toMatchObject({ status: "wrong", tried: [0] });
-    s = reduceCircleQuiz(s, { type: "play", note: 41 }); // F2
-    expect(s).toMatchObject({ status: "correct", filled: [6, 4] });
-    // Minor ring: the tonic of the minor key
-    const minor: CircleRound = { ring: "minor", anchorSpot: 0, anchorKey: 0 }; // A minor at the top
-    let m = initialCircleQuiz({ round: minor, ask: "which", spot: 1, choices: [] }); // E minor
-    m = reduceCircleQuiz(m, { type: "play", note: 64 });
-    expect(m.status).toBe("correct");
-  });
-
-  it("a skip fills the spot in as revealed; every prompt is a spot still open; a full circle starts a new round", () => {
-    const rng = seeded(3);
-    const o = DEFAULT_CIRCLE_QUIZ;
-    let s: CircleQuizState = initialCircleQuiz(makeCirclePrompt(rng, o, newCircleRound(rng, "major"), []));
-    const first = s.prompt.round;
-    for (let i = 0; i < 11; i++) {
-      expect(s.filled).not.toContain(s.prompt.spot);
-      s = reduceCircleQuiz(s, {
-        type: "skip",
-        prompt: makeCirclePrompt(rng, o, s.prompt.round, [...s.filled, s.prompt.spot]),
-      });
-      if (i < 10) expect(s.prompt.round).toBe(first);
+  it("related: all five found, in any order, by picking or playing", () => {
+    let s = initialCircleQuiz({ kind: "related", rotation: 0, ref: major("D") });
+    for (const p of [major("G"), minor("B"), major("A"), minor("E")]) {
+      s = reduceCircleQuiz(s, { type: "place", place: p });
+      expect(s.status).toBe("waiting");
     }
-    // The twelfth skip filled the last spot, so the prompt made after it is a new round
-    expect(s.prompt.round).not.toBe(first);
-    expect(s.filled).toEqual([s.prompt.round.anchorSpot]);
-    expect(s.revealed).toEqual([]);
-    expect(s.answered).toBe(11);
+    s = reduceCircleQuiz(s, { type: "play", note: 66 }); // F♯: F♯ minor, the one left
+    expect(s).toMatchObject({ status: "correct", firstTry: 1 });
+    expect(s.found).toHaveLength(5);
   });
 
-  it("asks only where or only which when chosen, and starts a new round when the ring changes", () => {
-    const rng = seeded(5);
-    for (let i = 0; i < 10; i++) {
-      expect(makeCirclePrompt(rng, { ring: "major", asks: "where" }, round, [6]).ask).toBe("where");
-      expect(makeCirclePrompt(rng, { ring: "major", asks: "which" }, round, [6]).ask).toBe("which");
+  it("signature: the key asked for, on its ring", () => {
+    let s = initialCircleQuiz({ kind: "signature", rotation: 0, answer: minor("C") });
+    s = reduceCircleQuiz(s, { type: "place", place: major("Eb") }); // same signature, but a major key
+    expect(s.status).toBe("wrong");
+    s = reduceCircleQuiz(s, { type: "place", place: minor("C") });
+    expect(s.status).toBe("correct");
+  });
+
+  it("chain: the chords between the first and the tonic, in order, from the board or played", () => {
+    const e7toC = ["E", "A", "D", "G", "C"].map(t => ringKeys("major").indexOf(t));
+    let s = initialCircleQuiz({ kind: "chain", rotation: 0, chords: e7toC, choices: [] });
+    expect(answersOf(s.prompt).map(name)).toEqual(["A", "D", "G"]);
+    s = reduceCircleQuiz(s, { type: "chord", key: ringKeys("major").indexOf("D") }); // out of order
+    expect(s).toMatchObject({ status: "wrong", tried: [placeId(major("D"))] });
+    s = reduceCircleQuiz(s, { type: "chord", key: ringKeys("major").indexOf("A") });
+    s = reduceCircleQuiz(s, { type: "play", note: 62 }); // D
+    expect(s).toMatchObject({ status: "waiting", found: [placeId(major("A")), placeId(major("D"))], tried: [] });
+    s = reduceCircleQuiz(s, { type: "place", place: major("G") }); // the circle isn't how a chain is answered
+    expect(s.found).toHaveLength(2);
+    s = reduceCircleQuiz(s, { type: "chord", key: ringKeys("major").indexOf("G") });
+    expect(s.status).toBe("correct");
+  });
+
+  it("makes questions of the kind chosen, chains a fifth apart down to the tonic, never the same key twice running", () => {
+    const rng = seeded(7);
+    let p = makeCirclePrompt(rng, DEFAULT_CIRCLE_QUIZ);
+    const kinds = new Set<string>();
+    for (let i = 0; i < 80; i++) {
+      const next = makeCirclePrompt(rng, DEFAULT_CIRCLE_QUIZ, p);
+      kinds.add(next.kind);
+      if ("ref" in next && "ref" in p) expect(placeId(next.ref)).not.toBe(placeId(p.ref));
+      if (next.kind === "chain") {
+        expect(next.chords.length).toBeGreaterThanOrEqual(4);
+        for (let j = 1; j < next.chords.length; j++)
+          expect(
+            (chromaOf(ringKeys("major")[next.chords[j - 1]]) - chromaOf(ringKeys("major")[next.chords[j]]) + 12) % 12,
+          ).toBe(7);
+        expect([...next.choices].sort((a, b) => a - b)).toEqual([...Array(12).keys()]);
+      }
+      p = next;
     }
-    expect(makeCirclePrompt(rng, { ring: "minor", asks: "mixed" }, round, [6]).round.ring).toBe("minor");
-    const done = { ...initialCircleQuiz(prompt("where", 9)), filled: Array.from({ length: 12 }, (_, i) => i) };
-    expect(roundDone(done)).toBe(true);
+    expect(kinds).toEqual(new Set(["degree", "related", "signature", "chain"]));
+    for (const asks of ["degree", "related", "signature", "chain"] as const)
+      expect(makeCirclePrompt(rng, { asks }).kind).toBe(asks);
   });
 
-  it("ring keys are the twelve tonics, a fifth apart", () => {
-    for (const ring of ["major", "minor"] as const) {
-      const keys = ringKeys(ring);
-      for (let i = 0; i < 12; i++) expect((chromaOf(keys[(i + 1) % 12]) - chromaOf(keys[i]) + 12) % 12).toBe(7);
+  it("signatures on the circle match the key's own", () => {
+    // Each step clockwise from C adds a sharp (or takes away a flat)
+    for (let k = 0; k < 12; k++) {
+      const sig = keySignature(buildKey(`${ringKeys("major")[k]}:major`)!);
+      const sharps = sig.accidental === "#" ? sig.count : -sig.count;
+      expect(((sharps % 12) + 12) % 12).toBe(k);
     }
   });
 
-  it("falls back on the defaults for anything not offered", () => {
+  it("turns the circle: slots and keys map both ways", () => {
+    for (let r = 0; r < 12; r++) for (let k = 0; k < 12; k++) expect(keyAtSlot(slotOf(k, r), r)).toBe(k);
+  });
+
+  it("falls back on the defaults for anything not offered (including the old ring and question options)", () => {
     expect(sanitizeCircleQuizOptions(undefined)).toEqual(DEFAULT_CIRCLE_QUIZ);
-    expect(sanitizeCircleQuizOptions({ ring: "dorian", asks: "why" })).toEqual(DEFAULT_CIRCLE_QUIZ);
-    expect(sanitizeCircleQuizOptions({ ring: "minor", asks: "which" })).toEqual({ ring: "minor", asks: "which" });
+    expect(sanitizeCircleQuizOptions({ ring: "minor", asks: "where" })).toEqual(DEFAULT_CIRCLE_QUIZ);
+    expect(sanitizeCircleQuizOptions({ asks: "chain" })).toEqual({ asks: "chain" });
   });
 });

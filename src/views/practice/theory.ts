@@ -1,14 +1,17 @@
 // Presenters for the theory quiz: key signatures (the panel's text, and the board of keys to answer from).
 import { signatureOf, signatureText, type KeySigState } from "../../exercises/keySignatures";
 import {
-  fifthsFromAnchor,
-  keyAt,
+  answersOf,
+  DEGREES,
+  placeId,
   ringKeys,
-  spotOf,
+  slotOf,
   type CircleQuizState,
   type CircleRing,
+  type Place,
 } from "../../exercises/circleQuiz";
-import type { CircleQuizModel } from "../circleQuiz";
+import { keySignature, requireKey } from "../../theory";
+import type { CircleQuizModel, CircleQuizSpot } from "../circleQuiz";
 import { prettyAcc, prettyText } from "../../theory";
 import type { AnswerBox } from "../answerBoard";
 import type { PracticeDisplay } from "./view";
@@ -59,80 +62,131 @@ export function keySigDisplay(s: KeySigState): PracticeDisplay {
 }
 
 /* ---------------------------------------------------------------
-   The circle of fifths quiz
+   Key relationships on the circle of fifths
    --------------------------------------------------------------- */
 
-/** The key opposite C major / A minor, six fifths either way: named both ways, as most circles print it */
-const OPPOSITE = { major: "F#/Gb", minor: "D#/Eb" } as const;
-const tonicOf = (ring: CircleRing, key: number) => prettyAcc(key === 6 ? OPPOSITE[ring] : ringKeys(ring)[key]);
-/** A key on the ring by its place in circle order: "D", "F♯/G♭", or "Dm", "D♯/E♭m" on the minor ring */
-const ringKeyLabel = (ring: CircleRing, key: number) => tonicOf(ring, key) + (ring === "minor" ? "m" : "");
-/** The same, in full: "D major", "F♯/G♭ major" */
-export const ringKeyName = (ring: CircleRing, key: number) => `${tonicOf(ring, key)} ${ring}`;
-/** How far round a spot is from the round's given key, in words */
-function fromGiven(s: CircleQuizState, spot: number): string {
-  const r = s.prompt.round,
-    n = fifthsFromAnchor(r, spot);
-  const given = ringKeyLabel(r.ring, r.anchorKey);
-  if (n === 0) return `the given key, ${given}`;
-  if (Math.abs(n) === 6) return `opposite ${given}`;
-  return `${Math.abs(n)} fifth${Math.abs(n) > 1 ? "s" : ""} ${n > 0 ? "clockwise" : "anticlockwise"} from ${given}`;
-}
+/** A key's tonic as the circle spells it, with ♯ and ♭ */
+const tonicOf = (p: Place) => prettyAcc(ringKeys(p.ring)[p.key]);
+/** On the circle: "D", "Bm" */
+const placeLabel = (p: Place) => tonicOf(p) + (p.ring === "minor" ? "m" : "");
+/** In full: "D major", "B minor"; the key opposite C named both ways */
+export const placeName = (p: Place) =>
+  (p.key === 6 ? prettyAcc(p.ring === "major" ? "F#/Gb" : "D#/Eb") : tonicOf(p)) + ` ${p.ring}`;
+/** A dominant seventh on the board or the circle: "A7" */
+const seventh = (key: number) => `${prettyAcc(ringKeys("major")[key])}7`;
+const fromId = (id: string): Place => {
+  const [ring, key] = id.split(":");
+  return { ring: ring as CircleRing, key: Number(key) };
+};
+/** A key's signature in words: "3 flats", "no sharps or flats" */
+const sigWords = (p: Place) => {
+  const sig = keySignature(requireKey(`${ringKeys(p.ring)[p.key]}:${p.ring}`));
+  if (!sig.count) return "no sharps or flats";
+  const word = sig.accidental === "#" ? "sharp" : "flat";
+  return `${sig.count} ${word}${sig.count > 1 ? "s" : ""}`;
+};
+/** The degree a key is of the key shown, if it's one of them */
+const degreeOf = (ref: Place, p: Place) => DEGREES[ref.ring].find(d => placeId(d.at(ref.key)) === placeId(p));
 
-/** The circle: each place filled in, open, asked about, or tried wrongly */
-export function circleQuizModel(s: CircleQuizState): CircleQuizModel {
-  const { round, ask, spot } = s.prompt;
+/** The circle: the keys given, found and tried; the rest blank */
+export function circleQuizModel(s: CircleQuizState, o: { sigRow: boolean; board: boolean }): CircleQuizModel {
+  const p = s.prompt;
+  const shown = new Map<string, { label: string; state: CircleQuizSpot["state"] }>();
+  const give = (pl: Place, label = placeLabel(pl)) => shown.set(placeId(pl), { label, state: "given" });
+  if (p.kind === "degree" || p.kind === "related") give(p.ref);
+  if (p.kind === "signature") give({ ring: "major", key: 0 });
+  if (p.kind === "chain") {
+    give({ ring: "major", key: p.chords[0] }, seventh(p.chords[0]));
+    give({ ring: "major", key: p.chords[p.chords.length - 1] });
+    const next = answersOf(p)[s.found.length];
+    if (next && s.status !== "correct") shown.set(placeId(next), { label: "", state: "asked" });
+  }
+  for (const id of s.found) {
+    const pl = fromId(id);
+    shown.set(id, { label: p.kind === "chain" ? seventh(pl.key) : placeLabel(pl), state: "found" });
+  }
+  if (p.kind !== "chain") for (const id of s.tried) if (!shown.has(id)) shown.set(id, { label: "", state: "wrong" });
+  const spots: CircleQuizSpot[] = [];
+  for (const ring of ["major", "minor"] as const)
+    for (let key = 0; key < 12; key++) {
+      const id = placeId({ ring, key });
+      const it = shown.get(id) ?? { label: "", state: "open" as const };
+      spots.push({ id, ring, slot: slotOf(key, p.rotation), ...it });
+    }
+  const total = answersOf(p).length;
   return {
-    spots: Array.from({ length: 12 }, (_, i) => {
-      const label = ringKeyLabel(round.ring, keyAt(round, i));
-      if (i === round.anchorSpot) return { label, state: "given" as const };
-      if (s.revealed.includes(i)) return { label, state: "revealed" as const };
-      if (s.filled.includes(i)) return { label, state: "found" as const };
-      if (ask === "which" && i === spot) return { label: "", state: "asked" as const };
-      if (ask === "where" && s.tried.includes(i)) return { label: "", state: "wrong" as const };
-      return { label: "", state: "open" as const };
-    }),
-    center: `${s.filled.length} / 12`,
-    pickable: ask === "where" && s.status !== "correct",
+    spots,
+    center: p.kind === "degree" ? p.degree : total > 1 ? `${s.found.length} / ${total}` : "",
+    pickable: p.kind !== "chain" && s.status !== "correct",
+    signature:
+      p.kind === "signature" ? requireKey(`${ringKeys(p.answer.ring)[p.answer.key]}:${p.answer.ring}`).vfKey : null,
+    sigRow: o.sigRow,
+    board: o.board,
   };
 }
 
-/** For a which question, the keys to answer from (shuffled per prompt); a where question is answered on the circle */
+/** For a chain, the dominant sevenths to name it from (shuffled per question); the others are answered on the circle */
 export function circleQuizAnswers(s: CircleQuizState): AnswerBox[] {
-  const { round, ask, spot, choices } = s.prompt;
-  if (ask !== "which") return [];
-  const right = keyAt(round, spot);
-  return choices.map(k => ({
-    id: String(k),
-    label: ringKeyLabel(round.ring, k),
-    state: s.status === "correct" && k === right ? "right" : s.tried.includes(k) ? "wrong" : "",
-    disabled: s.status === "correct" || s.tried.includes(k),
-  }));
+  const p = s.prompt;
+  if (p.kind !== "chain") return [];
+  return p.choices.map(k => {
+    const id = placeId({ ring: "major", key: k });
+    return {
+      id: String(k),
+      label: seventh(k),
+      state: s.found.includes(id) ? "right" : s.tried.includes(id) ? "wrong" : "",
+      disabled: s.status === "correct" || s.found.includes(id) || s.tried.includes(id),
+    };
+  });
 }
 
 export function circleQuizDisplay(s: CircleQuizState): PracticeDisplay {
-  const { round, ask, spot } = s.prompt;
-  const name = ringKeyName(round.ring, keyAt(round, spot));
-  let feedback = "";
-  if (s.status === "correct") {
-    feedback = `✓ ${name}: ${fromGiven(s, spot)}` + (s.filled.length >= 12 ? " · Circle complete" : "");
-  } else if (s.status === "wrong") {
-    const last = s.tried[s.tried.length - 1];
-    feedback =
-      ask === "where"
-        ? `✗ That's where ${ringKeyName(round.ring, keyAt(round, last))} goes`
-        : `✗ ${ringKeyName(round.ring, last)} is ${fromGiven(s, spotOf(round, last))}`;
+  const p = s.prompt;
+  const last = s.tried[s.tried.length - 1];
+  let label: string,
+    sub: string,
+    feedback = "";
+  switch (p.kind) {
+    case "degree": {
+      const d = DEGREES[p.ref.ring].find(x => x.id === p.degree)!;
+      label = `What's the ${d.name} of ${placeName(p.ref)}?`;
+      sub = "Pick it on the circle, or play its tonic · clockwise is a fifth up";
+      if (s.status === "correct") feedback = `✓ ${placeName(d.at(p.ref.key))} is the ${d.name} of ${placeName(p.ref)}`;
+      else if (s.status === "wrong") {
+        const wrong = fromId(last),
+          other = degreeOf(p.ref, wrong);
+        feedback = other ? `✗ ${placeName(wrong)} is its ${other.name}` : `✗ That's ${placeName(wrong)}`;
+      }
+      break;
+    }
+    case "related":
+      label = `Which keys are closely related to ${placeName(p.ref)}?`;
+      sub = "Pick all five on the circle, or play their tonics · each shares six or all seven of its notes";
+      if (s.status === "correct")
+        feedback = `✓ ${answersOf(p).map(placeLabel).join(", ")}: the keys around ${placeLabel(p.ref)}`;
+      else if (s.status === "wrong") feedback = `✗ ${placeName(fromId(last))} isn't closely related to it`;
+      break;
+    case "signature":
+      label = `Which ${p.answer.ring} key has this key signature?`;
+      sub = "Pick it on the circle, or play its tonic · C major is shown";
+      if (s.status === "correct") feedback = `✓ ${placeName(p.answer)}: ${sigWords(p.answer)}`;
+      else if (s.status === "wrong") feedback = `✗ ${placeName(fromId(last))} has ${sigWords(fromId(last))}`;
+      break;
+    case "chain": {
+      const first = seventh(p.chords[0]),
+        tonic = placeLabel({ ring: "major", key: p.chords[p.chords.length - 1] });
+      label = `Name the dominants from ${first} to ${tonic}`;
+      sub = "Each chord resolves a fifth down to the next: pick them in order, or play their roots";
+      if (s.status === "correct")
+        feedback = "✓ " + p.chords.map((k, i) => (i === p.chords.length - 1 ? tonic : seventh(k))).join(" → ");
+      else if (s.status === "wrong") {
+        // The chord asked for resolves to the one after it
+        const i = s.found.length + 1,
+          to = i + 1 === p.chords.length - 1 ? tonic : seventh(p.chords[i + 1]);
+        feedback = `✗ Not ${seventh(fromId(last).key)}: which dominant seventh resolves to ${to}?`;
+      }
+      break;
+    }
   }
-  return {
-    label: ask === "where" ? `Where does ${name} go?` : "Which key goes in the marked place?",
-    promptHtml: "",
-    size: "chord",
-    sub:
-      ask === "where"
-        ? "Pick its place on the circle · clockwise is a fifth up"
-        : "Choose a key, or play its tonic · clockwise is a fifth up",
-    status: s.status,
-    feedback,
-    score: scoreText(s),
-  };
+  return { label, promptHtml: "", size: "chord", sub, status: s.status, feedback, score: scoreText(s) };
 }

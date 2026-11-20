@@ -403,13 +403,13 @@ export function keySigDrillBody(
 }
 
 /**
- * Theory quiz, the circle of fifths: grouped by the key asked about ("E major"). `ask` is where (the key was named,
- * its place found) or which (the place was shown, its key named); `fifths` how far round from the given key (+
- * clockwise). `guesses` are the wrong answers in order: spots' keys for where, keys for which (names).
+ * Theory quiz, key relationships on the circle of fifths: grouped by the question as shown ("V of B♭ major",
+ * "Related to D major", "E♭ major" for a signature, "E7 → C" for a chain); `detail.kind` says which kind. `guesses`
+ * are the wrong answers in order, as key or chord names.
  */
 export function circleDrillBody(
   label: string,
-  detail: { ask: "where" | "which"; ring: string; fifths: number },
+  detail: Record<string, string | number>,
   answered: boolean,
   missed: boolean,
   ms: number,

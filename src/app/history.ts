@@ -45,7 +45,7 @@ export function openHistory(device: string, imported: () => void): History {
     const blob = new Blob([JSON.stringify(exportFile(records, Date.now()))], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `chord-display-history-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `etudio-history-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
   };

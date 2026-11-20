@@ -1,4 +1,10 @@
-# Chord Display → music theory practice app
+# Etudio (formerly Chord Display): a music theory practice app
+
+**Name** (Nov 2026): Etudio, from étude and studio, shown as the page title and header. Internal names keep the old
+one on purpose: the repository, `package.json`, `dist/chord-display.html`, and everything saved: settings keys
+(`chordDisplay.*`), the IndexedDB database (`chordDisplay`) and the history export's `format` (`chord-display-history`,
+which import checks). Renaming those would lose people's settings and history. Exported files are named
+`etudio-history-<date>.json`.
 
 ## What this is
 Started as an offline replacement for Chordie: it listens to MIDI from any input, shows the notes on a grand staff

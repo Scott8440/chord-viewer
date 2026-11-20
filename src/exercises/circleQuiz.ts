@@ -4,12 +4,11 @@
 // - degree: one key shown; play the tonic of its dominant, subdominant, relative, or another diatonic key
 // - related: one key shown; play the tonics of its five closely related keys (its relative shares all seven of its
 //   notes, the other four six)
-// Those two are answered by playing only: on the circle they sit right next to the key shown, so picking them
-// there would only test where they're drawn, not knowing their names.
-// - signature: a key signature on a staff, C major shown on the circle; pick the key (major or minor, as asked)
+// Those three are answered by playing only: on the circle the answers sit right next to the key shown (or a count
+// of steps from C), so picking them there would only test where they're drawn, not knowing their names.
+// - signature: a key signature on a staff, C major shown on the circle; play the key's tonic (major or minor, as asked)
 // - chain: a chain of dominants resolving by fifths (E7 A7 D7 G7 C): name each chord between the first and the tonic
-// Signatures are answered on the circle and chains from a board of chords, or either by playing the tonic or root.
-// Pure.
+// Chains are named from a board of chords, or by playing each root. Pure.
 import { CIRCLE_OF_FIFTHS_MAJOR, CIRCLE_OF_FIFTHS_MINOR, chromaOf } from "../theory";
 import { answeredRight, answeredWrong, type Judged } from "./judging";
 import { pick, randomInt, shuffled, type Rng } from "./random";
@@ -81,8 +80,9 @@ export type CirclePrompt =
    *  tonic; `choices`: the twelve dominant sevenths to answer from, shuffled */
   | { kind: "chain"; rotation: number; chords: readonly number[]; choices: readonly number[] };
 
-/** Whether a kind is answered only by playing: its answers are next to the key shown, so picking them proves nothing */
-export const playOnly = (kind: CircleKind) => kind === "degree" || kind === "related";
+/** Whether a kind is answered only by playing: on the circle its answers are next to the key shown (or a count of
+ *  steps from C), so picking them proves nothing. Only chains are named some other way (from the board). */
+export const playOnly = (kind: CircleKind) => kind !== "chain";
 
 /** What the player has to find: the places, in order (one for degree and signature, five for related, the chords
  *  between the first and the tonic for chain) */

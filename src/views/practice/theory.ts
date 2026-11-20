@@ -4,7 +4,6 @@ import {
   answersOf,
   DEGREES,
   placeId,
-  playOnly,
   ringKeys,
   slotOf,
   type CircleQuizState,
@@ -133,7 +132,7 @@ export function circleQuizModel(s: CircleQuizState, o: { sigRow: boolean; board:
     const label = p.kind === "chain" ? seventh(pl.key) : "ref" in p ? labelNear(p.ref, pl) : placeLabel(pl);
     shown.set(id, { label, state: "found" });
   }
-  if (p.kind !== "chain") for (const id of s.tried) if (!shown.has(id)) shown.set(id, { label: "", state: "wrong" });
+  // Wrong answers are notes played (or chords named), so nothing on the circle is marked wrong
   const spots: CircleQuizSpot[] = [];
   for (const ring of ["major", "minor"] as const)
     for (let key = 0; key < 12; key++) {
@@ -145,7 +144,8 @@ export function circleQuizModel(s: CircleQuizState, o: { sigRow: boolean; board:
   return {
     spots,
     center: p.kind === "degree" ? p.degree : total > 1 ? `${s.found.length} / ${total}` : "",
-    pickable: p.kind !== "chain" && !playOnly(p.kind) && s.status !== "correct",
+    // Every answer is played (or named from the board): the circle shows where keys are, it isn't picked from
+    pickable: false,
     signature:
       p.kind === "signature" ? requireKey(`${ringKeys(p.answer.ring)[p.answer.key]}:${p.answer.ring}`).vfKey : null,
     sigRow: o.sigRow,
@@ -196,9 +196,10 @@ export function circleQuizDisplay(s: CircleQuizState): PracticeDisplay {
       break;
     case "signature":
       label = `Which ${p.answer.ring} key has this key signature?`;
-      sub = "Pick it on the circle, or play its tonic · C major is shown";
+      sub = "Play its tonic on the keyboard";
       if (s.status === "correct") feedback = `✓ ${placeName(p.answer)}: ${sigWords(p.answer)}`;
-      else if (s.status === "wrong") feedback = `✗ ${placeName(fromId(last))} has ${sigWords(fromId(last))}`;
+      // A note played can't say major or minor: the note is named
+      else if (s.status === "wrong") feedback = `✗ Not ${tonicOf(fromId(last))}`;
       break;
     case "chain": {
       const first = seventh(p.chords[0]),

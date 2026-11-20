@@ -41,17 +41,6 @@ function start(asks: CircleAsks) {
   const shown = () => displays[displays.length - 1];
   const circle = () => circles[circles.length - 1];
   const board = () => boards[boards.length - 1];
-  /** Picks every open place in turn until the question is answered; returns how many were tried */
-  const pickUntilDone = () => {
-    let n = 0;
-    for (const s of circle().spots.filter(x => x.state === "open")) {
-      if (shown().status === "correct") break;
-      if (circle().spots.find(x => x.id === s.id)!.state !== "open") continue;
-      spot.forEach(l => l(s.id));
-      n++;
-    }
-    return n;
-  };
   return {
     store,
     mode,
@@ -59,7 +48,6 @@ function start(asks: CircleAsks) {
     circle,
     board,
     records,
-    pickUntilDone,
     press: (id: string) => answer.forEach(l => l(id)),
     play: (note: number) => {
       store.dispatch({
@@ -116,8 +104,10 @@ describe("theory quiz: key relationships", () => {
     expect(t.circle().signature).toBeTruthy();
     expect(t.circle().sigRow).toBe(true);
     expect(t.circle().spots.find(s => s.state === "given")).toMatchObject({ ring: "major", label: "C" });
-    t.pickUntilDone();
+    expect(t.circle().pickable).toBe(false);
+    for (let n = 60; n < 72 && t.shown().status !== "correct"; n++) t.play(n);
     expect(t.shown().feedback).toMatch(/^✓ .+: (no sharps or flats|\d (sharp|flat)s?)$/);
+    expect(t.circle().spots.filter(s => s.state === "found")).toHaveLength(1);
     t.mode.stop();
   });
 
@@ -152,7 +142,7 @@ describe("theory quiz: key relationships", () => {
 
   it("stops listening and doesn't move on once stopped", async () => {
     const t = start("signature");
-    t.pickUntilDone();
+    for (let n = 60; n < 72 && t.shown().status !== "correct"; n++) t.play(n);
     const before = t.shown();
     t.mode.stop();
     expect(t.listeners()).toBe(0);

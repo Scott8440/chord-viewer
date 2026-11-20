@@ -98,11 +98,13 @@ describe("key relationships on the circle of fifths", () => {
     expect(circleQuizDisplay(related).feedback).toBe("✓ A♭, G♭, B♭m, E♭m, Fm: the keys around D♭");
   });
 
-  it("signature: the key asked for, on its ring", () => {
+  it("signature: answered only by playing the tonic of the key asked for", () => {
     let s = initialCircleQuiz({ kind: "signature", rotation: 0, answer: minor("C") });
-    s = reduceCircleQuiz(s, { type: "place", place: major("Eb") }); // same signature, but a major key
+    s = reduceCircleQuiz(s, { type: "place", place: minor("C") }); // picked on the circle: nothing
+    expect(s.status).toBe("waiting");
+    s = reduceCircleQuiz(s, { type: "play", note: 63 }); // E♭: the major key with that signature, not the minor
     expect(s.status).toBe("wrong");
-    s = reduceCircleQuiz(s, { type: "place", place: minor("C") });
+    s = reduceCircleQuiz(s, { type: "play", note: 48 });
     expect(s.status).toBe("correct");
   });
 

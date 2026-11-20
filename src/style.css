@@ -1132,6 +1132,7 @@ body.midiMapping [data-midi-map].midiWaiting {
   fill: #fff;
   stroke: #b8862b;
   stroke-width: 3;
+  stroke-linejoin: round;
 }
 .cqSpot.asked text {
   fill: #b8862b;

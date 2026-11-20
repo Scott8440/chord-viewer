@@ -37,8 +37,13 @@ const segment = (pos: number) =>
   `L${f(point(R_IN, pos + 0.5))}A${R_IN} ${R_IN} 0 0 0 ${f(point(R_IN, pos - 0.5))}Z`;
 
 export function circleQuizSvg(m: CircleQuizModel): string {
-  const spots = m.spots
-    .map((s, i) => {
+  // The place asked about is drawn last, so its outline isn't half covered by the places drawn after it
+  const order = m.spots
+    .map((_, i) => i)
+    .sort((a, b) => Number(m.spots[a].state === "asked") - Number(m.spots[b].state === "asked"));
+  const spots = order
+    .map(i => {
+      const s = m.spots[i];
       const [x, y] = point(R_LABEL, i);
       const pick = m.pickable && (s.state === "open" || s.state === "asked");
       const text = s.state === "asked" ? "?" : s.state === "wrong" ? "✗" : s.label;

@@ -1057,7 +1057,7 @@ body.midiMapping [data-midi-map].midiWaiting {
   cursor: default;
 }
 /* The theory quiz: the staff (a key signature) with a board of smaller boxes under it */
-#staffCard:has(> #staff:not([hidden])) > #answerBoard:not([hidden]) {
+#staffCard:has(> #staff:not([hidden]), > #circleQuiz:not([hidden])) > #answerBoard:not([hidden]) {
   padding: 4px 8px 8px;
 }
 #staffCard:has(> #answerBoard:not([hidden])) > #staff {
@@ -1066,19 +1066,99 @@ body.midiMapping [data-midi-map].midiWaiting {
 #staffCard:has(> #answerBoard:not([hidden])) > #staff svg {
   max-height: 46vh;
 }
-#staffCard:has(> #staff:not([hidden])) > #answerBoard .boxes {
+#staffCard:has(> #staff:not([hidden]), > #circleQuiz:not([hidden])) > #answerBoard .boxes {
   gap: 8px;
   grid-template-columns: repeat(auto-fill, minmax(72px, 84px));
   justify-content: center;
 }
-#staffCard:has(> #staff:not([hidden])) > #answerBoard .box {
+#staffCard:has(> #staff:not([hidden]), > #circleQuiz:not([hidden])) > #answerBoard .box {
   min-height: 58px;
   padding: 8px 6px;
   gap: 2px;
   font-size: 20px;
 }
-#staffCard:has(> #staff:not([hidden])) > #answerBoard .boxDetail {
+#staffCard:has(> #staff:not([hidden]), > #circleQuiz:not([hidden])) > #answerBoard .boxDetail {
   font-size: 11px;
+}
+/* The theory quiz's circle of fifths to fill in (src/views/circleQuiz.ts): open places plain, the given key amber,
+   found ones green, revealed (skipped) ones grey; the place asked about marked; open places can be picked when the
+   question is where a key goes */
+#circleQuiz {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+#circleQuiz svg {
+  width: min(100%, 50vh);
+  height: auto;
+}
+/* The board under it is empty for a "where" question: its room is kept, so the circle doesn't jump */
+#staffCard:has(> #circleQuiz:not([hidden])) > #answerBoard {
+  min-height: 144px;
+  justify-content: flex-start;
+}
+@media (max-width: 760px) {
+  #staffCard:has(> #circleQuiz:not([hidden])) > #answerBoard {
+    min-height: 196px;
+  }
+}
+.cqSpot path {
+  fill: #efeadf;
+  stroke: var(--paper);
+  stroke-width: 2;
+  transition: fill 0.12s;
+}
+.cqSpot text {
+  text-anchor: middle;
+  font:
+    600 16px system-ui,
+    sans-serif;
+  fill: var(--ink);
+  pointer-events: none;
+}
+.cqSpot.given path {
+  fill: var(--accent);
+}
+.cqSpot.found path {
+  fill: #cfe6d7;
+}
+.cqSpot.found text {
+  fill: #1f6a40;
+}
+.cqSpot.revealed text {
+  fill: #9a968c;
+}
+.cqSpot.asked path {
+  fill: #fff;
+  stroke: #b8862b;
+  stroke-width: 3;
+}
+.cqSpot.asked text {
+  fill: #b8862b;
+}
+.cqSpot.wrong path {
+  fill: #f6e3dd;
+}
+.cqSpot.wrong text {
+  fill: #c8553d;
+}
+.cqSpot.pick {
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .cqSpot.pick:not(.wrong):hover path {
+    fill: #fff;
+  }
+}
+.cqSpot.pick:active path {
+  fill: #e4dccb;
+}
+.cqCenter {
+  text-anchor: middle;
+  font:
+    500 15px system-ui,
+    sans-serif;
+  fill: #6f6a60;
 }
 /* Between rounds: one large Next round in place of everything else */
 #answerBoard .next {
@@ -1731,10 +1811,10 @@ body.polished #calibrate {
   #staffCard:has(> #answerBoard:not([hidden])) > #staff svg {
     max-height: 30vh;
   }
-  #staffCard:has(> #staff:not([hidden])) > #answerBoard .boxes {
+  #staffCard:has(> #staff:not([hidden]), > #circleQuiz:not([hidden])) > #answerBoard .boxes {
     grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
   }
-  #staffCard:has(> #staff:not([hidden])) > #answerBoard .box {
+  #staffCard:has(> #staff:not([hidden]), > #circleQuiz:not([hidden])) > #answerBoard .box {
     min-height: 52px;
   }
 }

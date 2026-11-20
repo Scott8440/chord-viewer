@@ -17,7 +17,15 @@ export {
 } from "./drills";
 export { progressingDisplay, sequenceDisplay, tempoText, timingText } from "./sequence";
 export { routineDisplay } from "./routine";
-export { keyName, keySigAnswers, keySigDisplay } from "./theory";
+export {
+  circleQuizAnswers,
+  circleQuizDisplay,
+  circleQuizModel,
+  keyName,
+  ringKeyName,
+  keySigAnswers,
+  keySigDisplay,
+} from "./theory";
 export { roundScore, roundSummaryDisplay } from "./round";
 export { justUnlocked, ladderPlayingText, ladderSummaryText, type LadderStatus } from "./ladder";
 export { inversionFigures, inversionName } from "./chords";

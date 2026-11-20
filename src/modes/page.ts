@@ -1,6 +1,6 @@
 // The page around each mode (and the Progress page): which panel it shows and which page-wide behaviours it turns on.
 // Data, so a behaviour is written once and any mode can opt into it.
-import type { AppState, EarKind, ModeId } from "../state/app";
+import type { AppState, EarKind, ModeId, TheoryKind } from "../state/app";
 
 export interface PageSetup {
   /** The right-hand panel: the chord name or the practice card, beside the staff; or the progress charts, in place
@@ -8,8 +8,8 @@ export interface PageSetup {
   panel: "chordName" | "practice" | "progress" | "reference";
   /** What the left-hand card shows: the staff, ear training's scale-degree circle (no notes, only degrees), a
    *  board of large answer boxes (chord qualities), or the staff with a board of smaller boxes under it (the theory
-   *  quiz) */
-  stage: "staff" | "degrees" | "answers" | "staffAnswers";
+   *  quiz), or the circle of fifths to fill in with a board under it (the circle quiz) */
+  stage: "staff" | "degrees" | "answers" | "staffAnswers" | "circleAnswers";
   /** The header Key picker (free play only: exercises name their key or have their own selector) */
   headerKey: boolean;
   /** Fade the chord name out after IDLE_MS without input (and nothing sounding) */
@@ -41,7 +41,14 @@ export const EAR_VIEWS: Readonly<Record<EarKind, EarView>> = {
   progressions: "earProgressions",
 };
 
-export const PAGE_SETUP: Record<ModeId | EarView, PageSetup> = {
+/** The theory quiz's quizzes, as views of their own (as ear training's types): key signatures keep the mode's id */
+export type TheoryView = "theory" | "theoryCircle";
+export const THEORY_VIEWS: Readonly<Record<TheoryKind, TheoryView>> = {
+  keySignatures: "theory",
+  circle: "theoryCircle",
+};
+
+export const PAGE_SETUP: Record<ModeId | EarView | TheoryView, PageSetup> = {
   free: { panel: "chordName", stage: "staff", headerKey: true, fadeChordWhenIdle: true, metronome: false },
   reading: PRACTICE,
   chords: PRACTICE,
@@ -58,14 +65,21 @@ export const PAGE_SETUP: Record<ModeId | EarView, PageSetup> = {
   earProgressions: { ...PRACTICE, stage: "answers" },
   earIntervals: { ...PRACTICE, stage: "answers" },
   theory: { ...PRACTICE, stage: "staffAnswers" },
+  theoryCircle: { ...PRACTICE, stage: "circleAnswers" },
 };
 
 /** What's on screen: a practice mode (ear training as its type), or the Progress or Reference page (opened from the
  *  header, apart from the modes) */
-export type View = ModeId | EarView | "progress" | "reference";
+export type View = ModeId | EarView | TheoryView | "progress" | "reference";
 
 export const viewOf = (s: AppState): View =>
-  s.page !== "practice" ? s.page : s.settings.mode === "ear" ? EAR_VIEWS[s.settings.earKind] : s.settings.mode;
+  s.page !== "practice"
+    ? s.page
+    : s.settings.mode === "ear"
+      ? EAR_VIEWS[s.settings.earKind]
+      : s.settings.mode === "theory"
+        ? THEORY_VIEWS[s.settings.theoryKind]
+        : s.settings.mode;
 
 /** The Progress page: its charts in place of the staff and practice card, nothing running */
 const PROGRESS_PAGE: PageSetup = { ...PRACTICE, panel: "progress" };

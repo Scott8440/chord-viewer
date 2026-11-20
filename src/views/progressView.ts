@@ -89,6 +89,7 @@ const DRILL_NAMES = {
   progressionEar: "Ear: progressions",
   intervalEar: "Ear: intervals",
   keySig: "Theory: key signatures",
+  circleFifths: "Theory: circle of fifths",
 } as const;
 
 function table(head: string[], rows: string[][]): string {

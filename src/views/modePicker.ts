@@ -66,7 +66,7 @@ export const MODE_INFO: Readonly<Record<ModeId, ModeInfo>> = {
   },
   theory: {
     name: "Theory quiz",
-    about: "Name keys from their signatures, and more to come",
+    about: "Key signatures and the circle of fifths, no playing needed",
     icon: '<path d="M2 7h20M2 11h20M2 15h20M2 19h20" opacity=".45"/><path d="M8.5 5.5v11M11.5 4.5v11M6.5 9.8l7-2.3M6.5 14.3l7-2.3" stroke-width="1.5"/><path d="M17 8.5c0-2 3-2.4 3-.3 0 1.4-1.6 1.9-1.6 3.3M18.4 14v.3"/>',
   },
   ear: {

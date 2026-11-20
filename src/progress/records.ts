@@ -110,7 +110,8 @@ export type DrillKind =
   | "chordEar"
   | "progressionEar"
   | "intervalEar"
-  | "keySig";
+  | "keySig"
+  | "circleFifths";
 
 /** One prompt of a drill (note, chord, progression practice or ear training), answered or skipped. */
 export interface DrillBody {
@@ -396,6 +397,29 @@ export function keySigDrillBody(
     drill: "keySig",
     prompt: label,
     detail: { key: keyValue, guesses: guesses.join(",") },
+    outcome: outcomeOf(answered, missed),
+    ms: Math.round(ms),
+  };
+}
+
+/**
+ * Theory quiz, the circle of fifths: grouped by the key asked about ("E major"). `ask` is where (the key was named,
+ * its place found) or which (the place was shown, its key named); `fifths` how far round from the given key (+
+ * clockwise). `guesses` are the wrong answers in order: spots' keys for where, keys for which (names).
+ */
+export function circleDrillBody(
+  label: string,
+  detail: { ask: "where" | "which"; ring: string; fifths: number },
+  answered: boolean,
+  missed: boolean,
+  ms: number,
+  guesses: readonly string[] = [],
+): DrillBody {
+  return {
+    kind: "drill",
+    drill: "circleFifths",
+    prompt: label,
+    detail: { ...detail, guesses: guesses.join(",") },
     outcome: outcomeOf(answered, missed),
     ms: Math.round(ms),
   };

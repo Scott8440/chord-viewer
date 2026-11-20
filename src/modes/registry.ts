@@ -25,6 +25,8 @@ import { startEarProgressions } from "./earProgressions";
 import { startEarIntervals } from "./earIntervals";
 import { startEarMelody } from "./earMelody";
 import { startTheoryKeySigs } from "./theoryKeySigs";
+import { startTheoryCircle } from "./theoryCircle";
+import type { CircleQuizView } from "../views/circleQuiz";
 import { startEarTraining } from "./earTraining";
 import { startFreePlay } from "./freePlay";
 import type { View } from "./page";
@@ -55,6 +57,8 @@ export interface ModeDeps {
     /** The sampled piano the chord-quality drill can play its chords on */
     piano: PianoSound;
     degreePad: DegreePadView;
+    /** The circle of fifths to fill in (the theory quiz) */
+    circleQuiz: CircleQuizView;
     progress: ProgressView;
     reference: ReferenceView;
   };
@@ -86,6 +90,7 @@ export const MODE_REGISTRY: Record<View, (deps: ModeDeps) => Mode> = {
   earProgressions: startEarProgressions,
   earIntervals: startEarIntervals,
   theory: startTheoryKeySigs,
+  theoryCircle: startTheoryCircle,
   progress: startProgress,
   reference: startReference,
 };

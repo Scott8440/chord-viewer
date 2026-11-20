@@ -1,10 +1,11 @@
 // Whole-app state: the performance, a history of recent input events, and user settings (see settings.ts).
 import type { PromptStyle } from "../exercises/chordPrompt";
 import type { ChordEarOptions } from "../exercises/chordEar";
-import type { EarKind } from "./settings";
+import type { EarKind, TheoryKind } from "./settings";
 import type { ProgressionEarOptions } from "../exercises/progressionEar";
 import type { IntervalEarOptions } from "../exercises/intervalEar";
 import type { KeySigOptions } from "../exercises/keySignatures";
+import type { CircleQuizOptions } from "../exercises/circleQuiz";
 import type { EarOptions } from "../exercises/earTraining";
 import type { ReadingOptions } from "../exercises/sightReading";
 import type { ExerciseOptions } from "../exercises/prescriptive";
@@ -26,9 +27,11 @@ import {
 
 export {
   EAR_KINDS,
+  THEORY_KINDS,
   LATENCY_RANGE,
   MODES,
   type EarKind,
+  type TheoryKind,
   type ModeId,
   type SavedSettings,
   type Settings,
@@ -71,6 +74,8 @@ export type AppAction =
   | { type: "setEarKind"; kind: EarKind }
   | { type: "setReadingOptions"; options: Partial<ReadingOptions> }
   | { type: "setKeySigOptions"; options: Partial<KeySigOptions> }
+  | { type: "setTheoryKind"; kind: TheoryKind }
+  | { type: "setCircleQuizOptions"; options: Partial<CircleQuizOptions> }
   /** Calibrated or typed in: either way, the latency counts as dealt with */
   | { type: "setLatency"; ms: number }
   /** Calibration declined */
@@ -144,6 +149,10 @@ export function reduceApp(s: AppState, a: AppAction): AppState {
       return withSettings(s, { earKind: a.kind });
     case "setKeySigOptions":
       return withSettings(s, { keySig: merged(s.settings.keySig, a.options, SETTINGS.keySig) });
+    case "setTheoryKind":
+      return withSettings(s, { theoryKind: a.kind });
+    case "setCircleQuizOptions":
+      return withSettings(s, { circleQuiz: merged(s.settings.circleQuiz, a.options, SETTINGS.circleQuiz) });
     case "setEarIntervalOptions":
       return withSettings(s, {
         earIntervals: merged(s.settings.earIntervals, a.options, SETTINGS.earIntervals),

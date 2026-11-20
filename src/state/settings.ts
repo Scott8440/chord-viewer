@@ -11,6 +11,7 @@ import { isKeyValue, type KeyContext } from "../theory";
 import { sanitizeProgressionEarOptions, type ProgressionEarOptions } from "../exercises/progressionEar";
 import { sanitizeIntervalEarOptions, type IntervalEarOptions } from "../exercises/intervalEar";
 import { sanitizeKeySigOptions, type KeySigOptions } from "../exercises/keySignatures";
+import { sanitizeCircleQuizOptions, type CircleQuizOptions } from "../exercises/circleQuiz";
 
 export const MODES = [
   "free",
@@ -31,6 +32,9 @@ export type ModeId = (typeof MODES)[number];
 /** Ear training's types, each a drill of its own within the one Ear training mode */
 export const EAR_KINDS = ["degrees", "melodies", "intervals", "chords", "progressions"] as const;
 export type EarKind = (typeof EAR_KINDS)[number];
+/** The theory quiz's quizzes, each a view of its own within the one Theory quiz mode */
+export const THEORY_KINDS = ["keySignatures", "circle"] as const;
+export type TheoryKind = (typeof THEORY_KINDS)[number];
 /** The mode ids the types had when each was a mode of its own, by type */
 const OLD_EAR_MODES: Readonly<Record<string, EarKind>> = {
   ear: "degrees",
@@ -77,6 +81,10 @@ export interface Settings {
   readonly reading: ReadingOptions;
   /** Theory quiz, key signatures: major keys, minor or both, and up to how many sharps or flats */
   readonly keySig: KeySigOptions;
+  /** Which quiz the Theory quiz mode runs */
+  readonly theoryKind: TheoryKind;
+  /** Theory quiz, circle of fifths: the major or minor ring, and which questions */
+  readonly circleQuiz: CircleQuizOptions;
   /** How long the player's notes take to arrive after they hear the click (ms): taken off note times when timing */
   readonly latencyMs: number;
   /** The latency has been dealt with: calibrated, set by hand, or calibration declined. Until it is, starting the
@@ -164,6 +172,8 @@ export const SETTINGS: { readonly [K in SettingName]: SettingSpec<Settings[K]> }
   },
   reading: { storage: saved("reading", "json"), sanitize: sanitizeReadingOptions },
   keySig: { storage: saved("keySig", "json"), sanitize: sanitizeKeySigOptions },
+  theoryKind: { storage: saved("theoryKind", "string"), sanitize: v => oneOf(THEORY_KINDS, v, "keySignatures") },
+  circleQuiz: { storage: saved("circleQuiz", "json"), sanitize: sanitizeCircleQuizOptions },
   latencyMs: { storage: saved("latency", "json"), sanitize: sanitizeLatency },
   latencyCalibrated: {
     storage: saved("latencyCalibrated", "json"),

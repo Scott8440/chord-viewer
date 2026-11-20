@@ -35,6 +35,7 @@
         <div id="staff"></div>
         <div id="circle" hidden></div>
         <div id="degreeCircle" hidden></div>
+        <div id="circleQuiz" hidden></div>
         <div id="answerBoard" hidden></div>
         <div id="degreePad" hidden></div>
       </section>
@@ -196,9 +197,25 @@
                 >Quiz
                 <select id="theoryKind" data-seg="wide">
                   <option value="keySignatures">Key signatures</option>
+                  <option value="circle">Circle of fifths</option>
                 </select>
               </label>
-              <label class="pick"
+              <label class="pick" data-quiz="circle"
+                >Ring
+                <select id="circleRing" data-seg>
+                  <option value="major">Major keys</option>
+                  <option value="minor">Minor keys</option>
+                </select>
+              </label>
+              <label class="pick" data-quiz="circle"
+                >Questions
+                <select id="circleAsks" data-seg="wide">
+                  <option value="mixed">Both kinds</option>
+                  <option value="where">Where does it go?</option>
+                  <option value="which">Which key is it?</option>
+                </select>
+              </label>
+              <label class="pick" data-quiz="keySignatures"
                 >Keys
                 <select id="keySigKeys" data-seg>
                   <option value="major">Major</option>
@@ -206,7 +223,7 @@
                   <option value="both">Both</option>
                 </select>
               </label>
-              <label class="pick"
+              <label class="pick" data-quiz="keySignatures"
                 >Sharps or flats
                 <select id="keySigMost" data-seg>
                   <option value="3">Up to 3</option>

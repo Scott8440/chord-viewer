@@ -33,6 +33,7 @@ import { createRoundVizView } from "./views/roundViz";
 import { createLadderPick } from "./views/ladderPick";
 import { createModePicker } from "./views/modePicker";
 import { createDegreePad } from "./views/degreePad";
+import { createCircleQuizView } from "./views/circleQuiz";
 import { createDegreeCircle } from "./views/degreeCircle";
 import { createHeaderView } from "./views/header";
 import { createPracticeView } from "./views/practice";
@@ -163,6 +164,7 @@ const modeDeps: ModeDeps = {
     // Its own player (so turning the footer's Piano sound off doesn't cut a prompt off), sharing the samples
     piano: createPianoSound(),
     degreePad,
+    circleQuiz: createCircleQuizView($("circleQuiz")),
     progress: progressView,
     reference: referenceView,
   },

@@ -10,7 +10,7 @@ which import checks). Renaming those would lose people's settings and history. E
 Started as an offline replacement for Chordie: it listens to MIDI from any input, shows the notes on a grand staff
 and names the most likely chord. It has grown into a music theory practice app: free play, chord and progression
 practice, sight reading, prescriptive exercises (scales, diatonic chords, technique) and routines of them,
-ear training, a theory quiz (naming keys from their signatures), a metronome, and a practice history with a
+ear training, a theory quiz (key signatures, the circle of fifths), a metronome, and a practice history with a
 Progress page.
 
 The user plays a Komplete Kontrol S88 MK3 with a sustain pedal on Windows, often through loopMIDI because Ableton
@@ -34,7 +34,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 562 tests (54 voicings) should pass
+npm test           # Vitest: 573 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -140,13 +140,20 @@ Layers that only talk through data. Read the file before changing a layer; this 
   `ladder: {id, level}` (two rounds in a row at 85%+ at the top level unlock the next; only ever up). Rounds played
   broken, or with free choice, aren't tagged. Changing what a level means needs a new ladder id. The saved level is
   pulled back to the highest unlocked once history is read; after an unlocking round, Next round moves up.
-- **Theory quiz** (mode `theory`, for theory knowledge rather than playing): one quiz so far, key signatures
-  (`src/exercises/keySignatures.ts` pure, `src/modes/theoryKeySigs.ts`). The staff shows a signature and nothing else
-  (stage `staffAnswers`: the staff with a board of smaller boxes under it); the player names the key from the board (its
-  keys shuffled per prompt, `choices`: in signature order they'd give the answer away) or plays its tonic in any octave. Options (setting `keySig`): major, minor or both (each prompt says which: a signature
-  is shared by relative keys) and up to 3, 5 or all 7 sharps or flats. Records are drill `keySig`, guesses kept. The
-  panel's Quiz picker (`#theoryKind`) has one entry and isn't bound yet: a second quiz would add a setting, and views
-  per quiz as ear training does.
+- **Theory quiz** (mode `theory`, for theory knowledge rather than playing; setting `theoryKind` picks the quiz). Its
+  quizzes are views of their own, as ear training's types (`THEORY_VIEWS` in `src/modes/page.ts`: "theory" for key
+  signatures, "theoryCircle"); `viewOf` maps mode + quiz to the view. Options show per quiz by `data-quiz`.
+  - **Key signatures** (`src/exercises/keySignatures.ts` pure, `src/modes/theoryKeySigs.ts`): the staff shows a
+    signature and nothing else (stage `staffAnswers`: the staff with a board of smaller boxes under it); the player
+    names the key from the board (shuffled per prompt, `choices`: in signature order they'd give the answer away) or
+    plays its tonic. Options (setting `keySig`): major, minor or both, up to 3, 5 or 7 sharps or flats. Drill `keySig`.
+  - **Circle of fifths** (`src/exercises/circleQuiz.ts` pure, `src/modes/theoryCircle.ts`, `src/views/circleQuiz.ts`):
+    a round gives one key at a random place (clockwise is still a fifth up, but C needn't be at the top) and fills in
+    the other eleven one prompt at a time: "where does X go?" (picked on the circle) or "which key goes in the marked
+    place?" (from the shuffled board under it, or its tonic played). Skip reveals the place; a full circle starts a
+    new round. Stage `circleAnswers` (the board keeps its room when empty, so the circle doesn't jump). Options
+    (setting `circleQuiz`): major or minor ring, both kinds of question or one. The key opposite C/A is named both ways
+    (F♯/G♭, D♯/E♭m). Drill `circleFifths`, with how many fifths from the given key and the guesses.
 - **Melody ear training** (`src/modes/earMelody.ts`): plays on the sampled piano by default (`ear.melodySound`,
   Piano or Simple; the samples load first, as for intervals). The staff row draws held keys only after a wrong note.
 - **Interval ear training** (`src/exercises/intervalEar.ts` pure, `src/modes/earIntervals.ts`): two notes (up, down,

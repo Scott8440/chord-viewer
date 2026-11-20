@@ -21,6 +21,7 @@ import type { MinorForm, ScaleHands, ScaleKind, ScaleOctaves } from "../exercise
 import { PROGRESSION_LENGTHS, tonicName } from "../exercises/progressionEar";
 import { INTERVAL_GROUPS, type IntervalPlay } from "../exercises/intervalEar";
 import type { KeySigModes, KeySigMost } from "../exercises/keySignatures";
+import type { CircleAsks, CircleRing } from "../exercises/circleQuiz";
 import type { ArpeggioInversion } from "../exercises/technique";
 import { levelsFor, type ReadingPart } from "../exercises/excerpts";
 import {
@@ -34,7 +35,7 @@ import {
 } from "../exercises/sightReading";
 import { pageSetup, viewOf } from "../modes/page";
 import type { AppStore } from "../modes/performance";
-import type { AppAction, AppState, EarKind, ModeId, Settings } from "../state/app";
+import type { AppAction, AppState, EarKind, ModeId, Settings, TheoryKind } from "../state/app";
 import type { Strictness, Subdivision } from "../timing/grid";
 import { prettyAcc, requireKey } from "../theory";
 import { createFilterView, type FilterGroup } from "../views/filter";
@@ -298,7 +299,22 @@ export function bindControls(store: AppStore) {
     s => s.ear.melodySound,
     v => ({ type: "setEarOptions", options: { melodySound: v === "simple" ? "simple" : "piano" } }),
   );
-  // Theory quiz, key signatures
+  // Theory quiz: which quiz, then each quiz's options
+  bindSelect(
+    $("theoryKind"),
+    s => s.theoryKind,
+    v => ({ type: "setTheoryKind", kind: v as TheoryKind }),
+  );
+  bindSelect(
+    $("circleRing"),
+    s => s.circleQuiz.ring,
+    v => ({ type: "setCircleQuizOptions", options: { ring: v as CircleRing } }),
+  );
+  bindSelect(
+    $("circleAsks"),
+    s => s.circleQuiz.asks,
+    v => ({ type: "setCircleQuizOptions", options: { asks: v as CircleAsks } }),
+  );
   bindSelect(
     $("keySigKeys"),
     s => s.keySig.keys,
@@ -449,8 +465,12 @@ export function showControls(state: AppState) {
   $("referenceBtn").setAttribute("aria-pressed", String(state.page === "reference"));
   $("staff").hidden = page.stage !== "staff" && page.stage !== "staffAnswers";
   $("degreeCircle").hidden = page.stage !== "degrees";
-  $("answerBoard").hidden = page.stage !== "answers" && page.stage !== "staffAnswers";
+  $("answerBoard").hidden = page.stage !== "answers" && page.stage !== "staffAnswers" && page.stage !== "circleAnswers";
+  $("circleQuiz").hidden = page.stage !== "circleAnswers";
+  // The theory quiz: its picker, and the options of the quiz it's on
   $("theoryOptions").hidden = id !== "theory";
+  for (const el of document.querySelectorAll<HTMLElement>("#theoryOptions [data-quiz]"))
+    el.hidden = el.dataset.quiz !== s.theoryKind;
   const ex = exercisesOf(s);
   // Chord names vs Roman numerals matters wherever chords are prompted
   $("chordOptions").hidden = !(id === "chords" || id === "progressions" || ex.ids.some(e => PRESCRIPTIVE[e].chords));

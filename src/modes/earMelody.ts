@@ -102,7 +102,8 @@ export function startEarMelody({
     history,
   );
 
-  // The staff draws the melody as it's played back, the root shown (grey) from the start, spelled in its key
+  // The staff draws the melody as it's played back, the root shown (grey) from the start, spelled in its key. A right
+  // note is drawn once, as entered; held keys are drawn (at the step wanted) only after a wrong one, to show what it was
   const drawer = createPerformanceDrawer(
     store,
     views,
@@ -114,6 +115,7 @@ export function startEarMelody({
           .slice(0, Math.max(1, state.index))
           .map((n, i) => ({ midi: n.note, dim: i >= state.index })),
         slots: state.prompt.notes.length,
+        heldAt: state.status === "wrong" ? undefined : null,
       };
     },
   );

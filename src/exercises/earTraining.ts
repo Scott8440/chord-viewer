@@ -53,11 +53,13 @@ export const EAR_TONICS: readonly string[] = ["random", ...KEY_MAJORS];
 export const MELODY_LENGTHS: readonly number[] = [2, 3, 4, 5, 6, 8];
 export const DEFAULT_MELODY_LENGTH = 3;
 
-/** Shared by both ear-training modes; `melodyLength` is for melodies only */
+/** Shared by both ear-training modes; `melodyLength` and `melodySound` are for melodies only */
 export interface EarOptions {
   tonic: string;
   degrees: readonly string[];
   melodyLength: number;
+  /** What melodies play on: the sampled piano (the default) or the simple tone */
+  melodySound: "simple" | "piano";
 }
 
 /** Keeps known degrees, in scale order; falls back to the defaults if nothing is left. */
@@ -74,6 +76,7 @@ export function sanitizeEarOptions(raw: unknown): EarOptions {
     melodyLength: MELODY_LENGTHS.includes(o.melodyLength as number)
       ? (o.melodyLength as number)
       : DEFAULT_MELODY_LENGTH,
+    melodySound: o.melodySound === "simple" ? "simple" : "piano",
   };
 }
 

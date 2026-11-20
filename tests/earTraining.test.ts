@@ -109,16 +109,15 @@ describe("options", () => {
     expect(defaults.degrees.length).toBeGreaterThan(0);
   });
 
-  it("keeps known degrees in scale order and rejects unknown tonics and lengths", () => {
-    expect(sanitizeEarOptions({ tonic: "H", degrees: ["5", "3", "9", "1"], melodyLength: 7 })).toEqual({
-      tonic: "random",
-      degrees: ["1", "3", "5"],
-      melodyLength: 3,
-    });
-    expect(sanitizeEarOptions({ tonic: "F#", degrees: [], melodyLength: 5 })).toEqual({
+  it("keeps known degrees in scale order and rejects unknown tonics, lengths and sounds", () => {
+    expect(
+      sanitizeEarOptions({ tonic: "H", degrees: ["5", "3", "9", "1"], melodyLength: 7, melodySound: "organ" }),
+    ).toEqual({ tonic: "random", degrees: ["1", "3", "5"], melodyLength: 3, melodySound: "piano" });
+    expect(sanitizeEarOptions({ tonic: "F#", degrees: [], melodyLength: 5, melodySound: "simple" })).toEqual({
       tonic: "F#",
       degrees: ["1", "5"],
       melodyLength: 5,
+      melodySound: "simple",
     });
   });
 });

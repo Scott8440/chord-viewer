@@ -718,6 +718,42 @@ describe("melodies", () => {
     expect(t.staff.render).toHaveBeenCalled();
   });
 
+  it("plays on the piano by default, once its samples are in; Simple uses the tone", async () => {
+    const t = setup();
+    t.store.dispatch({ type: "setEarOptions", options: { tonic: "C" } });
+    const plays: { note: number; delay: number }[] = [];
+    let loaded = false;
+    const piano = {
+      load: async () => {
+        loaded = true;
+      },
+      loaded: () => loaded,
+      noteOn() {},
+      noteOff() {},
+      pedal() {},
+      play: (note: number, _v: number, delay: number) => plays.push({ note, delay }),
+      allOff() {},
+    };
+    expect(t.store.getState().settings.ear.melodySound).toBe("piano");
+    const mode: Mode = startEarMelody({
+      store: t.store,
+      views: { staff: { render: vi.fn() }, practice: t.practice, tones: t.tones, roundViz: t.roundViz, piano } as never,
+      recorder: t.recorder,
+      rng: seeded(3),
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    // The root and 3 notes, the root first, nothing on the tone
+    expect(plays).toHaveLength(4);
+    expect(plays[0].delay).toBe(0);
+    expect(lastSounded(t.tones)).toEqual([]);
+    plays.length = 0;
+    t.store.dispatch({ type: "setEarOptions", options: { melodySound: "simple" } });
+    mode.replay!();
+    expect(plays).toEqual([]);
+    expect(lastSounded(t.tones)).toHaveLength(4);
+    mode.stop();
+  });
+
   it("a round of skips ends with the summary at once; Stop/Start cuts the melody off and plays it again", async () => {
     const t = start();
     const melody = lastSounded(t.tones);

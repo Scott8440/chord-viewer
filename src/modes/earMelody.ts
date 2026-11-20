@@ -2,6 +2,7 @@
 // note waits on its step and the melody plays again a second later. With a random tonic the key changes every
 // PROMPTS_PER_KEY melodies. Stop silences everything and ignores played notes; Start plays the melody again.
 // Rounds, replays and Stop/Start are the shared ear-drill runner's (earDrill.ts); this sounds the melody and draws it.
+import type { PianoSound } from "../audio/piano";
 import type { TonePlayer } from "../audio/tones";
 import {
   degreeButtons,
@@ -48,6 +49,8 @@ export function startEarMelody({
     practice: PracticeView;
     tones: TonePlayer;
     roundViz: RoundVizView;
+    /** The sampled piano, for the Piano sound (left out in tests, which then hear the simple tone) */
+    piano?: PianoSound;
     /** Degree buttons to tap (left out in tests) */
     degreePad?: DegreePadView;
   };
@@ -63,6 +66,33 @@ export function startEarMelody({
     keys = rotateKey(keys, options().tonic, (choice, before) => pickTonic(rng, choice, before));
     const o = options();
     return makeMelodyPrompt(rng, keys.key, o.degrees, o.melodyLength, previous);
+  }
+
+  let stopped = false;
+  function cut() {
+    views.tones.stopNotes();
+    views.piano?.allOff();
+  }
+  /** The root and then the melody (a little gap after the root), on the piano or the tone */
+  function play(s: MelodyState) {
+    const piano = options().melodySound === "piano" ? views.piano : undefined;
+    s.prompt.notes.forEach((n, i) => {
+      const at = i === 0 ? 0 : ROOT_GAP_S + (i - 1) * NOTE_GAP_S;
+      if (piano) piano.play(n.note, 80, at, NOTE_RING_S);
+      else views.tones.play(n.note, at, NOTE_RING_S);
+    });
+  }
+  /** Cuts off anything still sounding, then plays once the piano's samples are in; then only if still wanted */
+  function sound(s: MelodyState) {
+    cut();
+    const piano = options().melodySound === "piano" ? views.piano : undefined;
+    if (!piano || piano.loaded()) return play(s);
+    piano.load().then(
+      () => {
+        if (!stopped && drill.running() && drill.state().prompt === s.prompt) play(s);
+      },
+      e => console.error("Couldn't load the piano samples", e),
+    );
   }
 
   const drill = createEarDrill<MelodyPrompt, MelodyState, MelodyAction, EarOptions>(
@@ -82,14 +112,8 @@ export function startEarMelody({
       },
       nextPromptMs: NEXT_PROMPT_MS,
       record: (s, answered, ms) => melodyDrillBody(s.prompt, options().degrees, answered, s.missed, ms),
-      // The root and then the melody (a little gap after the root), cutting off anything still sounding
-      sound(s) {
-        views.tones.stopNotes();
-        s.prompt.notes.forEach((n, i) =>
-          views.tones.play(n.note, i === 0 ? 0 : ROOT_GAP_S + (i - 1) * NOTE_GAP_S, NOTE_RING_S),
-        );
-      },
-      silence: () => views.tones.stopNotes(),
+      sound,
+      silence: cut,
       display: (s, blocked, running) => earMelodyDisplay(s, options().degrees, blocked, running),
       summaryDisplay: summary => roundSummaryDisplay(summary, "Melodies"),
       // The drawer only redraws by itself on input; the melody and its key change here
@@ -124,6 +148,7 @@ export function startEarMelody({
 
   return {
     stop() {
+      stopped = true;
       offInput();
       views.degreePad?.show(null);
       drawer.stop();

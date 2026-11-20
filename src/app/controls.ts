@@ -292,6 +292,11 @@ export function bindControls(store: AppStore) {
     s => (s.earChords.broken ? "broken" : "together"),
     v => ({ type: "setEarChordOptions", options: { broken: v === "broken" } }),
   );
+  bindSelect(
+    $("melodySound"),
+    s => s.ear.melodySound,
+    v => ({ type: "setEarOptions", options: { melodySound: v === "simple" ? "simple" : "piano" } }),
+  );
   for (const n of MELODY_LENGTHS) $("melodyLength").append(new Option(String(n), String(n)));
   bindSelect(
     $("melodyLength"),
@@ -471,7 +476,7 @@ export function showControls(state: AppState) {
   // On the ladder its level decides the types and voicing; with free choice the player does
   $("earChordLevelPick").hidden = !s.earChords.ladder;
   $("earChordVoicingPick").hidden = $("earChordFilters").hidden = s.earChords.ladder;
-  $("melodyLengthPick").hidden = view !== "earMelody";
+  $("melodyLengthPick").hidden = $("melodySoundPick").hidden = view !== "earMelody";
   $("earTonicLabel").textContent = view === "earMelody" ? "Key" : "Drone";
   const used = new Set<ExerciseOption>(ex.ids.flatMap(e => PRESCRIPTIVE[e].options));
   // A routine sets each item's key and moves through them itself

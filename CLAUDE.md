@@ -34,7 +34,7 @@ server of our own and no telemetry.
 npm install
 npm run dev        # Vite dev server
 npm run build      # typecheck, then write dist/chord-display.html
-npm test           # Vitest: 577 tests (54 voicings) should pass
+npm test           # Vitest: 578 tests (54 voicings) should pass
 npm run typecheck
 npm run format     # Prettier, rewriting files; format:check only reports
 ```
@@ -153,7 +153,10 @@ Layers that only talk through data. Read the file before changing a layer; this 
     Both rings (major outside, relative minors inside), turned to a random angle, blank but for what the question
     gives. Kinds (setting `circleQuiz.asks`, or all at random): a key's diatonic neighbour by numeral (V, IV, vi, ii,
     iii; for minor v, iv, III, VI, VII: `DEGREES`); its five closely related keys (the relative shares all seven notes,
-    the others six); the key of a signature (a treble staff above the circle, C major given); a chain of dominants to a
+    the others six). Those two are play-only (`playOnly`): on the circle they sit next to the key shown, so picking
+    them only tests the drawing (the user found them trivial); the answers appear on the circle once played, wrong
+    notes are named, and neighbours are spelled from the key's side of the circle (D♭'s IV is G♭: `SIDE_SPELLING` in
+    `src/views/practice/theory.ts`). Then: the key of a signature (a treble staff above the circle, C major given); a chain of dominants to a
     major tonic, named in order from a board of sevenths (wrong guesses reset after each chord found, since one tried
     early may be the next). Answered on the circle, from the board, or by playing the tonic or root. Stage
     `circleAnswers`; the signature strip and the board keep their room only while those kinds can come up. Drill

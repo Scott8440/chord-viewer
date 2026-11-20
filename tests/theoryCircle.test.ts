@@ -61,6 +61,16 @@ function start(asks: CircleAsks) {
     records,
     pickUntilDone,
     press: (id: string) => answer.forEach(l => l(id)),
+    play: (note: number) => {
+      store.dispatch({
+        type: "input",
+        event: { type: "noteOn", note, velocity: 100, time: 0, source: "t", channel: 0 },
+      });
+      store.dispatch({
+        type: "input",
+        event: { type: "noteOff", note, velocity: 0, time: 0, source: "t", channel: 0 },
+      });
+    },
     listeners: () => answer.size + spot.size,
   };
 }
@@ -69,17 +79,29 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe("theory quiz: key relationships", () => {
-  it("degree: picked on the circle, wrong picks marked, recorded, then a new question", async () => {
+  it("degree: played, not picked; the answer appears on the circle; recorded, then a new question", async () => {
     const t = start("degree");
     expect(t.shown().label).toMatch(/^What's the .+ of .+ (major|minor)\?$/);
     expect(t.circle().spots.filter(s => s.state === "given")).toHaveLength(1);
-    expect(t.circle()).toMatchObject({ pickable: true, signature: null, sigRow: false, board: false });
+    expect(t.circle()).toMatchObject({ pickable: false, signature: null, sigRow: false, board: false });
     expect(t.board()).toEqual([]);
-    const tries = t.pickUntilDone();
+    // Every note in turn until it's right: wrong notes are named
+    let wrongs = 0;
+    for (let n = 60; n < 72 && t.shown().status !== "correct"; n++) {
+      t.play(n);
+      if (t.shown().status === "wrong") {
+        wrongs++;
+        expect(t.shown().feedback).toMatch(/^✗ Not \S+$/);
+      }
+    }
     expect(t.shown().feedback).toMatch(/^✓ /);
-    expect(t.circle().spots.filter(s => s.state === "wrong")).toHaveLength(tries - 1);
+    expect(t.circle().spots.filter(s => s.state === "found")).toHaveLength(1);
     expect(t.records).toEqual([
-      expect.objectContaining({ drill: "circleFifths", detail: expect.objectContaining({ kind: "degree" }) }),
+      expect.objectContaining({
+        drill: "circleFifths",
+        outcome: wrongs ? "corrected" : "firstTry",
+        detail: expect.objectContaining({ kind: "degree" }),
+      }),
     ]);
     const first = t.shown().label;
     await vi.advanceTimersByTimeAsync(CIRCLE_NEXT_MS);
@@ -129,7 +151,7 @@ describe("theory quiz: key relationships", () => {
   });
 
   it("stops listening and doesn't move on once stopped", async () => {
-    const t = start("degree");
+    const t = start("signature");
     t.pickUntilDone();
     const before = t.shown();
     t.mode.stop();

@@ -4,6 +4,7 @@ import {
   answersOf,
   DEGREES,
   placeId,
+  playOnly,
   ringKeys,
   slotOf,
   type CircleQuizState,
@@ -69,6 +70,34 @@ export function keySigDisplay(s: KeySigState): PracticeDisplay {
 const tonicOf = (p: Place) => prettyAcc(ringKeys(p.ring)[p.key]);
 /** On the circle: "D", "Bm" */
 const placeLabel = (p: Place) => tonicOf(p) + (p.ring === "minor" ? "m" : "");
+
+/** The keys either side of the bottom of the circle, spelled from the sharp side and from the flat side: a key's
+ *  neighbours are spelled from its side (D♭ major's IV is G♭, not F♯; F♯ major's V is C♯, not D♭) */
+const SIDE_SPELLING = {
+  sharp: { major: { 7: "C#" }, minor: { 6: "D#", 7: "A#" } },
+  flat: { major: { 5: "Cb", 6: "Gb" }, minor: { 5: "Ab" } },
+} as const satisfies Record<string, Record<CircleRing, Partial<Record<number, string>>>>;
+/** Which side of the circle a key is on (C major and A minor on neither) */
+const sideOf = (p: Place): "sharp" | "flat" | null =>
+  p.ring === "major"
+    ? p.key >= 1 && p.key <= 6
+      ? "sharp"
+      : p.key >= 7
+        ? "flat"
+        : null
+    : p.key >= 1 && p.key <= 5
+      ? "sharp"
+      : p.key >= 6
+        ? "flat"
+        : null;
+/** A key's tonic spelled from the side of a key shown (its neighbours), with ♯ and ♭ */
+const tonicNear = (ref: Place, p: Place) => {
+  const side = sideOf(ref);
+  const spelled = side ? (SIDE_SPELLING[side][p.ring] as Partial<Record<number, string>>)[p.key] : undefined;
+  return spelled ? prettyAcc(spelled) : tonicOf(p);
+};
+const labelNear = (ref: Place, p: Place) => tonicNear(ref, p) + (p.ring === "minor" ? "m" : "");
+const nameNear = (ref: Place, p: Place) => `${tonicNear(ref, p)} ${p.ring}`;
 /** In full: "D major", "B minor"; the key opposite C named both ways */
 export const placeName = (p: Place) =>
   (p.key === 6 ? prettyAcc(p.ring === "major" ? "F#/Gb" : "D#/Eb") : tonicOf(p)) + ` ${p.ring}`;
@@ -85,8 +114,6 @@ const sigWords = (p: Place) => {
   const word = sig.accidental === "#" ? "sharp" : "flat";
   return `${sig.count} ${word}${sig.count > 1 ? "s" : ""}`;
 };
-/** The degree a key is of the key shown, if it's one of them */
-const degreeOf = (ref: Place, p: Place) => DEGREES[ref.ring].find(d => placeId(d.at(ref.key)) === placeId(p));
 
 /** The circle: the keys given, found and tried; the rest blank */
 export function circleQuizModel(s: CircleQuizState, o: { sigRow: boolean; board: boolean }): CircleQuizModel {
@@ -103,7 +130,8 @@ export function circleQuizModel(s: CircleQuizState, o: { sigRow: boolean; board:
   }
   for (const id of s.found) {
     const pl = fromId(id);
-    shown.set(id, { label: p.kind === "chain" ? seventh(pl.key) : placeLabel(pl), state: "found" });
+    const label = p.kind === "chain" ? seventh(pl.key) : "ref" in p ? labelNear(p.ref, pl) : placeLabel(pl);
+    shown.set(id, { label, state: "found" });
   }
   if (p.kind !== "chain") for (const id of s.tried) if (!shown.has(id)) shown.set(id, { label: "", state: "wrong" });
   const spots: CircleQuizSpot[] = [];
@@ -117,7 +145,7 @@ export function circleQuizModel(s: CircleQuizState, o: { sigRow: boolean; board:
   return {
     spots,
     center: p.kind === "degree" ? p.degree : total > 1 ? `${s.found.length} / ${total}` : "",
-    pickable: p.kind !== "chain" && s.status !== "correct",
+    pickable: p.kind !== "chain" && !playOnly(p.kind) && s.status !== "correct",
     signature:
       p.kind === "signature" ? requireKey(`${ringKeys(p.answer.ring)[p.answer.key]}:${p.answer.ring}`).vfKey : null,
     sigRow: o.sigRow,
@@ -150,21 +178,21 @@ export function circleQuizDisplay(s: CircleQuizState): PracticeDisplay {
     case "degree": {
       const d = DEGREES[p.ref.ring].find(x => x.id === p.degree)!;
       label = `What's the ${d.name} of ${placeName(p.ref)}?`;
-      sub = "Pick it on the circle, or play its tonic · clockwise is a fifth up";
-      if (s.status === "correct") feedback = `✓ ${placeName(d.at(p.ref.key))} is the ${d.name} of ${placeName(p.ref)}`;
-      else if (s.status === "wrong") {
-        const wrong = fromId(last),
-          other = degreeOf(p.ref, wrong);
-        feedback = other ? `✗ ${placeName(wrong)} is its ${other.name}` : `✗ That's ${placeName(wrong)}`;
-      }
+      sub = "Play its tonic on the keyboard";
+      if (s.status === "correct")
+        feedback = `✓ ${nameNear(p.ref, d.at(p.ref.key))} is the ${d.name} of ${placeName(p.ref)}`;
+      // A note played can't say major or minor: the note is named
+      else if (s.status === "wrong") feedback = `✗ Not ${tonicNear(p.ref, fromId(last))}`;
       break;
     }
     case "related":
       label = `Which keys are closely related to ${placeName(p.ref)}?`;
-      sub = "Pick all five on the circle, or play their tonics · each shares six or all seven of its notes";
+      sub = "Play the tonic of each of the five, in any order · each shares six or all seven of its notes";
       if (s.status === "correct")
-        feedback = `✓ ${answersOf(p).map(placeLabel).join(", ")}: the keys around ${placeLabel(p.ref)}`;
-      else if (s.status === "wrong") feedback = `✗ ${placeName(fromId(last))} isn't closely related to it`;
+        feedback = `✓ ${answersOf(p)
+          .map(a => labelNear(p.ref, a))
+          .join(", ")}: the keys around ${placeLabel(p.ref)}`;
+      else if (s.status === "wrong") feedback = `✗ ${tonicNear(p.ref, fromId(last))} isn't the tonic of any of them`;
       break;
     case "signature":
       label = `Which ${p.answer.ring} key has this key signature?`;

@@ -1,13 +1,15 @@
 // Theory quiz, key relationships on the circle of fifths: each question stands alone, on a circle of both rings (major
 // keys outside, their relative minors inside) turned to a random angle, so it's worked out from the key shown rather
 // than from C at the top. Clockwise is a fifth up, as always. Four kinds of question:
-// - degree: one key shown; pick its dominant, subdominant, relative minor or major, or another diatonic key
-// - related: one key shown; pick all five closely related keys (its relative shares all seven of its notes, the
-//   other four six)
+// - degree: one key shown; play the tonic of its dominant, subdominant, relative, or another diatonic key
+// - related: one key shown; play the tonics of its five closely related keys (its relative shares all seven of its
+//   notes, the other four six)
+// Those two are answered by playing only: on the circle they sit right next to the key shown, so picking them
+// there would only test where they're drawn, not knowing their names.
 // - signature: a key signature on a staff, C major shown on the circle; pick the key (major or minor, as asked)
 // - chain: a chain of dominants resolving by fifths (E7 A7 D7 G7 C): name each chord between the first and the tonic
-// Answered on the circle (degree, related, signature) or from a board of chords (chain); or by playing the tonic or
-// root. Pure.
+// Signatures are answered on the circle and chains from a board of chords, or either by playing the tonic or root.
+// Pure.
 import { CIRCLE_OF_FIFTHS_MAJOR, CIRCLE_OF_FIFTHS_MINOR, chromaOf } from "../theory";
 import { answeredRight, answeredWrong, type Judged } from "./judging";
 import { pick, randomInt, shuffled, type Rng } from "./random";
@@ -78,6 +80,9 @@ export type CirclePrompt =
   /** `chords`: the chain's roots in order (places in circle order, each a fifth below the one before), the last the
    *  tonic; `choices`: the twelve dominant sevenths to answer from, shuffled */
   | { kind: "chain"; rotation: number; chords: readonly number[]; choices: readonly number[] };
+
+/** Whether a kind is answered only by playing: its answers are next to the key shown, so picking them proves nothing */
+export const playOnly = (kind: CircleKind) => kind === "degree" || kind === "related";
 
 /** What the player has to find: the places, in order (one for degree and signature, five for related, the chords
  *  between the first and the tonic for chain) */
@@ -196,6 +201,7 @@ export function reduceCircleQuiz(s: CircleQuizState, a: CircleQuizAction): Circl
     }
   } else {
     if (a.type === "chord") return s;
+    if (a.type === "place" && playOnly(p.kind)) return s;
     place = a.type === "place" ? a.place : placeOfNote(s, a.note);
     if (p.kind !== "signature" && samePlace(place, p.ref)) return s; // the key shown isn't an answer
     const id = placeId(place);

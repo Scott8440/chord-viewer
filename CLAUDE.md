@@ -80,6 +80,13 @@ Layers that only talk through data. Read the file before changing a layer; this 
   `data-option` and shown only when the exercise lists them.
 - **Mode picker** (`src/views/modePicker.ts`): the header's Mode button opens a dialog of tiles; `MODE_INFO` (name,
   one line, 24×24 SVG icon) is typed by mode id, so a new mode needs a tile.
+- **Panel look** (Nov 2026, being compared): the footer's "New panel look" toggle (`src/app/panelStyle.ts`, kept in
+  `chordDisplay.panelStyle`, not a setting; new unless switched off) puts `polished` on the body. Under it
+  (`body.polished` in `src/style.css`) the options sit in a Settings card (`#practiceSettings`) as a grid of fields,
+  checkboxes are switches, and the panel's buttons are an action bar with icons. `select[data-seg]` (option
+  `data-short` for a shorter name; `data-seg="wide"` takes a whole row) also get segmented buttons
+  (`src/views/segmented.ts`) that set the select and fire its change; main re-marks them after each settings change.
+  The selects stay the bound controls. Off, `#practiceSettings` is `display: contents` and the panel is as before.
 - **Mode registry and page setup:** `src/modes/registry.ts`, `src/modes/page.ts`. The Progress page is a view, not a
   mode (`AppState.page`, not saved; `viewOf`), started like a mode so the running mode stops.
 - **Prompt recording** (`src/modes/promptRecords.ts`): times each drill prompt from when it's shown and records it

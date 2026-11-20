@@ -47,6 +47,8 @@ export function createPracticeView(els: {
       els.skip.hidden = !!d.skipHidden;
       els.stop.hidden = !d.stopLabel;
       els.stop.textContent = d.stopLabel ?? "";
+      // For the icon (the panel look): Stop or Start
+      els.stop.dataset.label = d.stopLabel ?? "";
     },
   };
 }

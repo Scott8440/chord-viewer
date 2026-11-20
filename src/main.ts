@@ -3,6 +3,7 @@
 import "./style.css";
 import { setUpCalibration } from "./app/calibration";
 import { bindControls, showControls } from "./app/controls";
+import { bindPanelStyle } from "./app/panelStyle";
 import { loadExcerpts } from "./app/excerpts";
 import { $, onPress } from "./app/dom";
 import { openHistory } from "./app/history";
@@ -35,6 +36,7 @@ import { createDegreePad } from "./views/degreePad";
 import { createDegreeCircle } from "./views/degreeCircle";
 import { createHeaderView } from "./views/header";
 import { createPracticeView } from "./views/practice";
+import { createSegments } from "./views/segmented";
 import { createProgressView } from "./views/progressView";
 import { createReferenceView } from "./views/referenceView";
 import { createStaffView } from "./views/staff";
@@ -56,6 +58,12 @@ const input = (event: InputEvent) => {
   if (!midiMapper.handle(event)) store.dispatch({ type: "input", event });
 };
 bindControls(store);
+// Short choices as segmented buttons, marked again after every settings change (the selects are set first)
+const segments = createSegments(document);
+store.subscribe((s, prev) => {
+  if (s.settings !== prev.settings) segments.sync();
+});
+bindPanelStyle($("panelStyleBtn"));
 const history = openHistory(deviceId(), () => mode.refresh?.());
 
 /* ---------------------------------------------------------------
